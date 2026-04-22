@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MAC–Transceiver Interface Signal Comparison</title>
+<style>
+  :root {
+    --bg: #ffffff; --bg2: #f5f4f0; --text: #1a1a1a; --text2: #6b6a65; --text3: #9c9a92;
+    --border: rgba(0,0,0,0.15); --info-bg: #E6F1FB; --info-text: #185FA5; --info-border: #85B7EB;
+    --font-sans: system-ui, -apple-system, sans-serif;
+    --font-mono: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    --radius: 8px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a1a; --bg2: #2c2c2a; --text: #e8e6df; --text2: #9c9a92; --text3: #6b6a65;
+      --border: rgba(255,255,255,0.15); --info-bg: #0C447C; --info-text: #B5D4F4; --info-border: #185FA5;
+    }
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: var(--font-sans); background: var(--bg); color: var(--text); padding: 24px; line-height: 1.6; }
+  h1 { font-size: 20px; font-weight: 500; margin-bottom: 4px; }
+  .subtitle { font-size: 13px; color: var(--text2); margin-bottom: 16px; }
+  .tab { display: inline-block; padding: 6px 14px; font: 500 13px var(--font-sans); color: var(--text2); border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; margin: 0 4px 6px 0; transition: all .15s; background: transparent; }
+  .tab.active { background: var(--info-bg); color: var(--info-text); border-color: var(--info-border); }
+  .tab:hover:not(.active) { border-color: var(--text3); }
+  .spec-row { display: flex; gap: 12px; margin: 6px 0; font: 400 13px var(--font-sans); color: var(--text2); }
+  .spec-label { min-width: 100px; color: var(--text3); }
+  .spec-val { font-family: var(--font-mono); font-size: 12px; color: var(--text); }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; margin: 12px 0 0; font: 400 12px var(--font-sans); color: var(--text2); }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .legend-arrow { width: 28px; height: 14px; }
+</style>
+</head>
+<body>
+<h1>MAC–transceiver interfaces: signal comparison</h1>
+<p class="subtitle">Arrow direction shows actual signal source for each line</p>
+<div id="tabs"></div>
+<div id="panels"></div>
+<div class="legend">
+  <div class="legend-item">
+    <svg class="legend-arrow" viewBox="0 0 28 14"><line x1="2" y1="7" x2="26" y2="7" stroke="var(--text2)" stroke-width="1.5" opacity="0.3"/><polygon points="24,4 28,7 24,10" fill="var(--text2)" opacity="0.6"/></svg>
+    <span>MAC → PHY</span>
+  </div>
+  <div class="legend-item">
+    <svg class="legend-arrow" viewBox="0 0 28 14"><line x1="2" y1="7" x2="26" y2="7" stroke="var(--text2)" stroke-width="1.5" opacity="0.3"/><polygon points="4,4 0,7 4,10" fill="var(--text2)" opacity="0.6"/></svg>
+    <span>PHY → MAC</span>
+  </div>
+  <div class="legend-item">
+    <svg class="legend-arrow" viewBox="0 0 28 14"><line x1="2" y1="7" x2="26" y2="7" stroke="var(--text2)" stroke-width="1.5" opacity="0.3"/><polygon points="24,4 28,7 24,10" fill="var(--text2)" opacity="0.6"/><polygon points="4,4 0,7 4,10" fill="var(--text2)" opacity="0.6"/></svg>
+    <span>Bidirectional</span>
+  </div>
+  <div class="legend-item">
+    <svg class="legend-arrow" viewBox="0 0 28 14"><line x1="2" y1="7" x2="26" y2="7" stroke="var(--text2)" stroke-width="1.5" stroke-dasharray="3 3" opacity="0.3"/><polygon points="24,4 28,7 24,10" fill="var(--text2)" opacity="0.4"/><polygon points="4,4 0,7 4,10" fill="var(--text2)" opacity="0.4"/></svg>
+    <span>External source (both sides receive)</span>
+  </div>
+</div>
+
+<script>
+const interfaces = [
+  {
+    id:'mii', name:'MII', speed:'100 Mbps', standard:'802.3u (1995)',
+    clock:'25 MHz', dataWidth:'4-bit (nibble)', ddr:'No (SDR)', pins:'~18',
+    desc:'The original Media Independent Interface. A 4-bit parallel bus clocked at 25 MHz gives 100 Mbps throughput. Both TX_CLK and RX_CLK are sourced by the PHY — the MAC is entirely clock-slave in MII.',
+    signals:[
+      {grp:'TX path', lines:[
+        {name:'TXD[3:0]', note:'4-bit transmit data', dir:'mac2phy'},
+        {name:'TX_CLK', note:'25 MHz transmit clock (PHY sources this)', dir:'phy2mac'},
+        {name:'TX_EN', note:'transmit enable', dir:'mac2phy'},
+        {name:'TX_ER', note:'transmit error', dir:'mac2phy'}
+      ]},
+      {grp:'RX path', lines:[
+        {name:'RXD[3:0]', note:'4-bit receive data', dir:'phy2mac'},
+        {name:'RX_CLK', note:'25 MHz receive clock', dir:'phy2mac'},
+        {name:'RX_DV', note:'receive data valid', dir:'phy2mac'},
+        {name:'RX_ER', note:'receive error', dir:'phy2mac'}
+      ]},
+      {grp:'Management', lines:[
+        {name:'MDC', note:'management clock', dir:'mac2phy'},
+        {name:'MDIO', note:'management data I/O', dir:'bidir'}
+      ]},
+      {grp:'Status', lines:[
+        {name:'CRS', note:'carrier sense', dir:'phy2mac'},
+        {name:'COL', note:'collision detect', dir:'phy2mac'}
+      ]}
+    ]
+  },
+  {
+    id:'rmii', name:'RMII', speed:'100 Mbps', standard:'RMII Consortium (1998)',
+    clock:'50 MHz', dataWidth:'2-bit (di-bit)', ddr:'No (SDR)', pins:'~9',
+    desc:'Reduced MII halves the data width to 2 bits and doubles the clock to 50 MHz. The key change: a single external 50 MHz oscillator feeds both MAC and PHY, eliminating the PHY-sourced clock domain crossing of MII.',
+    signals:[
+      {grp:'TX path', lines:[
+        {name:'TXD[1:0]', note:'2-bit transmit data', dir:'mac2phy'},
+        {name:'TX_EN', note:'transmit enable', dir:'mac2phy'}
+      ]},
+      {grp:'RX path', lines:[
+        {name:'RXD[1:0]', note:'2-bit receive data', dir:'phy2mac'},
+        {name:'CRS_DV', note:'carrier sense / data valid (muxed)', dir:'phy2mac'},
+        {name:'RX_ER', note:'receive error (optional)', dir:'phy2mac'}
+      ]},
+      {grp:'Clock', lines:[
+        {name:'REF_CLK', note:'50 MHz shared reference (external osc.)', dir:'ext'}
+      ]},
+      {grp:'Management', lines:[
+        {name:'MDC', note:'management clock', dir:'mac2phy'},
+        {name:'MDIO', note:'management data I/O', dir:'bidir'}
+      ]}
+    ]
+  },
+  {
+    id:'gmii', name:'GMII', speed:'1 Gbps', standard:'802.3z (1998)',
+    clock:'125 MHz', dataWidth:'8-bit (byte)', ddr:'No (SDR)', pins:'~24',
+    desc:'Gigabit MII widens the bus to 8 bits at 125 MHz. Critical change from MII: the transmit clock (GTX_CLK) is now MAC-sourced, not PHY-sourced. The receive clock remains PHY-sourced.',
+    signals:[
+      {grp:'TX path', lines:[
+        {name:'TXD[7:0]', note:'8-bit transmit data', dir:'mac2phy'},
+        {name:'GTX_CLK', note:'125 MHz transmit clock (MAC sources this)', dir:'mac2phy'},
+        {name:'TX_EN', note:'transmit enable', dir:'mac2phy'},
+        {name:'TX_ER', note:'transmit error', dir:'mac2phy'}
+      ]},
+      {grp:'RX path', lines:[
+        {name:'RXD[7:0]', note:'8-bit receive data', dir:'phy2mac'},
+        {name:'RX_CLK', note:'125 MHz receive clock (PHY sources this)', dir:'phy2mac'},
+        {name:'RX_DV', note:'receive data valid', dir:'phy2mac'},
+        {name:'RX_ER', note:'receive error', dir:'phy2mac'}
+      ]},
+      {grp:'Management', lines:[
+        {name:'MDC', note:'management clock', dir:'mac2phy'},
+        {name:'MDIO', note:'management data I/O', dir:'bidir'}
+      ]},
+      {grp:'Status', lines:[
+        {name:'CRS', note:'carrier sense', dir:'phy2mac'},
+        {name:'COL', note:'collision detect', dir:'phy2mac'}
+      ]}
+    ]
+  },
+  {
+    id:'rgmii', name:'RGMII', speed:'10/100/1000 Mbps', standard:'RGMII v2.0 (2002)',
+    clock:'2.5 / 25 / 125 MHz', dataWidth:'4-bit DDR → eff. 8-bit', ddr:'Yes (DDR)', pins:'~12',
+    desc:'Reduced GMII uses DDR signalling — data sampled on both clock edges. TX_CLK is MAC-sourced; RX_CLK is PHY-sourced. Control signals (EN/ER, DV/ER) are multiplexed onto a single pin via DDR. The 2 ns RGMII-ID delay specification is a frequent board bring-up issue.',
+    signals:[
+      {grp:'TX path', lines:[
+        {name:'TXD[3:0]', note:'4-bit transmit data (DDR)', dir:'mac2phy'},
+        {name:'TX_CLK', note:'125 MHz transmit clock (MAC-sourced)', dir:'mac2phy'},
+        {name:'TX_CTL', note:'TX_EN (rising) / TX_ER (falling)', dir:'mac2phy'}
+      ]},
+      {grp:'RX path', lines:[
+        {name:'RXD[3:0]', note:'4-bit receive data (DDR)', dir:'phy2mac'},
+        {name:'RX_CLK', note:'125 MHz receive clock (PHY-sourced)', dir:'phy2mac'},
+        {name:'RX_CTL', note:'RX_DV (rising) / RX_ER (falling)', dir:'phy2mac'}
+      ]},
+      {grp:'Management', lines:[
+        {name:'MDC', note:'management clock', dir:'mac2phy'},
+        {name:'MDIO', note:'management data I/O', dir:'bidir'}
+      ]}
+    ]
+  },
+  {
+    id:'sgmii', name:'SGMII', speed:'10/100/1000 Mbps', standard:'Cisco (2003)',
+    clock:'625 MHz (1.25 Gbaud)', dataWidth:'1-bit serial (8b/10b)', ddr:'N/A (serial)', pins:'~4 + clk',
+    desc:'Serial GMII replaces the parallel bus entirely with a 1.25 Gbaud differential serial link using 8b/10b encoding. Speed negotiation happens in-band — the serial link always runs at full rate. Clock is typically recovered from the data stream.',
+    signals:[
+      {grp:'TX path', lines:[
+        {name:'TX+ / TX\u2212', note:'differential serial transmit pair', dir:'mac2phy'}
+      ]},
+      {grp:'RX path', lines:[
+        {name:'RX+ / RX\u2212', note:'differential serial receive pair', dir:'phy2mac'}
+      ]},
+      {grp:'Clock', lines:[
+        {name:'REF_CLK', note:'625 MHz reference (shared or embedded)', dir:'ext'}
+      ]},
+      {grp:'In-band signalling', lines:[
+        {name:'Auto-neg', note:'speed/duplex/link via ordered sets', dir:'bidir'},
+        {name:'Clock recovery', note:'recovered from data stream', dir:'bidir'}
+      ]}
+    ]
+  },
+  {
+    id:'xgmii', name:'XGMII', speed:'10 Gbps', standard:'802.3ae (2002)',
+    clock:'156.25 MHz', dataWidth:'32-bit DDR → eff. 64-bit', ddr:'Yes (DDR)', pins:'~74',
+    desc:'10 Gigabit MII uses a 32-bit DDR data path at 156.25 MHz. The ~74 pin count restricts it to short chip-to-chip traces. In practice, XAUI (4\u00d73.125 Gbaud lanes) or SFI (single 10.3125 Gbaud lane) replace it for board-level interconnects.',
+    signals:[
+      {grp:'TX path', lines:[
+        {name:'TXD[31:0]', note:'32-bit transmit data (DDR)', dir:'mac2phy'},
+        {name:'TXC[3:0]', note:'4-bit transmit control (1 per byte lane)', dir:'mac2phy'},
+        {name:'TX_CLK', note:'156.25 MHz transmit clock', dir:'mac2phy'}
+      ]},
+      {grp:'RX path', lines:[
+        {name:'RXD[31:0]', note:'32-bit receive data (DDR)', dir:'phy2mac'},
+        {name:'RXC[3:0]', note:'4-bit receive control', dir:'phy2mac'},
+        {name:'RX_CLK', note:'156.25 MHz receive clock', dir:'phy2mac'}
+      ]},
+      {grp:'Management', lines:[
+        {name:'MDC', note:'management clock', dir:'mac2phy'},
+        {name:'MDIO', note:'management data I/O', dir:'bidir'}
+      ]}
+    ]
+  }
+];
+
+const tabsEl = document.getElementById('tabs');
+const panelsEl = document.getElementById('panels');
+
+const grpColors = {'TX path':'#534AB7','RX path':'#0F6E56','Clock':'#BA7517','Management':'#5F5E5A','Status':'#5F5E5A','In-band signalling':'#993556'};
+const grpBgs = {'TX path':'#EEEDFE','RX path':'#E1F5EE','Clock':'#FAEEDA','Management':'#F1EFE8','Status':'#F1EFE8','In-band signalling':'#FBEAF0'};
+
+interfaces.forEach((iface, i) => {
+  const tab = document.createElement('span');
+  tab.className = 'tab' + (i===0?' active':'');
+  tab.textContent = iface.name;
+  tab.onclick = () => {
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('p-'+iface.id).classList.add('active');
+  };
+  tabsEl.appendChild(tab);
+
+  const panel = document.createElement('div');
+  panel.className = 'panel' + (i===0?' active':'');
+  panel.id = 'p-'+iface.id;
+
+  const specs = [
+    ['Speed', iface.speed], ['Standard', iface.standard],
+    ['Clock', iface.clock], ['Data width', iface.dataWidth],
+    ['DDR', iface.ddr], ['Pin count', iface.pins]
+  ];
+
+  let html = `<p style="font:400 14px var(--font-sans);color:var(--text);line-height:1.6;margin:10px 0 14px">${iface.desc}</p>`;
+  html += specs.map(([l,v])=>`<div class="spec-row"><span class="spec-label">${l}</span><span class="spec-val">${v}</span></div>`).join('');
+
+  const totalLines = iface.signals.reduce((s,g)=>s+g.lines.length+1, 0);
+  const svgH = 40 + totalLines * 22 + 20;
+  let svg = `<svg width="100%" viewBox="0 0 680 ${svgH}" role="img" style="margin-top:12px"><title>${iface.name} signal lines</title><desc>Signal groups and per-signal direction for ${iface.name}</desc>`;
+
+  let y = 20;
+  svg += `<text style="font:500 14px var(--font-sans);fill:var(--text)" x="40" y="${y}" dominant-baseline="central">MAC side</text>`;
+  svg += `<text style="font:500 14px var(--font-sans);fill:var(--text)" x="640" y="${y}" text-anchor="end" dominant-baseline="central">PHY side</text>`;
+  y += 28;
+
+  iface.signals.forEach(grp => {
+    const col = grpColors[grp.grp]||'#5F5E5A';
+    const bg = grpBgs[grp.grp]||'#F1EFE8';
+    svg += `<text style="font:500 14px var(--font-sans);fill:${col}" x="40" y="${y}" dominant-baseline="central">${grp.grp}</text>`;
+    y += 6;
+    grp.lines.forEach(sig => {
+      y += 20;
+      const dash = sig.dir==='ext' ? ' stroke-dasharray="4 3"' : '';
+      svg += `<line x1="40" y1="${y}" x2="640" y2="${y}" stroke="${col}" stroke-width="1.5" opacity="0.2"${dash}/>`;
+      if(sig.dir==='mac2phy') {
+        svg += `<polygon points="634,${y-3} 640,${y} 634,${y+3}" fill="${col}" opacity="0.6"/>`;
+      } else if(sig.dir==='phy2mac') {
+        svg += `<polygon points="46,${y-3} 40,${y} 46,${y+3}" fill="${col}" opacity="0.6"/>`;
+      } else if(sig.dir==='bidir') {
+        svg += `<polygon points="46,${y-3} 40,${y} 46,${y+3}" fill="${col}" opacity="0.6"/>`;
+        svg += `<polygon points="634,${y-3} 640,${y} 634,${y+3}" fill="${col}" opacity="0.6"/>`;
+      } else if(sig.dir==='ext') {
+        svg += `<polygon points="46,${y-3} 40,${y} 46,${y+3}" fill="${col}" opacity="0.4"/>`;
+        svg += `<polygon points="634,${y-3} 640,${y} 634,${y+3}" fill="${col}" opacity="0.4"/>`;
+      }
+      const labelW = Math.min(sig.name.length * 7.5 + 16, 260);
+      const lx = 340 - labelW/2;
+      svg += `<rect x="${lx}" y="${y-10}" width="${labelW}" height="20" rx="10" fill="${bg}"/>`;
+      svg += `<text x="340" y="${y}" text-anchor="middle" dominant-baseline="central" fill="${col}" style="font:500 11px var(--font-mono)">${sig.name}</text>`;
+      if(sig.note) {
+        svg += `<text x="${lx+labelW+8}" y="${y}" dominant-baseline="central" fill="var(--text3)" style="font:400 11px var(--font-sans)">${sig.note}</text>`;
+      }
+    });
+    y += 14;
+  });
+
+  svg += '</svg>';
+  html += svg;
+  panel.innerHTML = html;
+  panelsEl.appendChild(panel);
+});
+</script>
+</body>
+</html>

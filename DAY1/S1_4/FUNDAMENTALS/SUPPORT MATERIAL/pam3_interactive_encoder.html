@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PAM-3 Interactive Encoder</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e1117;
+    --surface: #161b22;
+    --surface-2: #1c2129;
+    --border: rgba(255,255,255,0.08);
+    --border-h: rgba(255,255,255,0.14);
+    --text-1: #e6edf3;
+    --text-2: #8b949e;
+    --text-3: #6e7681;
+    --teal: #1D9E75;
+    --teal-dim: rgba(29,158,117,0.15);
+    --amber: #BA7517;
+    --amber-dim: rgba(186,117,23,0.12);
+    --gray-dot: #888780;
+    --blue: #378ADD;
+    --coral: #D85A30;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text-1);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 40px 20px;
+  }
+  .container { width: 100%; max-width: 760px; }
+  .header { margin-bottom: 36px; }
+  .header h1 { font-size: 28px; font-weight: 600; letter-spacing: -0.5px; margin-bottom: 8px; }
+  .header h1 span { color: var(--teal); }
+  .header p { font-size: 14px; color: var(--text-2); line-height: 1.6; max-width: 580px; }
+
+  .controls-section { margin-bottom: 24px; }
+  .controls-label {
+    font-size: 11px; font-weight: 500; color: var(--text-3);
+    text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 12px;
+  }
+  .sym-controls { display: grid; grid-template-columns: repeat(10, 1fr); gap: 6px; }
+  .sym-col { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .sym-col label { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-3); }
+  .sym-col select {
+    width: 100%; font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 500;
+    padding: 10px 2px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text-1); text-align: center;
+    cursor: pointer; transition: border-color 0.2s, box-shadow 0.2s;
+    appearance: none; -webkit-appearance: none;
+  }
+  .sym-col select:hover { border-color: var(--border-h); }
+  .sym-col select:focus { outline: none; border-color: var(--teal); box-shadow: 0 0 0 3px var(--teal-dim); }
+
+  .pair-row {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px;
+    margin-top: 10px;
+  }
+  .pair-bracket {
+    border: 1px solid rgba(186,117,23,0.25); border-top: none;
+    border-radius: 0 0 8px 8px; text-align: center;
+    padding: 6px 4px 5px; font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; font-weight: 500; color: var(--amber);
+    background: var(--amber-dim); transition: all 0.2s;
+  }
+  .pair-bracket.redundant {
+    border-color: rgba(216,90,48,0.25);
+    color: var(--coral); background: rgba(216,90,48,0.1);
+  }
+
+  .waveform-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 24px 20px 16px; margin-bottom: 16px;
+  }
+  .waveform-card svg text { font-family: 'JetBrains Mono', monospace; }
+
+  .legend-row { display: flex; gap: 20px; margin-top: 12px; padding: 0 4px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-3); }
+  .legend-dot { width: 8px; height: 8px; border-radius: 2px; }
+  .legend-dot.round { border-radius: 50%; }
+
+  .binary-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 18px 20px; margin-bottom: 16px;
+  }
+  .binary-card-label {
+    font-size: 11px; font-weight: 500; color: var(--text-3);
+    text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;
+  }
+  .binary-stream {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    margin-bottom: 14px;
+  }
+  .bit-group {
+    font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 500;
+    color: var(--amber); letter-spacing: 2px;
+    padding: 6px 10px; border-radius: 6px;
+    background: var(--amber-dim); transition: all 0.2s;
+  }
+  .bit-group.redundant {
+    color: var(--coral); background: rgba(216,90,48,0.1);
+    text-decoration: line-through; text-decoration-color: rgba(216,90,48,0.4);
+  }
+  .bit-separator {
+    width: 4px; height: 4px; border-radius: 50%;
+    background: rgba(255,255,255,0.12);
+  }
+  .binary-note { font-size: 12px; color: var(--text-3); line-height: 1.5; }
+  .binary-note code {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px;
+    color: var(--text-2);
+  }
+
+  .mapping-toggle {
+    font-family: 'DM Sans', sans-serif; font-size: 12px; color: var(--teal);
+    background: none; border: none; cursor: pointer; padding: 0;
+    margin-top: 8px; text-decoration: underline; text-underline-offset: 3px;
+  }
+  .mapping-toggle:hover { color: #26c98f; }
+  .mapping-table {
+    display: none; margin-top: 12px;
+    border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+  }
+  .mapping-table.visible { display: block; }
+  .mapping-table table {
+    width: 100%; border-collapse: collapse;
+    font-family: 'JetBrains Mono', monospace; font-size: 12px;
+  }
+  .mapping-table th {
+    text-align: left; padding: 8px 12px;
+    background: var(--surface-2); color: var(--text-3);
+    font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border);
+  }
+  .mapping-table td {
+    padding: 6px 12px; color: var(--text-2);
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+  }
+  .mapping-table tr:last-child td { border-bottom: none; color: var(--coral); font-style: italic; }
+
+  .info-row { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; margin-top: 16px; }
+  .info-box {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 16px;
+  }
+  .info-label {
+    font-size: 11px; color: var(--text-3); text-transform: uppercase;
+    letter-spacing: 0.8px; margin-bottom: 4px; font-weight: 500;
+  }
+  .info-val {
+    font-family: 'JetBrains Mono', monospace; font-size: 18px;
+    font-weight: 500; color: var(--text-1);
+  }
+  .info-val.accent { color: var(--teal); }
+  .info-val.amber { color: var(--amber); }
+
+  .btn-row { display: flex; gap: 10px; margin-top: 16px; }
+  .btn {
+    font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500;
+    padding: 8px 18px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text-2); cursor: pointer; transition: all 0.15s;
+  }
+  .btn:hover { border-color: var(--border-h); color: var(--text-1); background: var(--surface-2); }
+  .btn:active { transform: scale(0.97); }
+
+  @media (max-width: 600px) {
+    .sym-controls { grid-template-columns: repeat(5, 1fr); }
+    .pair-row { grid-template-columns: repeat(5, 1fr); }
+    .info-row { grid-template-columns: 1fr 1fr; }
+    .header h1 { font-size: 22px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><span>PAM-3</span> interactive encoder</h1>
+    <p>Select a voltage level for each symbol slot. Every pair of ternary symbols (3² = 9 states) maps to a 3-bit binary group (8 valid states + 1 redundant for FEC/control), shown below the waveform.</p>
+  </div>
+
+  <div class="controls-section">
+    <div class="controls-label">Symbol values</div>
+    <div class="sym-controls" id="controls"></div>
+    <div class="pair-row" id="pair-brackets"></div>
+  </div>
+
+  <div class="waveform-card">
+    <svg width="100%" viewBox="0 0 680 200" id="wf-svg">
+      <defs>
+        <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="3" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      <line x1="45" y1="15" x2="45" y2="175" stroke="rgba(255,255,255,0.12)" stroke-width="0.5"/>
+      <line x1="45" y1="175" x2="665" y2="175" stroke="rgba(255,255,255,0.12)" stroke-width="0.5"/>
+      <text x="674" y="179" fill="#6e7681" font-family="JetBrains Mono, monospace" font-size="11" text-anchor="end">t</text>
+      <text x="22" y="16" fill="#6e7681" font-family="JetBrains Mono, monospace" font-size="11" text-anchor="middle" font-style="italic">V</text>
+      <text x="35" y="38" fill="#8b949e" font-family="JetBrains Mono, monospace" font-size="12" text-anchor="end">+1</text>
+      <text x="35" y="98" fill="#8b949e" font-family="JetBrains Mono, monospace" font-size="12" text-anchor="end">0</text>
+      <text x="35" y="158" fill="#8b949e" font-family="JetBrains Mono, monospace" font-size="12" text-anchor="end">−1</text>
+      <line x1="45" y1="34" x2="660" y2="34" stroke="rgba(255,255,255,0.05)" stroke-width="0.5"/>
+      <line x1="45" y1="94" x2="660" y2="94" stroke="rgba(255,255,255,0.07)" stroke-width="0.5" stroke-dasharray="2 4"/>
+      <line x1="45" y1="154" x2="660" y2="154" stroke="rgba(255,255,255,0.05)" stroke-width="0.5"/>
+      <path id="waveform-glow" fill="none" stroke="#1D9E75" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="0.25" filter="url(#glow)" d=""/>
+      <path id="waveform-path" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d=""/>
+      <g id="wf-dots"></g>
+      <g id="wf-labels"></g>
+    </svg>
+    <div class="legend-row">
+      <div class="legend-item"><div class="legend-dot" style="background:#1D9E75"></div>Transmitted signal</div>
+      <div class="legend-item"><div class="legend-dot round" style="background:#BA7517"></div>Sample points</div>
+    </div>
+  </div>
+
+  <div class="binary-card">
+    <div class="binary-card-label">Decoded binary sequence</div>
+    <div class="binary-stream" id="binary-stream"></div>
+    <div class="binary-note" id="binary-note"></div>
+    <button class="mapping-toggle" onclick="toggleMap()">Show pair-to-binary mapping table</button>
+    <div class="mapping-table" id="mapping-table">
+      <table>
+        <tr><th>Pair (S₁, S₂)</th><th>Ternary index</th><th>Binary</th></tr>
+        <tr><td>(−1, −1)</td><td>0</td><td>000</td></tr>
+        <tr><td>(−1, &nbsp;0)</td><td>1</td><td>001</td></tr>
+        <tr><td>(−1, +1)</td><td>2</td><td>010</td></tr>
+        <tr><td>( 0, −1)</td><td>3</td><td>011</td></tr>
+        <tr><td>( 0, &nbsp;0)</td><td>4</td><td>100</td></tr>
+        <tr><td>( 0, +1)</td><td>5</td><td>101</td></tr>
+        <tr><td>(+1, −1)</td><td>6</td><td>110</td></tr>
+        <tr><td>(+1, &nbsp;0)</td><td>7</td><td>111</td></tr>
+        <tr><td>(+1, +1)</td><td>8</td><td>— redundant</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="info-row">
+    <div class="info-box">
+      <div class="info-label">Symbols</div>
+      <div class="info-val accent" id="sym-count">10</div>
+    </div>
+    <div class="info-box">
+      <div class="info-label">Pairs</div>
+      <div class="info-val" id="pair-count">5</div>
+    </div>
+    <div class="info-box">
+      <div class="info-label">Valid bits</div>
+      <div class="info-val amber" id="bit-count">—</div>
+    </div>
+    <div class="info-box">
+      <div class="info-label">Efficiency</div>
+      <div class="info-val" id="efficiency">—</div>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn" onclick="randomize()">Randomize</button>
+    <button class="btn" onclick="resetDefaults()">Reset</button>
+  </div>
+</div>
+
+<script>
+const NUM = 10;
+const levelMap = { '1': 34, '0': 94, '-1': 154 };
+const colorMap = { '1': '#1D9E75', '0': '#888780', '-1': '#378ADD' };
+const defaults = [1, -1, 0, 1, 0, -1, -1, 1, 0, 1];
+const levels = [1, 0, -1];
+
+const ternaryMap = { '-1': 0, '0': 1, '1': 2 };
+const binaryLookup = ['000', '001', '010', '011', '100', '101', '110', '111'];
+
+const ctrls = document.getElementById('controls');
+const selects = [];
+
+for (let i = 0; i < NUM; i++) {
+  const col = document.createElement('div');
+  col.className = 'sym-col';
+  const lbl = document.createElement('label');
+  lbl.textContent = 'S' + (i + 1);
+  const sel = document.createElement('select');
+  levels.forEach(v => {
+    const o = document.createElement('option');
+    o.value = v;
+    o.textContent = (v > 0 ? '+' : '') + v;
+    if (v === defaults[i]) o.selected = true;
+    sel.appendChild(o);
+  });
+  sel.addEventListener('change', draw);
+  col.appendChild(lbl);
+  col.appendChild(sel);
+  ctrls.appendChild(col);
+  selects.push(sel);
+}
+
+function toggleMap() {
+  document.getElementById('mapping-table').classList.toggle('visible');
+}
+
+function draw() {
+  const vals = selects.map(s => parseInt(s.value));
+  const startX = 62;
+  const stepW = 60;
+
+  let d = 'M' + startX + ' ' + levelMap[vals[0]];
+  for (let i = 0; i < vals.length; i++) {
+    const x2 = startX + (i + 1) * stepW;
+    const y = levelMap[vals[i]];
+    if (i === 0) { d += ' H' + x2; } else { d += ' V' + y + ' H' + x2; }
+  }
+  document.getElementById('waveform-path').setAttribute('d', d);
+  document.getElementById('waveform-glow').setAttribute('d', d);
+
+  let dotsHtml = '';
+  let labelsHtml = '';
+  for (let i = 0; i < vals.length; i++) {
+    const cx = startX + i * stepW + stepW / 2;
+    const cy = levelMap[vals[i]];
+    dotsHtml += '<circle cx="' + cx + '" cy="' + cy + '" r="4.5" fill="' + colorMap[vals[i]] + '" stroke="' + colorMap[vals[i]] + '" stroke-width="3" stroke-opacity="0.2"/>';
+    labelsHtml += '<text x="' + cx + '" y="192" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono, monospace" font-size="11">' + ((vals[i] > 0 ? '+' : '') + vals[i]) + '</text>';
+  }
+  document.getElementById('wf-dots').innerHTML = dotsHtml;
+  document.getElementById('wf-labels').innerHTML = labelsHtml;
+
+  const numPairs = Math.floor(vals.length / 2);
+  let binaryHtml = '';
+  let bracketsHtml = '';
+  let validBits = 0;
+  let redundantCount = 0;
+
+  for (let p = 0; p < numPairs; p++) {
+    const s1 = vals[p * 2];
+    const s2 = vals[p * 2 + 1];
+    const idx = ternaryMap[s1] * 3 + ternaryMap[s2];
+    const isRedundant = idx >= 8;
+
+    if (p > 0) binaryHtml += '<div class="bit-separator"></div>';
+
+    if (isRedundant) {
+      binaryHtml += '<div class="bit-group redundant">FEC</div>';
+      redundantCount++;
+    } else {
+      binaryHtml += '<div class="bit-group">' + binaryLookup[idx] + '</div>';
+      validBits += 3;
+    }
+
+    const pairLabel = isRedundant ? 'FEC' : binaryLookup[idx];
+    bracketsHtml += '<div class="pair-bracket' + (isRedundant ? ' redundant' : '') + '">' + pairLabel + '</div>';
+  }
+
+  document.getElementById('binary-stream').innerHTML = binaryHtml;
+  document.getElementById('pair-brackets').innerHTML = bracketsHtml;
+
+  document.getElementById('sym-count').textContent = vals.length;
+  document.getElementById('pair-count').textContent = numPairs;
+  document.getElementById('bit-count').textContent = validBits;
+  document.getElementById('efficiency').textContent = (validBits / vals.length).toFixed(2) + ' b/s';
+
+  let noteText = numPairs + ' pairs → ';
+  if (redundantCount > 0) {
+    noteText += (numPairs - redundantCount) + ' valid (' + validBits + ' bits) + ' + redundantCount + ' redundant <code>(+1,+1)</code> used for FEC/control.';
+  } else {
+    noteText += validBits + ' bits. All pairs map to valid 3-bit groups.';
+  }
+  document.getElementById('binary-note').innerHTML = noteText;
+}
+
+function randomize() {
+  selects.forEach(sel => { sel.value = levels[Math.floor(Math.random() * levels.length)]; });
+  draw();
+}
+
+function resetDefaults() {
+  selects.forEach((sel, i) => { sel.value = defaults[i]; });
+  draw();
+}
+
+draw();
+</script>
+</body>
+</html>

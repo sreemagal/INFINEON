@@ -1,0 +1,53 @@
+<svg width="100%" viewBox="0 0 680 380" xmlns="http://www.w3.org/2000/svg" role="img">
+<title>PAM-3 receiver decision regions showing the two threshold levels</title>
+<desc>A conceptual diagram showing how the PAM-3 receiver uses two decision thresholds at +V/2 and -V/2 to distinguish between the three voltage levels, with noise margin regions highlighted</desc>
+<style>
+  svg { font-family: system-ui, -apple-system, sans-serif; }
+  .th { font-size: 14px; font-weight: 500; fill: #3d3d3a; }
+  .ts { font-size: 12px; font-weight: 400; fill: #73726c; }
+</style>
+<defs>
+  <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+    <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </marker>
+</defs>
+
+<!-- Decision regions (background bands) -->
+<rect x="120" y="40" width="440" height="93" rx="0" fill="#1D9E75" opacity="0.08"/>
+<rect x="120" y="133" width="440" height="94" rx="0" fill="#378ADD" opacity="0.08"/>
+<rect x="120" y="227" width="440" height="93" rx="0" fill="#D85A30" opacity="0.08"/>
+
+<!-- Region labels -->
+<text class="ts" x="575" y="90" text-anchor="start" fill="#0F6E56">Decide: +V</text>
+<text class="ts" x="575" y="183" text-anchor="start" fill="#185FA5">Decide: 0</text>
+<text class="ts" x="575" y="276" text-anchor="start" fill="#993C1D">Decide: −V</text>
+
+<!-- Voltage level lines -->
+<line x1="120" y1="70" x2="560" y2="70" stroke="#1D9E75" stroke-width="1.5"/>
+<line x1="120" y1="180" x2="560" y2="180" stroke="#378ADD" stroke-width="1.5"/>
+<line x1="120" y1="290" x2="560" y2="290" stroke="#D85A30" stroke-width="1.5"/>
+
+<!-- Decision threshold lines -->
+<line x1="120" y1="133" x2="560" y2="133" stroke="#3d3d3a" stroke-width="1" stroke-dasharray="6 4"/>
+<line x1="120" y1="227" x2="560" y2="227" stroke="#3d3d3a" stroke-width="1" stroke-dasharray="6 4"/>
+
+<!-- Threshold labels -->
+<text class="ts" x="110" y="137" text-anchor="end">Threshold 1 (+V/2)</text>
+<text class="ts" x="110" y="231" text-anchor="end">Threshold 2 (−V/2)</text>
+
+<!-- Level labels on right -->
+<text class="th" x="110" y="74" text-anchor="end">+V</text>
+<text class="th" x="110" y="184" text-anchor="end">0</text>
+<text class="th" x="110" y="294" text-anchor="end">−V</text>
+
+<!-- Noise margin annotations -->
+<line x1="340" y1="70" x2="340" y2="133" stroke="#73726c" stroke-width="0.5"/>
+<line x1="330" y1="70" x2="350" y2="70" stroke="#73726c" stroke-width="0.5"/>
+<line x1="330" y1="133" x2="350" y2="133" stroke="#73726c" stroke-width="0.5"/>
+<text class="ts" x="360" y="105" text-anchor="start">Noise margin = V/2</text>
+
+<!-- Binary comparison annotation -->
+<rect x="120" y="330" width="440" height="40" rx="8" fill="#F1EFE8" stroke="#b4b2a9" stroke-width="0.5"/>
+<text class="ts" x="340" y="348" text-anchor="middle">Binary NRZ noise margin = V (twice as large)</text>
+<text class="ts" x="340" y="363" text-anchor="middle">PAM-3 trades noise immunity for bandwidth efficiency</text>
+</svg>

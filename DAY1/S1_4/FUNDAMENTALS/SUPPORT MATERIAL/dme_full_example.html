@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Differential Manchester Encoding — Full Worked Example: 1 0 1 1 0 0 1</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    background: #ffffff;
+    color: #1a1a1a;
+    padding: 24px;
+    max-width: 960px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+  .subtitle { font-size: 12px; color: #666; margin-bottom: 20px; }
+
+  .algo-note {
+    background: #EEF3FA; border-left: 4px solid #2E5EA8;
+    padding: 10px 14px; border-radius: 0 6px 6px 0;
+    font-size: 12px; color: #1F3864; line-height: 1.7;
+    margin-bottom: 24px;
+  }
+
+  svg { width: 100%; height: auto; display: block; }
+
+  /* Decode walkthrough table */
+  .decode-table {
+    width: 100%; border-collapse: collapse;
+    font-size: 12px; margin-top: 20px;
+  }
+  .decode-table th {
+    background: #1F3864; color: #fff;
+    padding: 7px 12px; text-align: left; font-weight: 500;
+  }
+  .decode-table td {
+    padding: 7px 12px; border-bottom: 1px solid #e0e0e0;
+    vertical-align: middle;
+  }
+  .decode-table tr:nth-child(even) td { background: #f8f8f8; }
+  .decode-table tr:last-child td { border-bottom: none; }
+  .bit-0 { color: #A32D2D; font-weight: 700; }
+  .bit-1 { color: #3B6D11; font-weight: 700; }
+  .mono  { font-family: "SF Mono", "Fira Code", monospace; font-size: 11px; }
+
+  .shortcut-box {
+    background: #FEF9C3; border-left: 4px solid #854F0B;
+    padding: 10px 14px; border-radius: 0 6px 6px 0;
+    font-size: 12px; color: #412402; line-height: 1.7;
+    margin-top: 20px;
+  }
+</style>
+</head>
+<body>
+
+<h1>Differential Manchester Encoding — Full Worked Example</h1>
+<p class="subtitle">Encoding the bit sequence <strong>1&thinsp;0&thinsp;1&thinsp;1&thinsp;0&thinsp;0&thinsp;1</strong> · starting state: HIGH · period width proportional to display</p>
+
+<div class="algo-note">
+  <strong>How to read this diagram:</strong>
+  Amber circles mark the mandatory mid-bit transitions — present in every period, they provide the clock.
+  Red bars mark start-of-period transitions — present only when the bit is 0, they carry the data.
+  The decode table below shows how the receiver determines each bit by checking whether a start-of-period transition occurred.
+</div>
+
+<svg viewBox="0 0 680 360" xmlns="http://www.w3.org/2000/svg" role="img">
+  <title>Full DME waveform for bit sequence 1 0 1 1 0 0 1 with annotations</title>
+  <desc>
+    A complete Differential Manchester Encoding waveform for seven bits: 1, 0, 1, 1, 0, 0, 1.
+    Each bit period is 80 pixels wide. The waveform starts high. Bit 1 has no start transition
+    and a mid-bit transition from high to low. Bit 0 has a start transition and an additional
+    mid-bit transition. Amber circles mark mid-bit transitions; red bars mark start-of-period
+    transitions that signal bit = 0.
+  </desc>
+
+  <!-- ── Alternating period background shading ── -->
+  <rect x="60"  y="64" width="80" height="72" fill="#F9FAFB"/>
+  <rect x="220" y="64" width="80" height="72" fill="#F9FAFB"/>
+  <rect x="380" y="64" width="80" height="72" fill="#F9FAFB"/>
+  <rect x="540" y="64" width="80" height="72" fill="#F9FAFB"/>
+
+  <!-- ── H / L axis labels ── -->
+  <text x="52" y="84" text-anchor="end"
+        font-family="-apple-system, 'Segoe UI', Arial, sans-serif"
+        font-size="11" fill="#666">H</text>
+  <text x="52" y="124" text-anchor="end"
+        font-family="-apple-system, 'Segoe UI', Arial, sans-serif"
+        font-size="11" fill="#666">L</text>
+
+  <!-- ── H / L guide lines ── -->
+  <line x1="56" y1="80"  x2="628" y2="80"  stroke="#E5E7EB" stroke-width="0.5" stroke-dasharray="2 4"/>
+  <line x1="56" y1="120" x2="628" y2="120" stroke="#E5E7EB" stroke-width="0.5" stroke-dasharray="2 4"/>
+
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <!-- WAVEFORM                                                  -->
+  <!-- State trace:                                             -->
+  <!--  Bit 1 (60–140):  start=H, no start trans. mid@100: H→L  -->
+  <!--  Bit 0 (140–220): start=L, trans L→H.      mid@180: H→L  -->
+  <!--  Bit 1 (220–300): start=L, no start trans. mid@260: L→H  -->
+  <!--  Bit 1 (300–380): start=H, no start trans. mid@340: H→L  -->
+  <!--  Bit 0 (380–460): start=L, trans L→H.      mid@420: H→L  -->
+  <!--  Bit 0 (460–540): start=L, trans L→H.      mid@500: H→L  -->
+  <!--  Bit 1 (540–620): start=L, no start trans. mid@580: L→H  -->
+  <!-- ══════════════════════════════════════════════════════════ -->
+
+  <!-- Bit 1: HIGH until mid, then LOW -->
+  <line x1="60"  y1="80"  x2="100" y2="80"  stroke="#1a1a1a" stroke-width="2.5"/>
+  <polyline points="100,80 100,120 140,120" fill="none" stroke="#1a1a1a" stroke-width="2.5"/>
+
+  <!-- Bit 0: start trans L→H, then H→L at mid -->
+  <polyline points="140,120 140,80  180,80"  fill="none" stroke="#1a1a1a" stroke-width="2.5"/>
+  <polyline points="180,80  180,120 220,120" fill="none" stroke="#1a1a1a" stroke-width="2.5"/>
+
+  <!-- Bit 1: stays L, then L→H at mid -->
+  <line x1="220" y1="120" x2="260" y2="120" stroke="#1a1a1a" stroke-width="2.5"/>
+  <polyline points="260,120 260,80  300,80"  fill="none" stroke="#1a1a1a" stroke-width="2.5"/>
+
+  <!-- Bit 1: stays H, then H→L at mid -->
+  <line x1="300" y1="80"  x2="340" y2="80"  stroke="#1a1a1a" stroke-width="2.5"/>
+  <polyline points="340,80  340,120 380,120" fill="none" stroke="#1a1a1a" stroke-width="2.5"/>
+
+  <!-- Bit 0: start trans L→H, then H→L at mid -->
+  <polyline points="380,120 380,80  420,80"  fill="none" stroke="#1a1a1a" stroke-width="2.5"/>
+  <polyline points="420,80  420,120 460,120" fill="none" stroke="#1a1a1a" stroke-width="2.5"/>
+
+  <!-- Bit 0: start trans L→H, then H→L at mid -->
+  <polyline points="460,120 460,80  500,80"  fill="none" stroke="#1a1a1a" stroke-width="2.5"/>
+  <polyline points="500,80  500,120 540,120" fill="none" stroke="#1a1a1a" stroke-width="2.5"/>
+
+  <!-- Bit 1: stays L, then L→H at mid -->
+  <line x1="540" y1="120" x2="580" y2="120" stroke="#1a1a1a" stroke-width="2.5"/>
+  <polyline points="580,120 580,80  620,80"  fill="none" stroke="#1a1a1a" stroke-width="2.5"/>
+
+  <!-- ── Mandatory mid-bit transition markers (amber circles) ── -->
+  <circle cx="100" cy="100" r="5" fill="#854F0B"/>
+  <circle cx="180" cy="100" r="5" fill="#854F0B"/>
+  <circle cx="260" cy="100" r="5" fill="#854F0B"/>
+  <circle cx="340" cy="100" r="5" fill="#854F0B"/>
+  <circle cx="420" cy="100" r="5" fill="#854F0B"/>
+  <circle cx="500" cy="100" r="5" fill="#854F0B"/>
+  <circle cx="580" cy="100" r="5" fill="#854F0B"/>
+
+  <!-- ── Start-of-period transition markers (red bars) for bits 0 ── -->
+  <!-- Bit 0 at x=140 -->
+  <rect x="137" y="84" width="6" height="32" rx="2" fill="#A32D2D"/>
+  <!-- Bit 0 at x=380 -->
+  <rect x="377" y="84" width="6" height="32" rx="2" fill="#A32D2D"/>
+  <!-- Bit 0 at x=460 -->
+  <rect x="457" y="84" width="6" height="32" rx="2" fill="#A32D2D"/>
+
+  <!-- ── Bit period boundaries ── -->
+  <line x1="60"  y1="64" x2="60"  y2="136" stroke="#D1D5DB" stroke-width="0.5"/>
+  <line x1="140" y1="64" x2="140" y2="136" stroke="#D1D5DB" stroke-width="0.5"/>
+  <line x1="220" y1="64" x2="220" y2="136" stroke="#D1D5DB" stroke-width="0.5"/>
+  <line x1="300" y1="64" x2="300" y2="136" stroke="#D1D5DB" stroke-width="0.5"/>
+  <line x1="380" y1="64" x2="380" y2="136" stroke="#D1D5DB" stroke-width="0.5"/>
+  <line x1="460" y1="64" x2="460" y2="136" stroke="#D1D5DB" stroke-width="0.5"/>
+  <line x1="540" y1="64" x2="540" y2="136" stroke="#D1D5DB" stroke-width="0.5"/>
+  <line x1="620" y1="64" x2="620" y2="136" stroke="#D1D5DB" stroke-width="0.5"/>
+
+  <!-- ── Bit value labels (green = 1, red = 0) ── -->
+  <text x="100" y="152" text-anchor="middle" font-family="-apple-system, 'Segoe UI', Arial, sans-serif" font-size="14" font-weight="500" fill="#3B6D11">1</text>
+  <text x="180" y="152" text-anchor="middle" font-family="-apple-system, 'Segoe UI', Arial, sans-serif" font-size="14" font-weight="500" fill="#A32D2D">0</text>
+  <text x="260" y="152" text-anchor="middle" font-family="-apple-system, 'Segoe UI', Arial, sans-serif" font-size="14" font-weight="500" fill="#3B6D11">1</text>
+  <text x="340" y="152" text-anchor="middle" font-family="-apple-system, 'Segoe UI', Arial, sans-serif" font-size="14" font-weight="500" fill="#3B6D11">1</text>
+  <text x="420" y="152" text-anchor="middle" font-family="-apple-system, 'Segoe UI', Arial, sans-serif" font-size="14" font-weight="500" fill="#A32D2D">0</text>
+  <text x="500" y="152" text-anchor="middle" font-family="-apple-system, 'Segoe UI', Arial, sans-serif" font-size="14" font-weight="500" fill="#A32D2D">0</text>
+  <text x="580" y="152" text-anchor="middle" font-family="-apple-system, 'Segoe UI', Arial, sans-serif" font-size="14" font-weight="500" fill="#3B6D11">1</text>
+
+  <!-- ── Decode row: start transition present? ── -->
+  <rect x="60" y="166" width="560" height="40" rx="6"
+        fill="#F3F4F6" stroke="#E5E7EB" stroke-width="0.5"/>
+  <text x="66" y="181" font-family="-apple-system, 'Segoe UI', Arial, sans-serif" font-size="10" fill="#666">Start transition?</text>
+  <text x="100" y="198" text-anchor="middle" font-family="-apple-system, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="500" fill="#3B6D11">no</text>
+  <text x="180" y="198" text-anchor="middle" font-family="-apple-system, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="500" fill="#A32D2D">yes</text>
+  <text x="260" y="198" text-anchor="middle" font-family="-apple-system, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="500" fill="#3B6D11">no</text>
+  <text x="340" y="198" text-anchor="middle" font-family="-apple-system, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="500" fill="#3B6D11">no</text>
+  <text x="420" y="198" text-anchor="middle" font-family="-apple-system, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="500" fill="#A32D2D">yes</text>
+  <text x="500" y="198" text-anchor="middle" font-family="-apple-system, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="500" fill="#A32D2D">yes</text>
+  <text x="580" y="198" text-anchor="middle" font-family="-apple-system, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="500" fill="#3B6D11">no</text>
+
+  <!-- ── Transitions per period row ── -->
+  <text x="66" y="232" font-family="-apple-system, 'Segoe UI', Arial, sans-serif" font-size="10" fill="#666">Transitions per period:</text>
+  <text x="100" y="250" text-anchor="middle" font-family="-apple-system, 'Segoe UI', Arial, sans-serif" font-size="12" fill="#666">1</text>
+  <text x="180" y="250" text-anchor="middle" font-family="-apple-system, 'Segoe UI', Arial, sans-serif" font-size="12" fill="#666">2</text>
+  <text x="260" y="250" text-anchor="middle" font-family="-apple-system, 'Segoe UI', Arial, sans-serif" font-size="12" fill="#666">1</text>
+  <text x="340" y="250" text-anchor="middle" font-family="-apple-system, 'Segoe UI', Arial, sans-serif" font-size="12" fill="#666">1</text>
+  <text x="420" y="250" text-anchor="middle" font-family="-apple-system, 'Segoe UI', Arial, sans-serif" font-size="12" fill="#666">2</text>
+  <text x="500" y="250" text-anchor="middle" font-family="-apple-system, 'Segoe UI', Arial, sans-serif" font-size="12" fill="#666">2</text>
+  <text x="580" y="250" text-anchor="middle" font-family="-apple-system, 'Segoe UI', Arial, sans-serif" font-size="12" fill="#666">1</text>
+
+  <!-- ── Legend ── -->
+  <circle cx="60"  cy="284" r="5" fill="#854F0B"/>
+  <text x="72" y="288" font-family="-apple-system, 'Segoe UI', Arial, sans-serif" font-size="11" fill="#666">Mandatory mid-bit transition (clock — always present)</text>
+
+  <rect x="57" y="300" width="6" height="20" rx="2" fill="#A32D2D"/>
+  <text x="72" y="313" font-family="-apple-system, 'Segoe UI', Arial, sans-serif" font-size="11" fill="#666">Start-of-period transition (data — present only for bit = 0)</text>
+
+  <!-- ── Shortcut rule labels ── -->
+  <text x="100" y="342" text-anchor="middle" font-family="-apple-system, 'Segoe UI', Arial, sans-serif" font-size="11" fill="#3B6D11">1 transition = bit 1</text>
+  <text x="420" y="342" text-anchor="middle" font-family="-apple-system, 'Segoe UI', Arial, sans-serif" font-size="11" fill="#A32D2D">2 transitions = bit 0</text>
+</svg>
+
+<!-- Decode walkthrough table -->
+<table class="decode-table">
+  <thead>
+    <tr>
+      <th style="width:60px">Period</th>
+      <th style="width:70px">Bit</th>
+      <th style="width:160px">Signal state at start</th>
+      <th style="width:180px">Start transition?</th>
+      <th style="width:130px">Transitions total</th>
+      <th>Waveform description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1</td>
+      <td class="bit-1">1</td>
+      <td>HIGH</td>
+      <td>No — stays HIGH</td>
+      <td>1 (mid only)</td>
+      <td>Holds HIGH for half period, then HIGH→LOW at mid-point</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="bit-0">0</td>
+      <td>LOW (end of period 1)</td>
+      <td>Yes — LOW→HIGH</td>
+      <td>2 (start + mid)</td>
+      <td>Jumps HIGH immediately, holds to mid-point, then HIGH→LOW</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td class="bit-1">1</td>
+      <td>LOW (end of period 2)</td>
+      <td>No — stays LOW</td>
+      <td>1 (mid only)</td>
+      <td>Holds LOW for half period, then LOW→HIGH at mid-point</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td class="bit-1">1</td>
+      <td>HIGH (end of period 3)</td>
+      <td>No — stays HIGH</td>
+      <td>1 (mid only)</td>
+      <td>Holds HIGH for half period, then HIGH→LOW at mid-point</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td class="bit-0">0</td>
+      <td>LOW (end of period 4)</td>
+      <td>Yes — LOW→HIGH</td>
+      <td>2 (start + mid)</td>
+      <td>Jumps HIGH immediately, holds to mid-point, then HIGH→LOW</td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td class="bit-0">0</td>
+      <td>LOW (end of period 5)</td>
+      <td>Yes — LOW→HIGH</td>
+      <td>2 (start + mid)</td>
+      <td>Jumps HIGH immediately, holds to mid-point, then HIGH→LOW</td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td class="bit-1">1</td>
+      <td>LOW (end of period 6)</td>
+      <td>No — stays LOW</td>
+      <td>1 (mid only)</td>
+      <td>Holds LOW for half period, then LOW→HIGH at mid-point</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="shortcut-box">
+  <strong>Counting shortcut:</strong> Rather than tracking the absolute signal level, the receiver simply counts transitions per bit period.
+  One transition → bit = 1. Two transitions → bit = 0. This rule holds regardless of the signal polarity or the starting state, confirming that no initialisation handshake is required between sender and receiver.
+</div>
+
+</body>
+</html>

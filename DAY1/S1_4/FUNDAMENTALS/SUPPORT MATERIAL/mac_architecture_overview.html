@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MAC Architecture Overview</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e1117;
+    --surface: #161b22;
+    --surface-2: #1c2129;
+    --border: rgba(255,255,255,0.08);
+    --border-h: rgba(255,255,255,0.14);
+    --text-1: #e6edf3;
+    --text-2: #8b949e;
+    --text-3: #6e7681;
+    --purple: #AFA9EC;
+    --purple-dim: rgba(175,169,236,0.12);
+    --purple-stroke: #534AB7;
+    --coral: #D85A30;
+    --coral-dim: rgba(216,90,48,0.12);
+    --coral-stroke: #993C1D;
+    --amber: #BA7517;
+    --amber-dim: rgba(186,117,23,0.12);
+    --amber-stroke: #854F0B;
+    --teal: #1D9E75;
+    --teal-dim: rgba(29,158,117,0.12);
+    --teal-stroke: #0F6E56;
+    --blue: #378ADD;
+    --blue-dim: rgba(55,138,221,0.10);
+    --blue-stroke: #185FA5;
+    --pink: #D4537E;
+    --pink-dim: rgba(212,83,126,0.10);
+    --pink-stroke: #993556;
+    --gray: #888780;
+    --gray-dim: rgba(136,135,128,0.10);
+    --gray-stroke: #5F5E5A;
+    --line: rgba(255,255,255,0.15);
+    --line-faint: rgba(255,255,255,0.07);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg); color: var(--text-1);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh; display: flex; justify-content: center;
+    padding: 40px 20px;
+  }
+  .container { width: 100%; max-width: 800px; }
+  .header { margin-bottom: 32px; }
+  .header h1 { font-size: 28px; font-weight: 600; letter-spacing: -0.5px; margin-bottom: 8px; }
+  .header h1 span { color: var(--teal); }
+  .header p { font-size: 14px; color: var(--text-2); line-height: 1.6; max-width: 640px; }
+
+  .diagram-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 28px 20px 20px; margin-bottom: 16px;
+  }
+
+  svg text {
+    font-family: 'DM Sans', sans-serif;
+  }
+  .lbl { font-size: 14px; font-weight: 500; }
+  .sub { font-size: 11px; fill: var(--text-2); }
+  .side { font-size: 11px; fill: var(--text-3); font-weight: 500; letter-spacing: 0.5px; }
+  .anno { font-size: 11px; fill: var(--text-3); }
+
+  /* Stagger entrance animation */
+  .anim-row { opacity: 0; animation: rowSlide 0.45s ease-out forwards; }
+  @keyframes rowSlide {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .legend-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px 20px;
+  }
+  .legend-title {
+    font-size: 11px; font-weight: 500; color: var(--text-3);
+    text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;
+  }
+  .legend-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 8px;
+  }
+  .legend-item {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; color: var(--text-2);
+  }
+  .legend-swatch {
+    width: 14px; height: 14px; border-radius: 4px; flex-shrink: 0;
+    border: 1px solid;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>MAC <span>architecture</span> overview</h1>
+    <p>The complete Ethernet MAC sublayer stack — from LLC/upper-layer protocols through EISS and ISS service interfaces, DMA engine with descriptor rings, TX/RX queues, and down to the PHY interface.</p>
+  </div>
+
+  <div class="diagram-card">
+    <svg width="100%" viewBox="0 0 720 660">
+      <defs>
+        <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </marker>
+      </defs>
+
+      <!-- ========== LAYER LABELS (left strip) ========== -->
+      <text class="side" x="22" y="46" text-anchor="middle">L3+</text>
+      <text class="side" x="22" y="122" text-anchor="middle">L2</text>
+      <text class="side" x="22" y="192" text-anchor="middle">L2</text>
+      <text class="side" x="22" y="404" text-anchor="middle">L2</text>
+      <text class="side" x="22" y="556" text-anchor="middle">L1</text>
+      <line x1="42" y1="20" x2="42" y2="600" stroke="var(--line-faint)" stroke-width="0.5" stroke-dasharray="3 5"/>
+
+      <!-- ========== UPPER LAYERS ========== -->
+      <g class="anim-row" style="animation-delay:0.05s">
+        <rect x="190" y="24" width="340" height="48" rx="8" fill="var(--purple-dim)" stroke="var(--purple-stroke)" stroke-width="0.5"/>
+        <text class="lbl" x="360" y="42" text-anchor="middle" dominant-baseline="central" fill="var(--purple)">LLC / upper layer protocols</text>
+        <text class="sub" x="360" y="58" text-anchor="middle" dominant-baseline="central">TCP/IP stack, bridging clients</text>
+      </g>
+
+      <!-- Arrow -->
+      <line x1="360" y1="72" x2="360" y2="94" stroke="var(--line)" stroke-width="0.5" marker-end="url(#arr)"/>
+
+      <!-- ========== EISS ========== -->
+      <g class="anim-row" style="animation-delay:0.12s">
+        <rect x="150" y="96" width="420" height="48" rx="8" fill="var(--coral-dim)" stroke="var(--coral-stroke)" stroke-width="0.5"/>
+        <text class="lbl" x="360" y="113" text-anchor="middle" dominant-baseline="central" fill="var(--coral)">EISS — Enhanced Internal Sublayer Service</text>
+        <text class="sub" x="360" y="131" text-anchor="middle" dominant-baseline="central">Adds VLAN ID, PCP priority, DEI (802.1Q)</text>
+      </g>
+
+      <line x1="360" y1="144" x2="360" y2="166" stroke="var(--line)" stroke-width="0.5" marker-end="url(#arr)"/>
+
+      <!-- ========== ISS ========== -->
+      <g class="anim-row" style="animation-delay:0.19s">
+        <rect x="150" y="168" width="420" height="48" rx="8" fill="var(--amber-dim)" stroke="var(--amber-stroke)" stroke-width="0.5"/>
+        <text class="lbl" x="360" y="185" text-anchor="middle" dominant-baseline="central" fill="var(--amber)">ISS — Internal Sublayer Service</text>
+        <text class="sub" x="360" y="203" text-anchor="middle" dominant-baseline="central">DA, SA, MSDU, priority (802.1AC)</text>
+      </g>
+
+      <line x1="360" y1="216" x2="360" y2="270" stroke="var(--line)" stroke-width="0.5" marker-end="url(#arr)"/>
+
+      <!-- ========== MAC + DMA CONTAINER ========== -->
+      <g class="anim-row" style="animation-delay:0.26s">
+        <rect x="70" y="238" width="580" height="310" rx="14" fill="none" stroke="var(--text-3)" stroke-width="0.5" stroke-dasharray="6 4" opacity="0.35"/>
+        <text class="side" x="360" y="258" text-anchor="middle">MAC SUBLAYER + DMA ENGINE</text>
+      </g>
+
+      <!-- ========== DMA ENGINE ========== -->
+      <g class="anim-row" style="animation-delay:0.33s">
+        <rect x="240" y="272" width="240" height="48" rx="8" fill="var(--teal-dim)" stroke="var(--teal-stroke)" stroke-width="0.5"/>
+        <text class="lbl" x="360" y="289" text-anchor="middle" dominant-baseline="central" fill="var(--teal)">DMA engine</text>
+        <text class="sub" x="360" y="307" text-anchor="middle" dominant-baseline="central">Descriptor rings, bus master</text>
+      </g>
+
+      <!-- System RAM -->
+      <g class="anim-row" style="animation-delay:0.36s">
+        <rect x="540" y="278" width="100" height="36" rx="8" fill="var(--gray-dim)" stroke="var(--gray-stroke)" stroke-width="0.5"/>
+        <text class="lbl" x="590" y="296" text-anchor="middle" dominant-baseline="central" fill="var(--gray)">System RAM</text>
+      </g>
+      <!-- DMA arrows to RAM -->
+      <line x1="480" y1="290" x2="538" y2="290" stroke="var(--teal)" stroke-width="1" opacity="0.6" marker-end="url(#arr)"/>
+      <line x1="538" y1="302" x2="480" y2="302" stroke="var(--teal)" stroke-width="1" opacity="0.6" marker-end="url(#arr)"/>
+      <text class="anno" x="509" y="280">DMA</text>
+
+      <!-- DMA to TX/RX split arrows -->
+      <path d="M300 320 L300 338 L210 338 L210 358" fill="none" stroke="var(--line)" stroke-width="0.5" marker-end="url(#arr)"/>
+      <path d="M420 320 L420 338 L510 338 L510 358" fill="none" stroke="var(--line)" stroke-width="0.5" marker-end="url(#arr)"/>
+
+      <!-- ========== TX QUEUE ========== -->
+      <g class="anim-row" style="animation-delay:0.40s">
+        <rect x="100" y="360" width="220" height="52" rx="8" fill="var(--blue-dim)" stroke="var(--blue-stroke)" stroke-width="0.5"/>
+        <text class="lbl" x="210" y="378" text-anchor="middle" dominant-baseline="central" fill="var(--blue)">TX queues</text>
+        <text class="sub" x="210" y="398" text-anchor="middle" dominant-baseline="central">Priority scheduling, shaping</text>
+      </g>
+
+      <!-- ========== RX QUEUE ========== -->
+      <g class="anim-row" style="animation-delay:0.40s">
+        <rect x="400" y="360" width="220" height="52" rx="8" fill="var(--pink-dim)" stroke="var(--pink-stroke)" stroke-width="0.5"/>
+        <text class="lbl" x="510" y="378" text-anchor="middle" dominant-baseline="central" fill="var(--pink)">RX queues</text>
+        <text class="sub" x="510" y="398" text-anchor="middle" dominant-baseline="central">Classification, filtering</text>
+      </g>
+
+      <!-- TX/RX to MAC core arrows -->
+      <line x1="210" y1="412" x2="210" y2="438" stroke="var(--line)" stroke-width="0.5" marker-end="url(#arr)"/>
+      <line x1="510" y1="412" x2="510" y2="438" stroke="var(--line)" stroke-width="0.5" marker-end="url(#arr)"/>
+
+      <!-- ========== TX MAC CORE ========== -->
+      <g class="anim-row" style="animation-delay:0.47s">
+        <rect x="100" y="440" width="220" height="44" rx="8" fill="var(--blue-dim)" stroke="var(--blue-stroke)" stroke-width="0.5"/>
+        <text class="lbl" x="210" y="462" text-anchor="middle" dominant-baseline="central" fill="var(--blue)">TX MAC core</text>
+      </g>
+      <text class="anno" x="90" y="458" text-anchor="end">Preamble, CRC</text>
+      <text class="anno" x="90" y="472" text-anchor="end">IFG, padding</text>
+
+      <!-- ========== RX MAC CORE ========== -->
+      <g class="anim-row" style="animation-delay:0.47s">
+        <rect x="400" y="440" width="220" height="44" rx="8" fill="var(--pink-dim)" stroke="var(--pink-stroke)" stroke-width="0.5"/>
+        <text class="lbl" x="510" y="462" text-anchor="middle" dominant-baseline="central" fill="var(--pink)">RX MAC core</text>
+      </g>
+      <text class="anno" x="630" y="458">Address filter</text>
+      <text class="anno" x="630" y="472">CRC check, strip</text>
+
+      <!-- MII arrows -->
+      <line x1="210" y1="484" x2="210" y2="524" stroke="var(--line)" stroke-width="0.5" marker-end="url(#arr)"/>
+      <line x1="510" y1="484" x2="510" y2="524" stroke="var(--line)" stroke-width="0.5" marker-end="url(#arr)"/>
+
+      <!-- ========== PHY ========== -->
+      <g class="anim-row" style="animation-delay:0.54s">
+        <rect x="130" y="526" width="460" height="48" rx="8" fill="var(--gray-dim)" stroke="var(--gray-stroke)" stroke-width="0.5"/>
+        <text class="lbl" x="360" y="543" text-anchor="middle" dominant-baseline="central" fill="var(--gray)">PHY — MII / GMII / RGMII / SGMII</text>
+        <text class="sub" x="360" y="561" text-anchor="middle" dominant-baseline="central">Encoding, signaling, link negotiation</text>
+      </g>
+
+      <!-- Wire -->
+      <line x1="360" y1="574" x2="360" y2="610" stroke="var(--line)" stroke-width="0.5" marker-end="url(#arr)"/>
+      <text class="anno" x="360" y="630" text-anchor="middle">Physical medium (cable / fibre)</text>
+
+      <!-- ========== BIDIRECTIONAL FLOW INDICATORS ========== -->
+      <!-- TX label -->
+      <text x="210" y="350" text-anchor="middle" font-size="10" font-weight="500" fill="var(--blue)" opacity="0.6">▼ TRANSMIT PATH</text>
+      <!-- RX label -->
+      <text x="510" y="350" text-anchor="middle" font-size="10" font-weight="500" fill="var(--pink)" opacity="0.6">▲ RECEIVE PATH</text>
+    </svg>
+  </div>
+
+  <!-- Legend -->
+  <div class="legend-card">
+    <div class="legend-title">Component legend</div>
+    <div class="legend-grid">
+      <div class="legend-item">
+        <div class="legend-swatch" style="background:var(--purple-dim);border-color:var(--purple-stroke)"></div>
+        Upper layer protocols
+      </div>
+      <div class="legend-item">
+        <div class="legend-swatch" style="background:var(--coral-dim);border-color:var(--coral-stroke)"></div>
+        EISS (802.1Q VLAN shim)
+      </div>
+      <div class="legend-item">
+        <div class="legend-swatch" style="background:var(--amber-dim);border-color:var(--amber-stroke)"></div>
+        ISS (802.1AC service)
+      </div>
+      <div class="legend-item">
+        <div class="legend-swatch" style="background:var(--teal-dim);border-color:var(--teal-stroke)"></div>
+        DMA engine
+      </div>
+      <div class="legend-item">
+        <div class="legend-swatch" style="background:var(--blue-dim);border-color:var(--blue-stroke)"></div>
+        TX path (queues + MAC)
+      </div>
+      <div class="legend-item">
+        <div class="legend-swatch" style="background:var(--pink-dim);border-color:var(--pink-stroke)"></div>
+        RX path (queues + MAC)
+      </div>
+      <div class="legend-item">
+        <div class="legend-swatch" style="background:var(--gray-dim);border-color:var(--gray-stroke)"></div>
+        PHY / system memory
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
