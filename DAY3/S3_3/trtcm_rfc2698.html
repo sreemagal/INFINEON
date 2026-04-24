@@ -1,0 +1,1135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>trTCM — RFC 2698 Two Rate Three Color Marker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:ital,wght@0,400;0,500;1,400&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f1216;
+    --bg-2: #161a20;
+    --bg-3: #1d2229;
+    --line: #2a3038;
+    --line-2: #3a4049;
+    --ink: #e8e6e1;
+    --ink-2: #a8a59e;
+    --ink-3: #6d6a65;
+
+    --green: #4ade80;
+    --yellow: #facc15;
+    --red: #f87171;
+
+    --cir: #60a5fa;       /* committed · blue */
+    --pir: #c084fc;       /* peak · violet */
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'IBM Plex Sans', system-ui, sans-serif;
+    font-size: 14.5px;
+    line-height: 1.65;
+    min-height: 100vh;
+  }
+
+  .page {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 48px 32px 64px;
+  }
+
+  .doc-header {
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 28px;
+    margin-bottom: 44px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 32px;
+    align-items: end;
+  }
+
+  .doc-stamp {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    color: var(--ink-3);
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+
+  h1 {
+    font-family: 'IBM Plex Serif', serif;
+    font-weight: 400;
+    font-size: 44px;
+    line-height: 1.1;
+    letter-spacing: -0.015em;
+  }
+
+  h1 .sub {
+    display: block;
+    font-size: 20px;
+    font-style: italic;
+    color: var(--ink-2);
+    margin-top: 8px;
+    font-weight: 400;
+  }
+
+  .spec-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    color: var(--ink-2);
+    padding: 6px 12px;
+    border: 1px solid var(--line-2);
+    border-radius: 2px;
+    text-transform: uppercase;
+  }
+
+  .spec-badge strong { color: var(--ink); font-weight: 500; }
+
+  h2 {
+    font-family: 'IBM Plex Serif', serif;
+    font-weight: 400;
+    font-size: 26px;
+    letter-spacing: -0.01em;
+    margin: 56px 0 14px;
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+  }
+
+  h2 .num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    color: var(--ink-3);
+    font-style: normal;
+    letter-spacing: 0.1em;
+  }
+
+  h3 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: 10px;
+    margin-top: 24px;
+  }
+
+  p {
+    max-width: 720px;
+    margin-bottom: 16px;
+    color: var(--ink);
+  }
+
+  p.muted { color: var(--ink-2); }
+
+  code {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.92em;
+    background: var(--bg-3);
+    padding: 1px 6px;
+    border-radius: 2px;
+    color: var(--ink);
+  }
+
+  em.g { color: var(--green); font-style: normal; font-weight: 500; }
+  em.y { color: var(--yellow); font-style: normal; font-weight: 500; }
+  em.r { color: var(--red); font-style: normal; font-weight: 500; }
+  em.c { color: var(--cir); font-style: normal; font-weight: 500; }
+  em.p-rate { color: var(--pir); font-style: normal; font-weight: 500; }
+
+  .params {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    border-top: 1px solid var(--line);
+    max-width: 760px;
+  }
+
+  .params > div {
+    padding: 14px 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .params .key {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+  }
+
+  .key.cir-key { color: var(--cir); }
+  .key.pir-key { color: var(--pir); }
+  .key.neutral { color: var(--ink-2); }
+
+  .params .val { color: var(--ink); }
+  .params .val .u { color: var(--ink-3); font-family: 'IBM Plex Mono', monospace; font-size: 0.88em; }
+
+  /* Simulator */
+  .sim {
+    margin-top: 20px;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+  }
+
+  .sim-stage {
+    display: grid;
+    grid-template-columns: 1fr 260px;
+  }
+
+  .stage-main {
+    padding: 24px;
+    border-right: 1px solid var(--line);
+  }
+
+  #trtcm-svg {
+    display: block;
+    width: 100%;
+    height: 440px;
+  }
+
+  .stage-side {
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .meter {
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  .meter:last-child { border-bottom: none; }
+
+  .meter-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: 6px;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .meter-label .cap { color: var(--ink-2); }
+
+  .meter-value {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 22px;
+    font-weight: 500;
+    line-height: 1;
+    color: var(--ink);
+  }
+
+  .meter-value .unit {
+    font-size: 11px;
+    color: var(--ink-3);
+    margin-left: 4px;
+    font-weight: 400;
+  }
+
+  .meter-bar {
+    margin-top: 8px;
+    height: 4px;
+    background: var(--bg-3);
+    overflow: hidden;
+  }
+
+  .meter-bar span {
+    display: block;
+    height: 100%;
+    transition: width 0.08s linear;
+  }
+
+  .meter.tp .meter-bar span { background: var(--pir); }
+  .meter.tc .meter-bar span { background: var(--cir); }
+
+  .counters {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+  }
+
+  .counter .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+
+  .counter.g .dot { background: var(--green); }
+  .counter.y .dot { background: var(--yellow); }
+  .counter.r .dot { background: var(--red); }
+
+  .counter-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: 4px;
+  }
+
+  .counter-val {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 18px;
+    font-weight: 500;
+  }
+
+  .counter.g .counter-val { color: var(--green); }
+  .counter.y .counter-val { color: var(--yellow); }
+  .counter.r .counter-val { color: var(--red); }
+
+  .controls {
+    padding: 20px 24px;
+    background: var(--bg);
+    border-top: 1px solid var(--line);
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 20px;
+  }
+
+  .ctrl label {
+    display: block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: 8px;
+  }
+
+  .ctrl label .v {
+    color: var(--ink);
+    font-size: 13px;
+    margin-left: 6px;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  .ctrl.cir-ctrl label { color: var(--cir); }
+  .ctrl.pir-ctrl label { color: var(--pir); }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 2px;
+    background: var(--line-2);
+    outline: none;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px;
+    height: 12px;
+    background: var(--ink-2);
+    border-radius: 50%;
+    cursor: pointer;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    background: var(--ink-2);
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+  }
+
+  .cir-ctrl input[type="range"]::-webkit-slider-thumb { background: var(--cir); }
+  .pir-ctrl input[type="range"]::-webkit-slider-thumb { background: var(--pir); }
+  .cir-ctrl input[type="range"]::-moz-range-thumb { background: var(--cir); }
+  .pir-ctrl input[type="range"]::-moz-range-thumb { background: var(--pir); }
+
+  .action-row {
+    padding: 16px 24px;
+    border-top: 1px solid var(--line);
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  button {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 500;
+    padding: 9px 14px;
+    border: 1px solid var(--line-2);
+    background: transparent;
+    color: var(--ink);
+    cursor: pointer;
+    transition: all 0.12s;
+    border-radius: 2px;
+  }
+
+  button:hover {
+    border-color: var(--ink-2);
+    background: var(--bg-3);
+  }
+
+  button.primary {
+    background: var(--cir);
+    color: var(--bg);
+    border-color: var(--cir);
+  }
+
+  button.primary:hover { background: #3b82f6; border-color: #3b82f6; }
+
+  button.active {
+    background: var(--ink);
+    color: var(--bg);
+    border-color: var(--ink);
+  }
+
+  .mode-group {
+    display: inline-flex;
+    margin-left: auto;
+  }
+
+  .mode-group button {
+    border-radius: 0;
+  }
+  .mode-group button:first-child { border-radius: 2px 0 0 2px; }
+  .mode-group button:last-child { border-radius: 0 2px 2px 0; }
+  .mode-group button + button { border-left: none; }
+
+  /* Constraint warning */
+  .warn {
+    margin-top: 10px;
+    padding: 8px 12px;
+    background: var(--bg-3);
+    border-left: 2px solid var(--yellow);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--yellow);
+    display: none;
+  }
+  .warn.active { display: block; }
+
+  .log {
+    margin-top: 24px;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 14px 18px;
+    max-height: 200px;
+    overflow-y: auto;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    line-height: 1.75;
+  }
+
+  .log-entry {
+    display: grid;
+    grid-template-columns: 70px 70px 1fr;
+    gap: 12px;
+    color: var(--ink-2);
+  }
+
+  .log-entry.g .status { color: var(--green); font-weight: 600; }
+  .log-entry.y .status { color: var(--yellow); font-weight: 600; }
+  .log-entry.r .status { color: var(--red); font-weight: 600; }
+  .log-entry .t { color: var(--ink-3); }
+  .log-entry .detail { color: var(--ink); }
+
+  /* Decision tree */
+  .decision {
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 24px 28px;
+    margin-top: 12px;
+  }
+
+  .decision-step {
+    display: grid;
+    grid-template-columns: 40px 1fr;
+    gap: 14px;
+    padding: 12px 0;
+    border-bottom: 1px dashed var(--line);
+  }
+  .decision-step:last-child { border-bottom: none; }
+
+  .step-num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-3);
+    padding-top: 2px;
+    letter-spacing: 0.1em;
+  }
+
+  .step-body code { font-size: 13px; }
+
+  /* Comparison block */
+  .compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    margin-top: 12px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .compare-col {
+    padding: 20px 24px;
+    background: var(--bg-2);
+  }
+  .compare-col:first-child {
+    border-right: 1px solid var(--line);
+  }
+
+  .compare-col h4 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink);
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .compare-col ul {
+    list-style: none;
+    padding: 0;
+  }
+
+  .compare-col li {
+    padding: 8px 0;
+    font-size: 13.5px;
+    color: var(--ink-2);
+    border-bottom: 1px dashed var(--line);
+  }
+  .compare-col li:last-child { border-bottom: none; }
+
+  footer {
+    margin-top: 56px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  @media (max-width: 820px) {
+    .page { padding: 28px 18px; }
+    h1 { font-size: 32px; }
+    .doc-header { grid-template-columns: 1fr; }
+    .sim-stage { grid-template-columns: 1fr; }
+    .stage-main { border-right: none; border-bottom: 1px solid var(--line); }
+    .controls { grid-template-columns: 1fr 1fr; }
+    .compare { grid-template-columns: 1fr; }
+    .compare-col:first-child { border-right: none; border-bottom: 1px solid var(--line); }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="doc-header">
+    <div>
+      <div class="doc-stamp">RFC 2698 · Heinanen &amp; Guerin · September 1999</div>
+      <h1>trTCM<span class="sub">Two rate three color marker.</span></h1>
+    </div>
+    <div class="spec-badge">Policing · <strong>PIR · CIR · PBS · CBS</strong></div>
+  </div>
+
+  <p class="muted">
+    Where srTCM meters one rate with two burst budgets, trTCM meters <em>two rates</em> with their own burst budgets. The peak rate sets the absolute ceiling; the committed rate sets the guaranteed floor. Everything between is sold as "excess" — delivered if capacity exists, dropped first if it doesn't. This is the marker for contracts that promise "up to X Mbps with Y Mbps guaranteed".
+  </p>
+
+  <h2><span class="num">01</span>The parameters</h2>
+
+  <div class="params">
+    <div class="key pir-key">PIR</div>
+    <div class="val">Peak Information Rate <span class="u">— bytes per second</span>. The maximum rate the flow may ever sustain. Defines the absolute ceiling above which packets are always red.</div>
+    <div class="key pir-key">PBS</div>
+    <div class="val">Peak Burst Size <span class="u">— bytes</span>. Capacity of the peak bucket <code>Tp</code>. Tolerates short bursts above PIR up to this many bytes before turning them red.</div>
+    <div class="key cir-key">CIR</div>
+    <div class="val">Committed Information Rate <span class="u">— bytes per second</span>. The guaranteed rate — traffic at or below this is marked green regardless of network load.</div>
+    <div class="key cir-key">CBS</div>
+    <div class="val">Committed Burst Size <span class="u">— bytes</span>. Capacity of the committed bucket <code>Tc</code>. Tolerates short bursts above CIR up to this many bytes before downgrading to yellow.</div>
+    <div class="key neutral">Tp, Tc</div>
+    <div class="val">The two bucket fill levels, in tokens. Initialised full: <code>Tp(0) = PBS</code>, <code>Tc(0) = CBS</code>. The RFC requires <code>PIR ≥ CIR</code> — otherwise the scheme is degenerate.</div>
+  </div>
+
+  <h2><span class="num">02</span>Two independent buckets</h2>
+
+  <p>
+    The critical structural difference from srTCM: the buckets are <em>parallel</em>, not cascaded. Tokens arrive on two separate pipes — <em class="p-rate">PIR</em> into <code>Tp</code>, <em class="c">CIR</em> into <code>Tc</code>. There is no overflow path between them. Each bucket fills independently to its own capacity and spilled tokens are simply discarded.
+  </p>
+  <p>
+    On a packet of size <code>B</code> bytes, the test order is <em>peak first, then committed</em>. This is counterintuitive at first — you might expect "test the guaranteed rate first" — but the logic is that peak is the gate, and committed is only consulted for packets the gate admits.
+  </p>
+
+  <div class="decision">
+    <div class="decision-step">
+      <div class="step-num">01</div>
+      <div class="step-body">
+        If <code>Tp &lt; B</code> → mark <em class="r">red</em>. No token is consumed from either bucket.
+        The packet exceeded the peak ceiling and is dropped.
+      </div>
+    </div>
+    <div class="decision-step">
+      <div class="step-num">02</div>
+      <div class="step-body">
+        Else if <code>Tc &lt; B</code> → mark <em class="y">yellow</em>, decrement <code>Tp</code> by <code>B</code>.
+        The packet is within peak but exceeded the committed rate — forwarded as excess.
+      </div>
+    </div>
+    <div class="decision-step">
+      <div class="step-num">03</div>
+      <div class="step-body">
+        Else → mark <em class="g">green</em>, decrement <em>both</em> <code>Tp</code> and <code>Tc</code> by <code>B</code>.
+        The packet is inside the committed envelope and consumes from both pools.
+      </div>
+    </div>
+  </div>
+
+  <p class="muted" style="margin-top: 18px;">
+    Note the dual decrement on green — a green packet "costs" tokens from both buckets because it consumed peak <em>and</em> committed capacity simultaneously. This is the second subtlety people often miss. Yellow only debits <code>Tp</code> because <code>Tc</code> was already too low to charge.
+  </p>
+
+  <h2><span class="num">03</span>Try it</h2>
+
+  <p class="muted">
+    Both buckets start full. Watch the two separate token streams — <em class="p-rate">violet</em> into <code>Tp</code> at PIR, <em class="c">blue</em> into <code>Tc</code> at CIR. When PIR is set higher than CIR, the violet stream visibly drips faster. Send packets and watch the three-way verdict at the marker point.
+  </p>
+
+  <div class="sim">
+    <div class="sim-stage">
+      <div class="stage-main">
+        <svg id="trtcm-svg" viewBox="0 0 560 440" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="a-mk" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </marker>
+          </defs>
+
+          <!-- Two source labels -->
+          <text x="90" y="30" text-anchor="middle" font-family="IBM Plex Mono" font-size="10" fill="#c084fc" letter-spacing="1">PIR</text>
+          <line x1="30" y1="40" x2="150" y2="40" stroke="#3a4049" stroke-width="0.5" stroke-dasharray="2 3"/>
+          <line x1="90" y1="44" x2="90" y2="110" stroke="#c084fc" stroke-width="1.2" stroke-dasharray="3 4"/>
+          <g id="pir-drips"></g>
+
+          <text x="240" y="30" text-anchor="middle" font-family="IBM Plex Mono" font-size="10" fill="#60a5fa" letter-spacing="1">CIR</text>
+          <line x1="180" y1="40" x2="300" y2="40" stroke="#3a4049" stroke-width="0.5" stroke-dasharray="2 3"/>
+          <line x1="240" y1="44" x2="240" y2="110" stroke="#60a5fa" stroke-width="1.2" stroke-dasharray="3 4"/>
+          <g id="cir-drips"></g>
+
+          <!-- Tp bucket (peak) -->
+          <g id="bucket-tp">
+            <text x="90" y="125" text-anchor="middle" font-family="IBM Plex Mono" font-size="10" fill="#6d6a65" letter-spacing="1">Tp · PBS</text>
+            <path d="M 50 140 L 50 280 L 130 280 L 130 140" fill="none" stroke="#e8e6e1" stroke-width="1.5"/>
+            <rect id="tp-fill" x="50" y="280" width="80" height="0" fill="#c084fc" opacity="0.6"/>
+            <line id="tp-line" x1="50" y1="280" x2="130" y2="280" stroke="#c084fc" stroke-width="1.5"/>
+            <text x="44" y="144" text-anchor="end" font-family="IBM Plex Mono" font-size="9" fill="#6d6a65">PBS</text>
+            <text x="44" y="283" text-anchor="end" font-family="IBM Plex Mono" font-size="9" fill="#6d6a65">0</text>
+          </g>
+
+          <!-- Tc bucket (committed) - independent, no overflow between -->
+          <g id="bucket-tc">
+            <text x="240" y="125" text-anchor="middle" font-family="IBM Plex Mono" font-size="10" fill="#6d6a65" letter-spacing="1">Tc · CBS</text>
+            <path d="M 200 140 L 200 280 L 280 280 L 280 140" fill="none" stroke="#e8e6e1" stroke-width="1.5"/>
+            <rect id="tc-fill" x="200" y="280" width="80" height="0" fill="#60a5fa" opacity="0.6"/>
+            <line id="tc-line" x1="200" y1="280" x2="280" y2="280" stroke="#60a5fa" stroke-width="1.5"/>
+            <text x="194" y="144" text-anchor="end" font-family="IBM Plex Mono" font-size="9" fill="#6d6a65">CBS</text>
+            <text x="194" y="283" text-anchor="end" font-family="IBM Plex Mono" font-size="9" fill="#6d6a65">0</text>
+          </g>
+
+          <!-- Visual separator making clear no cross-flow -->
+          <text x="165" y="210" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#6d6a65" letter-spacing="1">INDEPENDENT</text>
+          <line x1="150" y1="220" x2="180" y2="220" stroke="#3a4049" stroke-width="0.5"/>
+          <line x1="150" y1="230" x2="180" y2="230" stroke="#3a4049" stroke-width="0.5"/>
+
+          <!-- Decision / marker point -->
+          <g id="marker">
+            <line x1="340" y1="215" x2="340" y2="255" stroke="#e8e6e1" stroke-width="1"/>
+            <circle id="marker-dot" cx="340" cy="235" r="6" fill="#3a4049" stroke="#e8e6e1" stroke-width="1"/>
+            <text x="340" y="206" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#6d6a65" letter-spacing="0.5">MARK</text>
+          </g>
+
+          <!-- Test order indicator -->
+          <text x="340" y="275" text-anchor="middle" font-family="IBM Plex Mono" font-size="8" fill="#6d6a65" letter-spacing="0.5">1. PEAK → 2. COMMITTED</text>
+
+          <!-- Arrival track -->
+          <text x="540" y="30" text-anchor="end" font-family="IBM Plex Mono" font-size="10" fill="#6d6a65" letter-spacing="1">ARRIVALS · BYTES</text>
+          <line x1="340" y1="235" x2="540" y2="235" stroke="#3a4049" stroke-width="0.5" stroke-dasharray="2 3"/>
+
+          <!-- Output lanes -->
+          <g id="output-lanes">
+            <line x1="340" y1="235" x2="60" y2="335" stroke="#4ade80" stroke-width="0.5" stroke-dasharray="2 3" opacity="0.4"/>
+            <text x="70" y="355" font-family="IBM Plex Mono" font-size="9" fill="#4ade80" letter-spacing="0.5">GREEN · IN CONTRACT → FORWARD</text>
+
+            <line x1="340" y1="235" x2="60" y2="375" stroke="#facc15" stroke-width="0.5" stroke-dasharray="2 3" opacity="0.4"/>
+            <text x="70" y="395" font-family="IBM Plex Mono" font-size="9" fill="#facc15" letter-spacing="0.5">YELLOW · EXCESS → FORWARD IF POSSIBLE</text>
+
+            <line x1="340" y1="235" x2="60" y2="420" stroke="#f87171" stroke-width="0.5" stroke-dasharray="2 3" opacity="0.4"/>
+            <text x="70" y="415" font-family="IBM Plex Mono" font-size="9" fill="#f87171" letter-spacing="0.5">RED · BEYOND PEAK → DROP</text>
+          </g>
+
+          <g id="packets"></g>
+        </svg>
+      </div>
+
+      <div class="stage-side">
+        <div class="meter tp">
+          <div class="meter-label"><span>Tp · peak</span><span class="cap">/ <span id="mt-pbs">12000</span></span></div>
+          <div class="meter-value"><span id="mt-tp">0</span><span class="unit">tok</span></div>
+          <div class="meter-bar"><span id="bar-tp" style="width:0"></span></div>
+        </div>
+
+        <div class="meter tc">
+          <div class="meter-label"><span>Tc · committed</span><span class="cap">/ <span id="mt-cbs">6000</span></span></div>
+          <div class="meter-value"><span id="mt-tc">0</span><span class="unit">tok</span></div>
+          <div class="meter-bar"><span id="bar-tc" style="width:0"></span></div>
+        </div>
+
+        <div class="meter">
+          <div class="meter-label"><span>Rates</span></div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline">
+            <div><span style="color:var(--pir);font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:500"><span id="mt-pir">4000</span></span><span class="unit">PIR</span></div>
+            <div><span style="color:var(--cir);font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:500"><span id="mt-cir">2000</span></span><span class="unit">CIR</span></div>
+          </div>
+        </div>
+
+        <div class="counters">
+          <div class="counter g">
+            <div class="counter-label"><span class="dot"></span>Green</div>
+            <div class="counter-val" id="ct-g">0</div>
+          </div>
+          <div class="counter y">
+            <div class="counter-label"><span class="dot"></span>Yellow</div>
+            <div class="counter-val" id="ct-y">0</div>
+          </div>
+          <div class="counter r">
+            <div class="counter-label"><span class="dot"></span>Red</div>
+            <div class="counter-val" id="ct-r">0</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="ctrl pir-ctrl">
+        <label>PIR<span class="v" id="v-pir">4000</span></label>
+        <input type="range" id="c-pir" min="500" max="12000" step="100" value="4000">
+      </div>
+      <div class="ctrl pir-ctrl">
+        <label>PBS<span class="v" id="v-pbs">12000</span></label>
+        <input type="range" id="c-pbs" min="1000" max="24000" step="500" value="12000">
+      </div>
+      <div class="ctrl cir-ctrl">
+        <label>CIR<span class="v" id="v-cir">2000</span></label>
+        <input type="range" id="c-cir" min="200" max="8000" step="100" value="2000">
+      </div>
+      <div class="ctrl cir-ctrl">
+        <label>CBS<span class="v" id="v-cbs">6000</span></label>
+        <input type="range" id="c-cbs" min="500" max="16000" step="500" value="6000">
+      </div>
+      <div class="ctrl">
+        <label>Packet size<span class="v" id="v-pkt">1500</span></label>
+        <input type="range" id="c-pkt" min="200" max="4000" step="100" value="1500">
+      </div>
+    </div>
+
+    <div id="warn" class="warn">PIR &lt; CIR violates RFC 2698. The scheme is only well-defined when PIR ≥ CIR.</div>
+
+    <div class="action-row">
+      <button class="primary" id="btn-send">Send packet</button>
+      <button id="btn-reset">Reset</button>
+      <button id="btn-pause">Pause</button>
+      <div class="mode-group">
+        <button class="active" data-mode="manual">Manual</button>
+        <button data-mode="steady">Steady</button>
+        <button data-mode="bursty">Bursty</button>
+      </div>
+    </div>
+  </div>
+
+  <h3>Event log</h3>
+  <div class="log" id="log"></div>
+
+  <h2><span class="num">04</span>Three regimes worth watching</h2>
+
+  <div class="params">
+    <div class="key neutral">Low load</div>
+    <div class="val">Offered rate &lt; CIR. Both buckets stay near full; every packet is <em class="g">green</em>. Neither constraint binds.</div>
+    <div class="key neutral">Excess</div>
+    <div class="val">Offered rate between CIR and PIR. <code>Tc</code> empties first (it fills slower); once drained, new packets become <em class="y">yellow</em> — they still debit <code>Tp</code>, which has enough capacity. Steady-state yellow fraction ≈ (load − CIR) / load.</div>
+    <div class="key neutral">Overload</div>
+    <div class="val">Offered rate &gt; PIR. <code>Tp</code> drains too; once empty, packets are <em class="r">red</em>. Long-run: green fraction = CIR/load, yellow = (PIR − CIR)/load, red = (load − PIR)/load.</div>
+  </div>
+
+  <h2><span class="num">05</span>srTCM vs trTCM at a glance</h2>
+
+  <div class="compare">
+    <div class="compare-col">
+      <h4>srTCM · RFC 2697</h4>
+      <ul>
+        <li>One rate: CIR</li>
+        <li>Two buckets: Tc, Te — <em>cascaded</em></li>
+        <li>Overflow from Tc feeds Te</li>
+        <li>Yellow means "used idle-accumulated budget"</li>
+        <li>Contract: "rate X with burst tolerance"</li>
+        <li>Test order: committed → excess</li>
+      </ul>
+    </div>
+    <div class="compare-col">
+      <h4>trTCM · RFC 2698</h4>
+      <ul>
+        <li>Two rates: PIR ≥ CIR</li>
+        <li>Two buckets: Tp, Tc — <em>independent</em></li>
+        <li>No overflow between buckets</li>
+        <li>Yellow means "above committed but below peak"</li>
+        <li>Contract: "up to PIR with CIR guaranteed"</li>
+        <li>Test order: peak → committed</li>
+      </ul>
+    </div>
+  </div>
+
+  <p class="muted" style="margin-top: 24px;">
+    A concrete way to feel the difference: in srTCM, yellow is a <em>reward</em> the flow earns by being quiet — unused committed tokens spill over and pay for future excess. In trTCM, yellow is a <em>permission</em> the contract grants — the flow is always allowed to burst up to PIR, regardless of what it did earlier. Same three colours, very different economics.
+  </p>
+
+  <h2><span class="num">06</span>Where trTCM shows up</h2>
+  <p class="muted">
+    The canonical use is carrier Ethernet tiered services — a 100 Mbps access link sold as "50 Mbps committed, 100 Mbps peak, 10 ms burst". CIR = 50 Mbps gets the SLA, PIR = 100 Mbps is the physical link rate, yellow traffic uses whatever headroom the carrier has. MEF 10.3 Bandwidth Profiles are defined in trTCM terms. In DiffServ domains, trTCM at the edge maps green/yellow/red to AF class drop precedence (e.g. AF11/AF12/AF13), so downstream congestion points drop yellow before green and red before either.
+  </p>
+
+  <footer>
+    <span>trTCM · RFC 2698 · interactive explainer</span>
+    <span>v 1.0</span>
+  </footer>
+
+</div>
+
+<script>
+(() => {
+  const S = {
+    tp: 12000, tc: 6000,
+    pbs: 12000, cbs: 6000,
+    pir: 4000, cir: 2000,
+    pkt: 1500,
+    g: 0, y: 0, r: 0,
+    mode: 'manual',
+    paused: false,
+    lastT: performance.now(),
+    nextArr: 0,
+    burstI: 0,
+    pirDripAcc: 0,
+    cirDripAcc: 0,
+  };
+
+  const $ = id => document.getElementById(id);
+
+  const tpFill = $('tp-fill');
+  const tpLine = $('tp-line');
+  const tcFill = $('tc-fill');
+  const tcLine = $('tc-line');
+  const markerDot = $('marker-dot');
+  const pirDripsG = $('pir-drips');
+  const cirDripsG = $('cir-drips');
+  const packetsG = $('packets');
+  const logEl = $('log');
+  const warnEl = $('warn');
+
+  const TP = { x: 50, y: 140, w: 80, h: 140, bottom: 280 };
+  const TC = { x: 200, y: 140, w: 80, h: 140, bottom: 280 };
+
+  function renderBuckets() {
+    const tpFrac = Math.max(0, Math.min(1, S.tp / S.pbs));
+    const tpH = tpFrac * TP.h;
+    tpFill.setAttribute('y', TP.bottom - tpH);
+    tpFill.setAttribute('height', tpH);
+    tpLine.setAttribute('y1', TP.bottom - tpH);
+    tpLine.setAttribute('y2', TP.bottom - tpH);
+
+    const tcFrac = Math.max(0, Math.min(1, S.tc / S.cbs));
+    const tcH = tcFrac * TC.h;
+    tcFill.setAttribute('y', TC.bottom - tcH);
+    tcFill.setAttribute('height', tcH);
+    tcLine.setAttribute('y1', TC.bottom - tcH);
+    tcLine.setAttribute('y2', TC.bottom - tcH);
+  }
+
+  function renderMeters() {
+    $('mt-tp').textContent = Math.round(S.tp);
+    $('mt-tc').textContent = Math.round(S.tc);
+    $('mt-pbs').textContent = S.pbs;
+    $('mt-cbs').textContent = S.cbs;
+    $('mt-pir').textContent = S.pir;
+    $('mt-cir').textContent = S.cir;
+    $('bar-tp').style.width = (S.tp / S.pbs * 100) + '%';
+    $('bar-tc').style.width = (S.tc / S.cbs * 100) + '%';
+    $('ct-g').textContent = S.g;
+    $('ct-y').textContent = S.y;
+    $('ct-r').textContent = S.r;
+    warnEl.classList.toggle('active', S.pir < S.cir);
+  }
+
+  // PIR drip — violet, x=90
+  function spawnPirDrip() {
+    const d = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    d.setAttribute('cx', 90);
+    d.setAttribute('cy', 50);
+    d.setAttribute('r', 2.5);
+    d.setAttribute('fill', '#c084fc');
+    pirDripsG.appendChild(d);
+    const start = performance.now();
+    (function a() {
+      const t = (performance.now() - start) / 480;
+      if (t >= 1) { d.remove(); return; }
+      d.setAttribute('cy', 50 + t * 58);
+      d.setAttribute('opacity', 1 - t * 0.4);
+      requestAnimationFrame(a);
+    })();
+  }
+
+  // CIR drip — blue, x=240
+  function spawnCirDrip() {
+    const d = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    d.setAttribute('cx', 240);
+    d.setAttribute('cy', 50);
+    d.setAttribute('r', 2.5);
+    d.setAttribute('fill', '#60a5fa');
+    cirDripsG.appendChild(d);
+    const start = performance.now();
+    (function a() {
+      const t = (performance.now() - start) / 480;
+      if (t >= 1) { d.remove(); return; }
+      d.setAttribute('cy', 50 + t * 58);
+      d.setAttribute('opacity', 1 - t * 0.4);
+      requestAnimationFrame(a);
+    })();
+  }
+
+  function spawnPacket() {
+    const size = S.pkt;
+    const w = Math.max(12, Math.min(38, 10 + Math.sqrt(size) * 0.5));
+    const h = 16;
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('x', -w/2);
+    rect.setAttribute('y', -h/2);
+    rect.setAttribute('width', w);
+    rect.setAttribute('height', h);
+    rect.setAttribute('fill', '#3a4049');
+    rect.setAttribute('stroke', '#a8a59e');
+    rect.setAttribute('stroke-width', '0.8');
+    rect.setAttribute('rx', '1');
+    const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    t.setAttribute('x', 0);
+    t.setAttribute('y', 0);
+    t.setAttribute('text-anchor', 'middle');
+    t.setAttribute('dominant-baseline', 'central');
+    t.setAttribute('font-family', 'IBM Plex Mono');
+    t.setAttribute('font-size', '8');
+    t.setAttribute('fill', '#e8e6e1');
+    t.setAttribute('font-weight', '600');
+    t.textContent = size;
+    g.appendChild(rect);
+    g.appendChild(t);
+    g.setAttribute('transform', 'translate(540, 235)');
+    packetsG.appendChild(g);
+
+    const start = performance.now();
+    const D1 = 600;
+    const markerX = 340;
+    (function a() {
+      const p = (performance.now() - start) / D1;
+      if (p >= 1) {
+        decide(g, rect, size);
+        return;
+      }
+      const x = 540 - p * (540 - markerX);
+      g.setAttribute('transform', `translate(${x}, 235)`);
+      requestAnimationFrame(a);
+    })();
+  }
+
+  function decide(g, rect, size) {
+    // trTCM color-blind: test peak, then committed
+    let color, dest, detail;
+    if (S.tp < size) {
+      color = 'r';
+      S.r++;
+      dest = { x: 40, y: 420, drop: true };
+      detail = `Tp ${Math.round(S.tp)} < ${size} → red, no debit`;
+    } else if (S.tc < size) {
+      color = 'y';
+      S.tp -= size;
+      S.y++;
+      dest = { x: 40, y: 375, drop: false };
+      detail = `Tp ok, Tc ${Math.round(S.tc)} < ${size} → yellow, Tp -= ${size}`;
+    } else {
+      color = 'g';
+      S.tp -= size;
+      S.tc -= size;
+      S.g++;
+      dest = { x: 40, y: 335, drop: false };
+      detail = `both ok → green, Tp & Tc both -= ${size}`;
+    }
+
+    const colorMap = { g: '#4ade80', y: '#facc15', r: '#f87171' };
+    markerDot.setAttribute('fill', colorMap[color]);
+    rect.setAttribute('fill', colorMap[color]);
+    rect.setAttribute('stroke', colorMap[color]);
+
+    addLog(color, size, detail);
+
+    setTimeout(() => markerDot.setAttribute('fill', '#3a4049'), 320);
+
+    const start = performance.now();
+    const D = 600;
+    const sx = 340, sy = 235;
+    (function a() {
+      const p = (performance.now() - start) / D;
+      if (p >= 1) { g.remove(); return; }
+      const x = sx - p * (sx - dest.x);
+      const y = sy + p * (dest.y - sy);
+      g.setAttribute('transform', `translate(${x}, ${y})`);
+      g.setAttribute('opacity', 1 - p * (dest.drop ? 1 : 0.5));
+      requestAnimationFrame(a);
+    })();
+
+    renderMeters();
+  }
+
+  function addLog(color, size, detail) {
+    const e = document.createElement('div');
+    e.className = 'log-entry ' + color;
+    const t = (performance.now() / 1000).toFixed(1);
+    const label = { g: 'GREEN', y: 'YELLOW', r: 'RED' }[color];
+    e.innerHTML = `<span class="t">t=${t}s</span><span class="status">${label}</span><span class="detail">B=${size} · ${detail}</span>`;
+    logEl.prepend(e);
+    while (logEl.children.length > 40) logEl.lastChild.remove();
+  }
+
+  function loop(now) {
+    const dt = (now - S.lastT) / 1000;
+    S.lastT = now;
+
+    if (!S.paused) {
+      // Two independent fills
+      S.tp = Math.min(S.pbs, S.tp + S.pir * dt);
+      S.tc = Math.min(S.cbs, S.tc + S.cir * dt);
+
+      // Drip visuals — independent rates
+      S.pirDripAcc += dt * Math.min(8, Math.max(1.5, S.pir / 500));
+      while (S.pirDripAcc >= 1) {
+        if (S.tp < S.pbs) spawnPirDrip();
+        S.pirDripAcc -= 1;
+      }
+      S.cirDripAcc += dt * Math.min(8, Math.max(1.5, S.cir / 500));
+      while (S.cirDripAcc >= 1) {
+        if (S.tc < S.cbs) spawnCirDrip();
+        S.cirDripAcc -= 1;
+      }
+
+      // Auto arrivals
+      if (S.mode === 'steady') {
+        S.nextArr -= dt;
+        if (S.nextArr <= 0) {
+          spawnPacket();
+          S.nextArr = 0.9;
+        }
+      } else if (S.mode === 'bursty') {
+        S.nextArr -= dt;
+        if (S.nextArr <= 0) {
+          if (S.burstI < 8) {
+            spawnPacket();
+            S.burstI++;
+            S.nextArr = 0.14;
+          } else {
+            S.burstI = 0;
+            S.nextArr = 3.0;
+          }
+        }
+      }
+    }
+
+    renderBuckets();
+    renderMeters();
+    requestAnimationFrame(loop);
+  }
+
+  // Controls
+  $('c-pir').addEventListener('input', e => {
+    S.pir = +e.target.value;
+    $('v-pir').textContent = S.pir;
+  });
+  $('c-pbs').addEventListener('input', e => {
+    S.pbs = +e.target.value;
+    if (S.tp > S.pbs) S.tp = S.pbs;
+    $('v-pbs').textContent = S.pbs;
+  });
+  $('c-cir').addEventListener('input', e => {
+    S.cir = +e.target.value;
+    $('v-cir').textContent = S.cir;
+  });
+  $('c-cbs').addEventListener('input', e => {
+    S.cbs = +e.target.value;
+    if (S.tc > S.cbs) S.tc = S.cbs;
+    $('v-cbs').textContent = S.cbs;
+  });
+  $('c-pkt').addEventListener('input', e => {
+    S.pkt = +e.target.value;
+    $('v-pkt').textContent = S.pkt;
+  });
+
+  $('btn-send').addEventListener('click', () => spawnPacket());
+  $('btn-reset').addEventListener('click', () => {
+    S.tp = S.pbs; S.tc = S.cbs;
+    S.g = 0; S.y = 0; S.r = 0;
+    logEl.innerHTML = '';
+    packetsG.innerHTML = '';
+    renderMeters();
+  });
+  $('btn-pause').addEventListener('click', e => {
+    S.paused = !S.paused;
+    e.target.textContent = S.paused ? 'Resume' : 'Pause';
+  });
+
+  document.querySelectorAll('.mode-group button').forEach(b => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('.mode-group button').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      S.mode = b.dataset.mode;
+      S.nextArr = 0;
+      S.burstI = 0;
+    });
+  });
+
+  // Initial: both buckets full per RFC
+  S.tp = S.pbs;
+  S.tc = S.cbs;
+
+  renderBuckets();
+  renderMeters();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

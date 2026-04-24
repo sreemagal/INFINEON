@@ -1,0 +1,1309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CBS — IEEE 802.1Qav Credit-Based Shaper</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:ital,wght@0,400;0,500;1,400&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f1216;
+    --bg-2: #161a20;
+    --bg-3: #1d2229;
+    --line: #2a3038;
+    --line-2: #3a4049;
+    --ink: #e8e6e1;
+    --ink-2: #a8a59e;
+    --ink-3: #6d6a65;
+
+    --cbs: #fbbf24;            /* amber — CBS theme */
+    --cbs-deep: #78350f;
+    --cbs-soft: rgba(251, 191, 36, 0.15);
+
+    --idle: #4ade80;           /* green for idleSlope (earning) */
+    --send: #f87171;           /* red for sendSlope (spending) */
+    --tx: #fbbf24;             /* amber for transmit windows */
+    --hi: #60a5fa;             /* blue for hiCredit bound */
+    --lo: #c084fc;             /* violet for loCredit bound */
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'IBM Plex Sans', system-ui, sans-serif;
+    font-size: 14.5px;
+    line-height: 1.65;
+    min-height: 100vh;
+  }
+
+  .page {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 48px 32px 64px;
+  }
+
+  .doc-header {
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 28px;
+    margin-bottom: 44px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 32px;
+    align-items: end;
+  }
+
+  .doc-stamp {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    color: var(--ink-3);
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+
+  h1 {
+    font-family: 'IBM Plex Serif', serif;
+    font-weight: 400;
+    font-size: 44px;
+    line-height: 1.1;
+    letter-spacing: -0.015em;
+  }
+
+  h1 .sub {
+    display: block;
+    font-size: 20px;
+    font-style: italic;
+    color: var(--ink-2);
+    margin-top: 8px;
+    font-weight: 400;
+  }
+
+  .spec-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    color: var(--ink-2);
+    padding: 6px 12px;
+    border: 1px solid var(--line-2);
+    border-radius: 2px;
+    text-transform: uppercase;
+  }
+
+  .spec-badge strong { color: var(--cbs); font-weight: 500; }
+
+  h2 {
+    font-family: 'IBM Plex Serif', serif;
+    font-weight: 400;
+    font-size: 26px;
+    letter-spacing: -0.01em;
+    margin: 56px 0 14px;
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+  }
+
+  h2 .num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    color: var(--ink-3);
+    font-style: normal;
+    letter-spacing: 0.1em;
+  }
+
+  h3 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: 10px;
+    margin-top: 24px;
+  }
+
+  p { max-width: 760px; margin-bottom: 16px; color: var(--ink); }
+  p.muted { color: var(--ink-2); }
+
+  code {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.92em;
+    background: var(--bg-3);
+    padding: 1px 6px;
+    border-radius: 2px;
+    color: var(--ink);
+  }
+
+  em.hl { color: var(--cbs); font-style: normal; font-weight: 500; }
+  em.g { color: var(--idle); font-style: normal; font-weight: 500; }
+  em.r { color: var(--send); font-style: normal; font-weight: 500; }
+
+  /* The wallet metaphor box */
+  .wallet {
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-left: 2px solid var(--cbs);
+    border-radius: 0 3px 3px 0;
+    padding: 22px 26px;
+    margin: 18px 0;
+  }
+
+  .wallet h4 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--cbs);
+    margin-bottom: 12px;
+  }
+
+  .wallet-steps {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0;
+  }
+
+  .wallet-step {
+    padding: 12px 18px;
+    font-size: 13px;
+    color: var(--ink-2);
+    position: relative;
+  }
+
+  .wallet-step + .wallet-step {
+    border-left: 1px solid var(--line);
+  }
+
+  .wallet-step .act {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .wallet-step.earn .act { color: var(--idle); }
+  .wallet-step.spend .act { color: var(--send); }
+  .wallet-step.wait .act { color: var(--ink-3); }
+
+  /* Parameter table */
+  .params {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    border-top: 1px solid var(--line);
+    max-width: 780px;
+  }
+
+  .params > div {
+    padding: 14px 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .params .key {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    color: var(--cbs);
+  }
+
+  .params .val { color: var(--ink); }
+  .params .val .u { color: var(--ink-3); font-family: 'IBM Plex Mono', monospace; font-size: 0.88em; }
+
+  /* Formula */
+  .formula {
+    background: var(--bg-2);
+    border-left: 2px solid var(--cbs);
+    padding: 18px 22px;
+    margin: 18px 0;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    line-height: 1.9;
+    color: var(--ink);
+    border-radius: 0 3px 3px 0;
+    max-width: 760px;
+  }
+
+  .formula .var { color: var(--cbs); }
+  .formula .comment { color: var(--ink-3); }
+
+  /* Contrast mini diagram (token bucket vs CBS) */
+  .contrast {
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 20px;
+    margin-top: 12px;
+  }
+
+  #contrast-svg { display: block; width: 100%; height: 200px; }
+
+  /* Main simulator */
+  .sim {
+    margin-top: 20px;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+  }
+
+  .sim-stage {
+    display: grid;
+    grid-template-columns: 1fr 270px;
+  }
+
+  .stage-main {
+    padding: 24px;
+    border-right: 1px solid var(--line);
+  }
+
+  #cbs-svg { display: block; width: 100%; height: 380px; }
+  #tx-svg { display: block; width: 100%; height: 70px; margin-top: 14px; }
+
+  .stage-side {
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .meter {
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  .meter:last-child { border-bottom: none; }
+
+  .meter-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: 6px;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .meter-value {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 22px;
+    font-weight: 500;
+    line-height: 1;
+    color: var(--ink);
+  }
+
+  .meter-value .unit {
+    font-size: 11px;
+    color: var(--ink-3);
+    margin-left: 4px;
+    font-weight: 400;
+  }
+
+  .meter.credit .meter-value { color: var(--cbs); }
+  .meter.credit.pos .meter-value { color: var(--idle); }
+  .meter.credit.neg .meter-value { color: var(--send); }
+
+  .state-pill {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 12px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+
+  .state-pill.earning { background: rgba(74,222,128,0.15); color: var(--idle); border: 1px solid var(--idle); }
+  .state-pill.sending { background: rgba(248,113,113,0.15); color: var(--send); border: 1px solid var(--send); }
+  .state-pill.idle    { background: var(--bg-3); color: var(--ink-3); border: 1px solid var(--line-2); }
+  .state-pill.waiting { background: rgba(251,191,36,0.15); color: var(--cbs); border: 1px solid var(--cbs); }
+
+  .counters {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--line);
+  }
+
+  .counter-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: 2px;
+  }
+
+  .counter-val {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--ink);
+  }
+
+  /* Controls */
+  .controls {
+    padding: 20px 24px;
+    background: var(--bg);
+    border-top: 1px solid var(--line);
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+  }
+
+  .ctrl label {
+    display: block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: 8px;
+  }
+
+  .ctrl label .v {
+    color: var(--ink);
+    font-size: 13px;
+    margin-left: 6px;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 2px;
+    background: var(--line-2);
+    outline: none;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px; height: 12px;
+    background: var(--cbs);
+    border-radius: 50%;
+    cursor: pointer;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 12px; height: 12px;
+    background: var(--cbs);
+    border-radius: 50%;
+    cursor: pointer; border: none;
+  }
+
+  .action-row {
+    padding: 16px 24px;
+    border-top: 1px solid var(--line);
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  button {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 500;
+    padding: 9px 14px;
+    border: 1px solid var(--line-2);
+    background: transparent;
+    color: var(--ink);
+    cursor: pointer;
+    transition: all 0.12s;
+    border-radius: 2px;
+  }
+
+  button:hover { border-color: var(--ink-2); background: var(--bg-3); }
+
+  button.primary {
+    background: var(--cbs);
+    color: var(--bg);
+    border-color: var(--cbs);
+    font-weight: 600;
+  }
+  button.primary:hover { background: #f59e0b; border-color: #f59e0b; }
+
+  .mode-group { display: inline-flex; margin-left: auto; }
+  .mode-group button { border-radius: 0; }
+  .mode-group button:first-child { border-radius: 2px 0 0 2px; }
+  .mode-group button:last-child { border-radius: 0 2px 2px 0; }
+  .mode-group button + button { border-left: none; }
+  .mode-group button.active {
+    background: var(--ink);
+    color: var(--bg);
+    border-color: var(--ink);
+  }
+
+  /* Worked example table */
+  .example-table {
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 20px 24px;
+    margin-top: 12px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+  }
+
+  .example-table .row {
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    padding: 10px 0;
+    border-bottom: 1px dashed var(--line);
+  }
+  .example-table .row:last-child { border-bottom: none; }
+  .example-table .k { color: var(--ink-3); }
+  .example-table .v { color: var(--ink); }
+  .example-table .v.hl { color: var(--cbs); font-weight: 500; }
+
+  /* Compare block */
+  .compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0;
+    margin-top: 12px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .compare-col { padding: 20px 22px; background: var(--bg-2); }
+  .compare-col + .compare-col { border-left: 1px solid var(--line); }
+
+  .compare-col h4 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .compare-col.tb h4 { color: #60a5fa; }
+  .compare-col.cbs h4 { color: var(--cbs); }
+  .compare-col.ats h4 { color: #5eead4; }
+
+  .compare-col ul { list-style: none; padding: 0; }
+  .compare-col li {
+    padding: 7px 0;
+    font-size: 12.5px;
+    color: var(--ink-2);
+    border-bottom: 1px dashed var(--line);
+    line-height: 1.5;
+  }
+  .compare-col li:last-child { border-bottom: none; }
+
+  footer {
+    margin-top: 56px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  @media (max-width: 820px) {
+    .page { padding: 28px 18px; }
+    h1 { font-size: 32px; }
+    .doc-header { grid-template-columns: 1fr; }
+    .sim-stage { grid-template-columns: 1fr; }
+    .stage-main { border-right: none; border-bottom: 1px solid var(--line); }
+    .controls { grid-template-columns: 1fr 1fr; }
+    .compare, .wallet-steps { grid-template-columns: 1fr; }
+    .wallet-step + .wallet-step { border-left: none; border-top: 1px solid var(--line); }
+    .compare-col + .compare-col { border-left: none; border-top: 1px solid var(--line); }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="doc-header">
+    <div>
+      <div class="doc-stamp">IEEE 802.1Qav · Forwarding &amp; queuing for time-sensitive streams</div>
+      <h1>CBS<span class="sub">Credit-based shaper.</span></h1>
+    </div>
+    <div class="spec-badge">TSN · <strong>smoothing by credit dynamics</strong></div>
+  </div>
+
+  <p class="muted">
+    A shaper that spaces transmissions out over time so reserved classes — audio/video, ADAS sensor streams, control loops — do not bunch into bursts that hurt their own latency or starve other traffic. The mechanism is a <em class="hl">signed credit counter</em> that rises while the queue is waiting, falls while it transmits, and <em>gates</em> transmission on the sign of the counter. Not a priority flag, not a drop-when-exceeded policer — a smoothing mechanism that trades unused time for future send authorisation.
+  </p>
+
+  <h2><span class="num">01</span>The problem CBS is built to solve</h2>
+
+  <p>
+    Consider a high-priority AVB stream on a bridge. Strict priority alone would let it transmit back-to-back whenever frames queue, producing bursts. A token bucket would police it — dropping or remarking frames that arrive faster than the rate. Neither behaviour is what a reserved class wants. What it wants is to <em>spread</em> its allowed transmissions across time, so consumers downstream see a smooth stream, and so lower-priority traffic gets gaps to use the link. CBS delivers exactly that.
+  </p>
+
+  <div class="wallet">
+    <h4>The credit wallet — mental model</h4>
+    <div class="wallet-steps">
+      <div class="wallet-step earn">
+        <div class="act">01 · Earn</div>
+        While a frame is waiting in the queue, credit accumulates at <code>idleSlope</code>. The longer the wait, the more credit — up to a ceiling of <code>hiCredit</code>.
+      </div>
+      <div class="wallet-step spend">
+        <div class="act">02 · Spend</div>
+        Transmission is allowed when credit ≥ 0. During transmission, credit falls at <code>sendSlope</code> (always negative). The queue may go into debt.
+      </div>
+      <div class="wallet-step wait">
+        <div class="act">03 · Repay</div>
+        Once credit is below zero, further transmission is blocked. The queue waits — earning credit at <code>idleSlope</code> — until credit returns to ≥ 0. Only then can the next frame go.
+      </div>
+    </div>
+  </div>
+
+  <p>
+    This "spend, then repay" cycle is what separates CBS from a token bucket. A token bucket policer would have dropped a frame that arrived with insufficient tokens. CBS instead <em>delays</em> the frame, and the waiting period during which credit recovers is precisely the gap that spaces the class out over time.
+  </p>
+
+  <div class="contrast">
+    <svg id="contrast-svg" viewBox="0 0 1000 200" xmlns="http://www.w3.org/2000/svg">
+      <!-- Token bucket lane -->
+      <text x="20" y="26" font-family="IBM Plex Mono" font-size="11" fill="#60a5fa" letter-spacing="1" font-weight="600">TOKEN BUCKET · POLICER</text>
+      <text x="20" y="50" font-family="IBM Plex Sans" font-size="11" fill="#a8a59e" font-style="italic">tokens ≥ L → forward · tokens &lt; L → drop</text>
+      <line x1="20" y1="78" x2="720" y2="78" stroke="#3a4049" stroke-width="0.5"/>
+      <!-- Input (bursty) -->
+      <g transform="translate(40, 68)">
+        <rect x="0"  y="0" width="18" height="20" fill="#60a5fa" opacity="0.7" rx="2"/>
+        <rect x="22" y="0" width="18" height="20" fill="#60a5fa" opacity="0.7" rx="2"/>
+        <rect x="44" y="0" width="18" height="20" fill="#60a5fa" opacity="0.7" rx="2"/>
+      </g>
+      <text x="200" y="82" font-family="IBM Plex Mono" font-size="10" fill="#6d6a65">→</text>
+      <!-- Bucket -->
+      <rect x="220" y="62" width="50" height="32" rx="3" fill="none" stroke="#60a5fa" stroke-width="0.8"/>
+      <text x="245" y="82" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#60a5fa">bucket</text>
+      <text x="290" y="82" font-family="IBM Plex Mono" font-size="10" fill="#6d6a65">→</text>
+      <!-- Output (some dropped) -->
+      <g transform="translate(310, 68)">
+        <rect x="0"  y="0" width="18" height="20" fill="#4ade80" opacity="0.7" rx="2"/>
+        <rect x="22" y="0" width="18" height="20" fill="#4ade80" opacity="0.7" rx="2"/>
+        <rect x="44" y="0" width="18" height="20" fill="#f87171" opacity="0.5" rx="2"/>
+        <text x="53" y="32" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#f87171">drop</text>
+      </g>
+      <text x="500" y="82" font-family="IBM Plex Sans" font-size="11" fill="#e8e6e1">Bursts are <tspan fill="#f87171">rejected</tspan>. Rate enforced by loss.</text>
+
+      <!-- CBS lane -->
+      <text x="20" y="130" font-family="IBM Plex Mono" font-size="11" fill="#fbbf24" letter-spacing="1" font-weight="600">CBS · SHAPER</text>
+      <text x="20" y="154" font-family="IBM Plex Sans" font-size="11" fill="#a8a59e" font-style="italic">credit ≥ 0 → send · credit &lt; 0 → wait</text>
+      <line x1="20" y1="182" x2="720" y2="182" stroke="#3a4049" stroke-width="0.5"/>
+      <g transform="translate(40, 172)">
+        <rect x="0"  y="0" width="18" height="20" fill="#fbbf24" opacity="0.7" rx="2"/>
+        <rect x="22" y="0" width="18" height="20" fill="#fbbf24" opacity="0.7" rx="2"/>
+        <rect x="44" y="0" width="18" height="20" fill="#fbbf24" opacity="0.7" rx="2"/>
+      </g>
+      <text x="200" y="186" font-family="IBM Plex Mono" font-size="10" fill="#6d6a65">→</text>
+      <!-- Shaper -->
+      <rect x="220" y="166" width="50" height="32" rx="3" fill="none" stroke="#fbbf24" stroke-width="0.8"/>
+      <text x="245" y="186" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#fbbf24">shaper</text>
+      <text x="290" y="186" font-family="IBM Plex Mono" font-size="10" fill="#6d6a65">→</text>
+      <!-- Output (spaced) -->
+      <g transform="translate(310, 172)">
+        <rect x="0"  y="0" width="18" height="20" fill="#fbbf24" opacity="0.7" rx="2"/>
+        <rect x="44" y="0" width="18" height="20" fill="#fbbf24" opacity="0.7" rx="2"/>
+        <rect x="88" y="0" width="18" height="20" fill="#fbbf24" opacity="0.7" rx="2"/>
+      </g>
+      <text x="500" y="186" font-family="IBM Plex Sans" font-size="11" fill="#e8e6e1">Bursts are <tspan fill="#fbbf24">spread</tspan>. Rate enforced by delay.</text>
+    </svg>
+  </div>
+
+  <h2><span class="num">02</span>The four parameters</h2>
+
+  <div class="params">
+    <div class="key">idleSlope</div>
+    <div class="val">Rate at which credit accumulates while the queue is waiting <span class="u">— bits per second</span>. This is the <em>reserved bandwidth</em> for the traffic class. Adding up the idleSlopes of all CBS queues on a port gives that port's total reserved bandwidth.</div>
+    <div class="key">sendSlope</div>
+    <div class="val">Rate at which credit is drawn down while transmission is in progress. Derived, not configured: <code>sendSlope = idleSlope − portTxRate</code>. Always negative. On a 1 Gbps port with 100 Mbps idleSlope, sendSlope is −900 Mbps.</div>
+    <div class="key">hiCredit</div>
+    <div class="val">Maximum positive credit the counter can reach. Bounds burst accumulation during idle periods. Typically <code>maxInterferenceSize × (1 − idleSlope/portTxRate)</code> — just enough credit to cover the largest frame that could block this queue.</div>
+    <div class="key">loCredit</div>
+    <div class="val">Minimum (most negative) credit the counter can reach. Bounds how deep into debt one transmission can push the queue. Typically <code>maxFrameSize × sendSlope/portTxRate</code> — the cost of transmitting one maximum-size frame.</div>
+  </div>
+
+  <h3>The state machine</h3>
+  <div class="formula">
+    <div><span class="comment">// while waiting (queue non-empty, credit &lt; 0)</span></div>
+    <div>d<span class="var">credit</span>/dt = <span class="var">idleSlope</span> · (clamped at hiCredit)</div>
+    <div></div>
+    <div><span class="comment">// while transmitting</span></div>
+    <div>d<span class="var">credit</span>/dt = <span class="var">sendSlope</span> · (clamped at loCredit)</div>
+    <div></div>
+    <div><span class="comment">// transmission allowed</span></div>
+    <div>when <span class="var">credit</span> ≥ 0 <span class="comment">and</span> queue non-empty</div>
+    <div></div>
+    <div><span class="comment">// queue empty</span></div>
+    <div>if <span class="var">credit</span> &gt; 0 → reset to 0 <span class="comment">(avoid banking unlimited burst)</span></div>
+  </div>
+
+  <h2><span class="num">03</span>Live: watch the credit evolve</h2>
+
+  <p class="muted">
+    The chart below is a scrolling credit-vs-time graph. The green portions of the curve are <em class="g">idleSlope</em> — credit rising while a frame waits. The red portions are <em class="r">sendSlope</em> — credit falling during transmission. The amber-shaded bands mark actual transmissions on the link. Watch how, under a sustained input rate above idleSlope, the credit oscillates within the <code>[loCredit, hiCredit]</code> envelope, and the transmissions come out regularly spaced — not as a burst.
+  </p>
+
+  <div class="sim">
+    <div class="sim-stage">
+      <div class="stage-main">
+        <svg id="cbs-svg" viewBox="0 0 700 380" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <clipPath id="chart-clip">
+              <rect x="50" y="30" width="640" height="280"/>
+            </clipPath>
+          </defs>
+
+          <!-- Chart background -->
+          <rect x="50" y="30" width="640" height="280" fill="#0f1216"/>
+
+          <!-- Grid -->
+          <g stroke="#2a3038" stroke-width="0.5" stroke-dasharray="2 4">
+            <line x1="50" y1="170" x2="690" y2="170"/>   <!-- zero line -->
+          </g>
+
+          <!-- hiCredit line -->
+          <line id="hicredit-line" x1="50" y1="90" x2="690" y2="90" stroke="#60a5fa" stroke-width="0.8" stroke-dasharray="5 3"/>
+          <text id="hicredit-lbl" x="46" y="94" text-anchor="end" font-family="IBM Plex Mono" font-size="9" fill="#60a5fa">hiCredit</text>
+
+          <!-- loCredit line -->
+          <line id="locredit-line" x1="50" y1="260" x2="690" y2="260" stroke="#c084fc" stroke-width="0.8" stroke-dasharray="5 3"/>
+          <text id="locredit-lbl" x="46" y="264" text-anchor="end" font-family="IBM Plex Mono" font-size="9" fill="#c084fc">loCredit</text>
+
+          <!-- Zero line label -->
+          <text x="46" y="174" text-anchor="end" font-family="IBM Plex Mono" font-size="9" fill="#6d6a65">0</text>
+
+          <!-- Transmit shading will appear here -->
+          <g id="tx-bands" clip-path="url(#chart-clip)"></g>
+
+          <!-- Credit curve -->
+          <polyline id="credit-curve" points="" fill="none" stroke="#fbbf24" stroke-width="1.8" clip-path="url(#chart-clip)"/>
+
+          <!-- Credit head marker (current point) -->
+          <circle id="credit-head" cx="680" cy="170" r="3.5" fill="#fbbf24"/>
+
+          <!-- Axes -->
+          <line x1="50" y1="30" x2="50" y2="310" stroke="#3a4049" stroke-width="0.8"/>
+          <line x1="50" y1="310" x2="690" y2="310" stroke="#3a4049" stroke-width="0.8"/>
+
+          <!-- Axis labels -->
+          <text x="50" y="326" font-family="IBM Plex Mono" font-size="9" fill="#6d6a65" letter-spacing="1">sim t (µs)</text>
+          <text x="370" y="326" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#6d6a65" letter-spacing="1">TIME →  (scrolling · last 3 ms of sim time · speed adjustable below)</text>
+          <text x="44" y="44" text-anchor="end" font-family="IBM Plex Mono" font-size="9" fill="#6d6a65" letter-spacing="1">credit</text>
+
+          <!-- State indicator -->
+          <rect x="50" y="340" width="640" height="28" rx="3" fill="#1d2229" stroke="#3a4049" stroke-width="0.5"/>
+          <text x="66" y="358" font-family="IBM Plex Mono" font-size="10" fill="#6d6a65" letter-spacing="1">STATE</text>
+          <text id="state-text" x="120" y="358" font-family="IBM Plex Mono" font-size="11" fill="#e8e6e1">idle · queue empty · credit held at 0</text>
+        </svg>
+
+        <!-- Transmission waveform -->
+        <svg id="tx-svg" viewBox="0 0 700 70" xmlns="http://www.w3.org/2000/svg">
+          <text x="50" y="14" font-family="IBM Plex Mono" font-size="9" fill="#6d6a65" letter-spacing="1">LINK OCCUPATION · CBS CLASS · sim time</text>
+          <rect x="50" y="22" width="640" height="30" fill="#0f1216" stroke="#2a3038" stroke-width="0.5"/>
+          <g id="tx-waveform"></g>
+          <!-- time axis ticks -->
+          <g font-family="IBM Plex Mono" font-size="8" fill="#6d6a65">
+            <text x="50" y="64">−3 ms</text>
+            <text x="370" y="64" text-anchor="middle">−1.5 ms</text>
+            <text x="690" y="64" text-anchor="end">now</text>
+          </g>
+        </svg>
+      </div>
+
+      <div class="stage-side">
+        <div class="meter">
+          <div class="meter-label"><span>Scheduler state</span></div>
+          <div><span id="state-pill" class="state-pill idle">IDLE</span></div>
+        </div>
+
+        <div class="meter credit" id="credit-meter">
+          <div class="meter-label"><span>Credit</span></div>
+          <div class="meter-value"><span id="mt-credit">0</span><span class="unit">bits</span></div>
+        </div>
+
+        <div class="meter">
+          <div class="meter-label"><span>hiCredit · loCredit</span></div>
+          <div class="meter-value" style="font-size: 13px; line-height: 1.5">
+            <span id="mt-hi" style="color: #60a5fa">+0</span><br>
+            <span id="mt-lo" style="color: #c084fc">−0</span>
+            <span class="unit">bits</span>
+          </div>
+        </div>
+
+        <div class="meter">
+          <div class="meter-label"><span>Slopes</span></div>
+          <div class="meter-value" style="font-size: 13px; line-height: 1.5">
+            <span id="mt-is" style="color: #4ade80">+0</span><br>
+            <span id="mt-ss" style="color: #f87171">−0</span>
+            <span class="unit">Mbps</span>
+          </div>
+        </div>
+
+        <div class="meter">
+          <div class="meter-label"><span>Queue depth</span></div>
+          <div class="meter-value"><span id="mt-qd">0</span><span class="unit">fr</span></div>
+        </div>
+
+        <div class="counters">
+          <div>
+            <div class="counter-label">Sent</div>
+            <div class="counter-val" id="mt-sent">0</div>
+          </div>
+          <div>
+            <div class="counter-label">Waiting</div>
+            <div class="counter-val" id="mt-wait">0</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="ctrl">
+        <label>idleSlope<span class="v" id="v-is">100</span> Mbps</label>
+        <input type="range" id="c-is" min="10" max="500" step="10" value="100">
+      </div>
+      <div class="ctrl">
+        <label>Port rate<span class="v" id="v-pr">1000</span> Mbps</label>
+        <input type="range" id="c-pr" min="100" max="2500" step="100" value="1000">
+      </div>
+      <div class="ctrl">
+        <label>Frame size<span class="v" id="v-fs">1500</span> B</label>
+        <input type="range" id="c-fs" min="100" max="1500" step="100" value="1500">
+      </div>
+      <div class="ctrl">
+        <label>Input rate<span class="v" id="v-ir">200</span> Mbps</label>
+        <input type="range" id="c-ir" min="0" max="500" step="10" value="200">
+      </div>
+    </div>
+
+    <div class="action-row">
+      <button class="primary" id="btn-send">Send frame</button>
+      <button id="btn-reset">Reset</button>
+      <button id="btn-pause">Pause</button>
+      <div class="mode-group">
+        <button data-mode="manual">Manual</button>
+        <button class="active" data-mode="stream">Continuous stream</button>
+        <button data-mode="burst">Bursty</button>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px; margin-left:12px;">
+        <span style="font-family:'IBM Plex Mono'; font-size:10px; color:var(--ink-3); letter-spacing:0.12em; text-transform:uppercase;">Speed</span>
+        <select id="speed-select" style="font-family:'IBM Plex Mono'; font-size:11px; padding:7px 10px; background:var(--bg-3); border:1px solid var(--line-2); color:var(--ink); border-radius:2px; outline:none; cursor:pointer;">
+          <option value="20000">Very slow (20000×)</option>
+          <option value="10000" selected>Slow (10000×)</option>
+          <option value="5000">Medium (5000×)</option>
+          <option value="1000">Fast (1000×)</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <h2><span class="num">04</span>Three scenarios to try</h2>
+
+  <div class="params">
+    <div class="key">Under-rate</div>
+    <div class="val">Set input rate below idleSlope (default 100 Mbps). Every frame can transmit immediately — credit never goes deeply negative because enough idle time passes between frames for it to recover. The output is simply paced by the input.</div>
+    <div class="key">At-rate</div>
+    <div class="val">Input rate = idleSlope. The credit oscillates around zero. After each transmission drops credit to loCredit, the wait interval recovers it to exactly 0 by the time the next frame is ready. Link utilisation for this class hits exactly idleSlope.</div>
+    <div class="key">Over-rate</div>
+    <div class="val">Input rate above idleSlope. Queue fills up. Credit still hits loCredit on each transmission, but now the source produces frames faster than credit can recover. The <em>output</em> rate locks at idleSlope regardless of offered load — the extra frames queue up and eventually get dropped when the queue overflows. This is the shaping in action: output is capped at the reserved rate, and the spacing between transmissions is uniform.</div>
+  </div>
+
+  <h2><span class="num">05</span>Worked dimensioning example</h2>
+  <p>
+    A front-facing automotive camera producing an H.265 stream at 25 Mbps average, with bursts up to 40 Mbps over a 10 ms window. The carrier is a 1 Gbps zonal link. Target: deliver the stream deterministically to the ADAS ECU.
+  </p>
+
+  <div class="example-table">
+    <div class="row">
+      <span class="k">idleSlope</span>
+      <span class="v hl">40 Mbps</span>
+    </div>
+    <div class="row">
+      <span class="k">&nbsp;&nbsp;rationale</span>
+      <span class="v">Size to peak, not average. This gives jitter headroom so a short burst doesn't deepen queue residency.</span>
+    </div>
+    <div class="row">
+      <span class="k">sendSlope</span>
+      <span class="v hl">40 − 1000 = −960 Mbps</span>
+    </div>
+    <div class="row">
+      <span class="k">&nbsp;&nbsp;rationale</span>
+      <span class="v">Derived. While transmitting, credit crashes at 960 Mbps — the link's full rate minus the reservation.</span>
+    </div>
+    <div class="row">
+      <span class="k">hiCredit</span>
+      <span class="v hl">≈ 11,520 bits  (1500 B × (1 − 40/1000) × 8)</span>
+    </div>
+    <div class="row">
+      <span class="k">&nbsp;&nbsp;rationale</span>
+      <span class="v">Just enough to cover the largest frame that could delay this queue (one full 1500 B BE frame in progress).</span>
+    </div>
+    <div class="row">
+      <span class="k">loCredit</span>
+      <span class="v hl">≈ −11,520 bits  (1500 B × sendSlope/portRate × 8)</span>
+    </div>
+    <div class="row">
+      <span class="k">&nbsp;&nbsp;rationale</span>
+      <span class="v">The depth one full-size frame drives credit to. Recovery time from loCredit is ≈ 288 μs.</span>
+    </div>
+  </div>
+
+  <p class="muted">
+    The 40 Mbps reservation on a 1 Gbps link consumes 4% of the port's bandwidth for this camera. If four cameras sit on the same gateway, total CBS reservation is 160 Mbps — well under the 75% of port rate that 802.1Qav recommends as the upper bound on aggregate reservations. The remaining 840 Mbps is available for best-effort traffic via SP/WRR/DRR on other queues.
+  </p>
+
+  <h2><span class="num">06</span>Where CBS sits in the shaping family</h2>
+
+  <div class="compare">
+    <div class="compare-col tb">
+      <h4>Token bucket · RFC 2697/8</h4>
+      <ul>
+        <li>Unsigned tokens</li>
+        <li>Empty → packet dropped or marked</li>
+        <li>Policing — enforces rate by loss</li>
+        <li>At ingress, against a contract</li>
+      </ul>
+    </div>
+    <div class="compare-col cbs">
+      <h4>CBS · 802.1Qav</h4>
+      <ul>
+        <li>Signed credit, can go negative</li>
+        <li>Negative → queue waits, no drops</li>
+        <li>Shaping — enforces rate by delay</li>
+        <li>At egress, per traffic class</li>
+      </ul>
+    </div>
+    <div class="compare-col ats">
+      <h4>ATS · 802.1Qcr</h4>
+      <ul>
+        <li>Per-frame eligibility time</li>
+        <li>Frame waits until eligible</li>
+        <li>Shaping — per-hop composable</li>
+        <li>Multi-hop deterministic networks</li>
+      </ul>
+    </div>
+  </div>
+
+  <p class="muted" style="margin-top: 24px;">
+    The clean way to remember the three: <em>token bucket drops frames above a rate</em>, <em>CBS delays frames above a rate</em>, <em>ATS delays frames with a per-frame eligibility time that composes across hops</em>. CBS works beautifully at one or two hops; over more hops its credit errors accumulate, which is exactly the gap ATS was chartered to fill. In a zonal automotive gateway with short paths, CBS is usually sufficient and demands less state than ATS. In an industrial backbone with five hops and no gPTP, ATS is the upgrade path.
+  </p>
+
+  <footer>
+    <span>CBS · IEEE 802.1Qav · interactive explainer</span>
+    <span>v 1.0</span>
+  </footer>
+
+</div>
+
+<script>
+(() => {
+  // =========================
+  // Time scaling
+  // =========================
+  // CBS events happen in microseconds in reality. To make the simulation
+  // visible, we slow time down 1000x: 1 second wall-clock = 1 ms of sim time.
+  // At default settings (1500B @ 1000Mbps), a 12us frame transmission takes
+  // 12ms of wall-clock — smooth and watchable.
+
+  // =========================
+  // Simulation state
+  // =========================
+  const S = {
+    idleSlope: 100,    // Mbps
+    portRate: 1000,    // Mbps
+    frameSize: 1500,   // bytes
+    inputRate: 200,    // Mbps — synthetic arrival rate
+    mode: 'stream',    // manual | stream | burst
+    paused: false,
+    slowdown: 10000,   // wall-ms per sim-ms (higher = slower animation)
+
+    get sendSlope() { return this.idleSlope - this.portRate; },   // Mbps (negative)
+    get hiCredit()  { return this.frameSize * 8 * (1 - this.idleSlope / this.portRate); },
+    get loCredit()  { return this.frameSize * 8 * (this.sendSlope / this.portRate); },
+
+    credit: 0,                // bits
+    queue: [],                // [{id, size, arrivedAt}]
+    txRemaining: 0,           // bits left in current transmission; 0 = not sending
+    simTime: 0,               // ms (slowed)
+    arrivalBitsAccum: 0,      // bits waiting to be realized as frames
+    burstSt: { phase: 'burst', i: 0, timer: 0 },
+
+    sent: 0,
+    dropped: 0,
+    frameId: 1,
+
+    creditHistory: [],        // {t, credit}
+    txBands: [],              // {startT, endT|null}
+    lastWallT: performance.now(),
+  };
+
+  const WINDOW_MS = 3;         // display window, in sim-ms (shows ~2-3 full cycles at default settings)
+  const QUEUE_MAX = 50;
+  const MAX_SUBSTEPS = 200;    // safety cap on event loop per tick
+
+  const $ = id => document.getElementById(id);
+  const creditCurve = $('credit-curve');
+  const creditHead  = $('credit-head');
+  const txBandsG    = $('tx-bands');
+  const txWaveformG = $('tx-waveform');
+  const statePill   = $('state-pill');
+  const stateText   = $('state-text');
+  const hiLine      = $('hicredit-line');
+  const loLine      = $('locredit-line');
+
+  const CHART = { x0: 50, x1: 690, y0: 30, y1: 310, yZero: 170 };
+
+  function xOfTime(t) {
+    const tMin = S.simTime - WINDOW_MS;
+    return CHART.x0 + ((t - tMin) / WINDOW_MS) * (CHART.x1 - CHART.x0);
+  }
+
+  function yOfCredit(c) {
+    const span = Math.max(Math.abs(S.hiCredit), Math.abs(S.loCredit), 1) * 1.15;
+    const frac = Math.max(-1, Math.min(1, c / span));
+    return CHART.yZero - frac * (CHART.yZero - CHART.y0);
+  }
+
+  function updateBoundLines() {
+    const yHi = yOfCredit(S.hiCredit);
+    const yLo = yOfCredit(S.loCredit);
+    hiLine.setAttribute('y1', yHi); hiLine.setAttribute('y2', yHi);
+    loLine.setAttribute('y1', yLo); loLine.setAttribute('y2', yLo);
+    $('hicredit-lbl').setAttribute('y', yHi + 4);
+    $('locredit-lbl').setAttribute('y', yLo + 4);
+  }
+
+  // =========================
+  // Core: advance simulation by dtMs of sim time
+  // Uses event-driven sub-stepping. Each iteration advances to the next
+  // interesting event (tx complete, credit hits zero, dtMs exhausted).
+  // Samples credit into history at every state transition to preserve sawtooth shape.
+  // =========================
+  function advanceShaper(dtMs) {
+    const idleSlopeBpms = S.idleSlope * 1000;     // bits/sim-ms
+    const sendSlopeBpms = S.sendSlope * 1000;     // bits/sim-ms (negative)
+    const portBpms      = S.portRate * 1000;      // bits/sim-ms
+
+    let remaining = dtMs;
+    let steps = 0;
+
+    // Sample the starting point (if this is the very first sample)
+    if (S.creditHistory.length === 0) {
+      S.creditHistory.push({ t: S.simTime, credit: S.credit });
+    }
+
+    while (remaining > 1e-9 && steps++ < MAX_SUBSTEPS) {
+      const isSending = S.txRemaining > 0;
+
+      if (isSending) {
+        // During tx, credit falls at sendSlope until tx completes or loCredit hit or dt exhausted.
+        const tTxDone = S.txRemaining / portBpms;
+        let tFloor = Infinity;
+        if (S.credit > S.loCredit && sendSlopeBpms < 0) {
+          tFloor = (S.loCredit - S.credit) / sendSlopeBpms;
+          if (tFloor < 0) tFloor = Infinity;
+        }
+        const dt = Math.min(remaining, tTxDone, tFloor);
+
+        S.credit = Math.max(S.loCredit, S.credit + sendSlopeBpms * dt);
+        S.txRemaining -= portBpms * dt;
+        S.simTime += dt;
+        remaining -= dt;
+
+        // Sample after each sub-step to preserve sawtooth in polyline
+        S.creditHistory.push({ t: S.simTime, credit: S.credit });
+
+        if (S.txRemaining <= 1e-9) {
+          S.txRemaining = 0;
+          S.sent++;
+          const band = S.txBands[S.txBands.length - 1];
+          if (band && band.endT === null) band.endT = S.simTime;
+        }
+      } else {
+        if (S.queue.length > 0 && S.credit >= 0) {
+          // Start new tx (zero time)
+          const frame = S.queue.shift();
+          S.txRemaining = frame.size * 8;
+          S.txBands.push({ startT: S.simTime, endT: null });
+          // Sample a point at tx start so the curve shows a clean corner
+          S.creditHistory.push({ t: S.simTime, credit: S.credit });
+        } else if (S.queue.length > 0 && S.credit < 0) {
+          // Wait: credit rises at idleSlope
+          const tToZero = (0 - S.credit) / idleSlopeBpms;
+          const dt = Math.min(remaining, tToZero);
+          S.credit = Math.min(S.hiCredit, S.credit + idleSlopeBpms * dt);
+          S.simTime += dt;
+          remaining -= dt;
+          if (S.credit >= -1e-9) S.credit = 0;
+          S.creditHistory.push({ t: S.simTime, credit: S.credit });
+        } else {
+          // Idle
+          if (S.credit > 0) S.credit = 0;
+          S.simTime += remaining;
+          remaining = 0;
+          S.creditHistory.push({ t: S.simTime, credit: S.credit });
+        }
+      }
+    }
+  }
+
+  // =========================
+  // Arrivals
+  // =========================
+  function enqueueFrame() {
+    if (S.queue.length >= QUEUE_MAX) {
+      S.dropped++;
+      return;
+    }
+    S.queue.push({ id: S.frameId++, size: S.frameSize, arrivedAt: S.simTime });
+  }
+
+  function generateArrivals(dtMs) {
+    if (S.mode === 'manual') return;
+    if (S.mode === 'stream') {
+      // Arrival rate in bits per sim-ms
+      const bitsPerMs = S.inputRate * 1000;
+      S.arrivalBitsAccum += bitsPerMs * dtMs;
+      const frameBits = S.frameSize * 8;
+      while (S.arrivalBitsAccum >= frameBits) {
+        S.arrivalBitsAccum -= frameBits;
+        enqueueFrame();
+      }
+    } else if (S.mode === 'burst') {
+      // Bursts of 6 frames at tight spacing, then a gap — timings in sim-ms
+      S.burstSt.timer += dtMs;
+      if (S.burstSt.phase === 'burst') {
+        // fire one frame every 0.05 sim-ms until 6 fired (tight burst)
+        if (S.burstSt.timer >= 0.05) {
+          S.burstSt.timer = 0;
+          enqueueFrame();
+          S.burstSt.i++;
+          if (S.burstSt.i >= 6) {
+            S.burstSt.phase = 'gap';
+            S.burstSt.i = 0;
+          }
+        }
+      } else {
+        // gap phase: wait 2 sim-ms before next burst
+        if (S.burstSt.timer >= 2) {
+          S.burstSt.timer = 0;
+          S.burstSt.phase = 'burst';
+        }
+      }
+    }
+  }
+
+  // =========================
+  // Per-tick: run arrivals, advance shaper, trim history
+  // (credit sampling happens inside advanceShaper at each state transition)
+  // =========================
+  function tick(dtSimMs) {
+    generateArrivals(dtSimMs);
+    advanceShaper(dtSimMs);
+
+    // Trim history outside the visible window
+    const tMin = S.simTime - WINDOW_MS;
+    while (S.creditHistory.length > 2 && S.creditHistory[1].t < tMin) {
+      S.creditHistory.shift();
+    }
+    while (S.txBands.length > 0 && S.txBands[0].endT !== null && S.txBands[0].endT < tMin) {
+      S.txBands.shift();
+    }
+  }
+
+  // =========================
+  // Render
+  // =========================
+  function render() {
+    // Credit curve
+    const pts = S.creditHistory
+      .map(p => `${xOfTime(p.t).toFixed(1)},${yOfCredit(p.credit).toFixed(1)}`)
+      .join(' ');
+    creditCurve.setAttribute('points', pts);
+
+    if (S.creditHistory.length > 0) {
+      const head = S.creditHistory[S.creditHistory.length - 1];
+      creditHead.setAttribute('cx', xOfTime(head.t));
+      creditHead.setAttribute('cy', yOfCredit(head.credit));
+    }
+
+    const isSending = S.txRemaining > 0;
+    const isWaiting = !isSending && S.queue.length > 0 && S.credit < 0;
+
+    if (isSending)      creditHead.setAttribute('fill', '#f87171');
+    else if (isWaiting) creditHead.setAttribute('fill', '#4ade80');
+    else                creditHead.setAttribute('fill', '#fbbf24');
+
+    // TX bands — amber shading on credit chart
+    txBandsG.innerHTML = '';
+    for (const band of S.txBands) {
+      const x1 = xOfTime(band.startT);
+      const x2 = band.endT !== null ? xOfTime(band.endT) : xOfTime(S.simTime);
+      const w = x2 - x1;
+      if (w < 0.2) continue;
+      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      rect.setAttribute('x', x1);
+      rect.setAttribute('y', CHART.y0);
+      rect.setAttribute('width', w);
+      rect.setAttribute('height', CHART.y1 - CHART.y0);
+      rect.setAttribute('fill', '#fbbf24');
+      rect.setAttribute('opacity', '0.1');
+      txBandsG.appendChild(rect);
+    }
+
+    // TX waveform strip (bottom)
+    txWaveformG.innerHTML = '';
+    const tMin = S.simTime - WINDOW_MS;
+    for (const band of S.txBands) {
+      if (band.endT !== null && band.endT < tMin) continue;
+      const startT = Math.max(band.startT, tMin);
+      const endT = band.endT !== null ? band.endT : S.simTime;
+      const x1 = 50 + ((startT - tMin) / WINDOW_MS) * 640;
+      const x2 = 50 + ((endT   - tMin) / WINDOW_MS) * 640;
+      const w = Math.max(1, x2 - x1);
+      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      rect.setAttribute('x', x1);
+      rect.setAttribute('y', 22);
+      rect.setAttribute('width', w);
+      rect.setAttribute('height', 30);
+      rect.setAttribute('fill', '#fbbf24');
+      rect.setAttribute('opacity', '0.8');
+      txWaveformG.appendChild(rect);
+    }
+
+    // Meters
+    $('mt-credit').textContent = Math.round(S.credit).toLocaleString();
+    $('mt-hi').textContent = '+' + Math.round(S.hiCredit).toLocaleString();
+    $('mt-lo').textContent = Math.round(S.loCredit).toLocaleString();
+    $('mt-is').textContent = '+' + S.idleSlope;
+    $('mt-ss').textContent = Math.round(S.sendSlope);
+    $('mt-qd').textContent = S.queue.length;
+    $('mt-sent').textContent = S.sent;
+    $('mt-wait').textContent = S.queue.length;
+
+    const creditMeter = $('credit-meter');
+    creditMeter.classList.remove('pos', 'neg');
+    if (S.credit > 0.5) creditMeter.classList.add('pos');
+    else if (S.credit < -0.5) creditMeter.classList.add('neg');
+
+    // State pill + text
+    statePill.className = 'state-pill';
+    if (isSending) {
+      statePill.classList.add('sending');
+      statePill.textContent = 'SENDING';
+      stateText.textContent = `sending · credit falling at sendSlope (${Math.round(S.sendSlope)} Mbps)`;
+    } else if (isWaiting) {
+      statePill.classList.add('waiting');
+      statePill.textContent = 'WAITING · REPAY';
+      stateText.textContent = `waiting · credit rising at idleSlope (+${S.idleSlope} Mbps) toward 0`;
+    } else if (S.queue.length > 0) {
+      statePill.classList.add('sending');
+      statePill.textContent = 'READY';
+      stateText.textContent = 'ready to send · credit ≥ 0 and queue non-empty';
+    } else {
+      statePill.classList.add('idle');
+      statePill.textContent = 'IDLE';
+      stateText.textContent = 'idle · queue empty · credit held at 0';
+    }
+  }
+
+  // =========================
+  // Main loop
+  // =========================
+  function loop(now) {
+    const dtWall = now - S.lastWallT;
+    S.lastWallT = now;
+
+    if (!S.paused) {
+      // Wall-clock → sim-time scaling controlled by S.slowdown.
+      // slowdown = wall-ms per sim-ms. 10000 means 10 wall-seconds for 1 sim-ms of activity.
+      // At default settings (1500B @ 1000Mbps), a 12us frame tx takes 12/slowdown * 1e3 ms wall-clock.
+      // e.g. slowdown=10000 → 120ms wall for one tx, 1080ms for one recovery, ~1.2s per full cycle.
+      const dtSim = Math.min(dtWall / S.slowdown, 0.060);
+      tick(dtSim);
+    }
+
+    render();
+    requestAnimationFrame(loop);
+  }
+
+  // =========================
+  // Controls
+  // =========================
+  $('c-is').addEventListener('input', e => {
+    S.idleSlope = +e.target.value;
+    $('v-is').textContent = S.idleSlope;
+    updateBoundLines();
+  });
+  $('c-pr').addEventListener('input', e => {
+    S.portRate = +e.target.value;
+    $('v-pr').textContent = S.portRate;
+    updateBoundLines();
+  });
+  $('c-fs').addEventListener('input', e => {
+    S.frameSize = +e.target.value;
+    $('v-fs').textContent = S.frameSize;
+    updateBoundLines();
+  });
+  $('c-ir').addEventListener('input', e => {
+    S.inputRate = +e.target.value;
+    $('v-ir').textContent = S.inputRate;
+  });
+
+  $('btn-send').addEventListener('click', () => {
+    enqueueFrame();
+  });
+
+  $('btn-reset').addEventListener('click', () => {
+    S.credit = 0;
+    S.queue = [];
+    S.txRemaining = 0;
+    S.simTime = 0;
+    S.creditHistory = [];
+    S.txBands = [];
+    S.sent = 0;
+    S.dropped = 0;
+    S.frameId = 1;
+    S.arrivalBitsAccum = 0;
+    S.burstSt = { phase: 'burst', i: 0, timer: 0 };
+  });
+
+  $('btn-pause').addEventListener('click', e => {
+    S.paused = !S.paused;
+    e.target.textContent = S.paused ? 'Resume' : 'Pause';
+    if (!S.paused) S.lastWallT = performance.now();
+  });
+
+  document.querySelectorAll('.mode-group button').forEach(b => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('.mode-group button').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      S.mode = b.dataset.mode;
+      S.arrivalBitsAccum = 0;
+      S.burstSt = { phase: 'burst', i: 0, timer: 0 };
+    });
+  });
+
+  $('speed-select').addEventListener('change', e => {
+    S.slowdown = +e.target.value;
+  });
+
+  // Init
+  updateBoundLines();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

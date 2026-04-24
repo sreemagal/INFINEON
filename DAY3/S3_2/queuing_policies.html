@@ -1,0 +1,1263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Queuing policies — FIFO, SP, WRR, WFQ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:ital,wght@0,400;0,500;1,400&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f1216;
+    --bg-2: #161a20;
+    --bg-3: #1d2229;
+    --line: #2a3038;
+    --line-2: #3a4049;
+    --ink: #e8e6e1;
+    --ink-2: #a8a59e;
+    --ink-3: #6d6a65;
+
+    --accent: #7dd3fc;
+    --accent-2: #0ea5e9;
+    --accent-deep: #075985;
+
+    --q-high: #f87171;   /* red — urgent */
+    --q-high-deep: #7f1d1d;
+    --q-med: #fbbf24;    /* amber — medium */
+    --q-med-deep: #78350f;
+    --q-low: #94a3b8;    /* slate — best-effort */
+    --q-low-deep: #334155;
+
+    --serve: #4ade80;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'IBM Plex Sans', system-ui, sans-serif;
+    font-size: 14.5px;
+    line-height: 1.65;
+    min-height: 100vh;
+  }
+
+  .page {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 48px 32px 64px;
+  }
+
+  .doc-header {
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 28px;
+    margin-bottom: 44px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 32px;
+    align-items: end;
+  }
+
+  .doc-stamp {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    color: var(--ink-3);
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+
+  h1 {
+    font-family: 'IBM Plex Serif', serif;
+    font-weight: 400;
+    font-size: 44px;
+    line-height: 1.1;
+    letter-spacing: -0.015em;
+  }
+
+  h1 .sub {
+    display: block;
+    font-size: 20px;
+    font-style: italic;
+    color: var(--ink-2);
+    margin-top: 8px;
+    font-weight: 400;
+  }
+
+  .spec-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    color: var(--ink-2);
+    padding: 6px 12px;
+    border: 1px solid var(--line-2);
+    border-radius: 2px;
+    text-transform: uppercase;
+  }
+
+  .spec-badge strong { color: var(--accent); font-weight: 500; }
+
+  h2 {
+    font-family: 'IBM Plex Serif', serif;
+    font-weight: 400;
+    font-size: 26px;
+    letter-spacing: -0.01em;
+    margin: 56px 0 14px;
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+  }
+
+  h2 .num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    color: var(--ink-3);
+    font-style: normal;
+    letter-spacing: 0.1em;
+  }
+
+  h3 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: 10px;
+    margin-top: 24px;
+  }
+
+  p { max-width: 760px; margin-bottom: 16px; color: var(--ink); }
+  p.muted { color: var(--ink-2); }
+
+  code {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.92em;
+    background: var(--bg-3);
+    padding: 1px 6px;
+    border-radius: 2px;
+    color: var(--ink);
+  }
+
+  em.hl { color: var(--accent); font-style: normal; font-weight: 500; }
+  em.h { color: var(--q-high); font-style: normal; font-weight: 500; }
+  em.m { color: var(--q-med); font-style: normal; font-weight: 500; }
+  em.l { color: var(--q-low); font-style: normal; font-weight: 500; }
+
+  /* Parameter table */
+  .params {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    border-top: 1px solid var(--line);
+    max-width: 780px;
+  }
+
+  .params > div {
+    padding: 14px 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .params .key {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--accent);
+    letter-spacing: 0.04em;
+  }
+
+  .params .val { color: var(--ink); }
+  .params .val .u { color: var(--ink-3); font-family: 'IBM Plex Mono', monospace; font-size: 0.88em; }
+
+  /* FIFO mini diagram */
+  .fifo-mini {
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 24px;
+    margin-top: 12px;
+  }
+
+  #fifo-svg {
+    display: block;
+    width: 100%;
+    height: 120px;
+  }
+
+  /* Main simulator */
+  .sim {
+    margin-top: 20px;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+  }
+
+  .sim-stage {
+    display: grid;
+    grid-template-columns: 1fr 280px;
+  }
+
+  .stage-main {
+    padding: 24px;
+    border-right: 1px solid var(--line);
+  }
+
+  #sched-svg { display: block; width: 100%; height: 440px; }
+
+  .stage-side {
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .mode-panel {
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .mode-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: 10px;
+  }
+
+  .mode-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .mode-btn {
+    padding: 12px 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 500;
+    border: 1px solid var(--line-2);
+    background: transparent;
+    color: var(--ink-2);
+    cursor: pointer;
+    transition: all 0.12s;
+    border-radius: 2px;
+  }
+
+  .mode-btn:hover { border-color: var(--ink-2); color: var(--ink); }
+
+  .mode-btn.active {
+    background: var(--accent);
+    color: var(--bg);
+    border-color: var(--accent);
+  }
+
+  .state-block {
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  .state-block:last-child { border-bottom: none; }
+
+  .state-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: 6px;
+  }
+
+  .state-val {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 14px;
+    color: var(--ink);
+    line-height: 1.5;
+  }
+
+  .state-val .k { color: var(--ink-3); }
+
+  .counters {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    padding-top: 10px;
+    border-top: 1px solid var(--line);
+  }
+
+  .counter {
+    text-align: left;
+  }
+
+  .counter .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    display: inline-block; margin-right: 6px; vertical-align: middle;
+  }
+
+  .counter.h .dot { background: var(--q-high); }
+  .counter.m .dot { background: var(--q-med); }
+  .counter.l .dot { background: var(--q-low); }
+
+  .counter-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: 2px;
+  }
+
+  .counter-val {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 15px;
+    font-weight: 500;
+  }
+
+  .counter.h .counter-val { color: var(--q-high); }
+  .counter.m .counter-val { color: var(--q-med); }
+  .counter.l .counter-val { color: var(--q-low); }
+
+  /* Controls */
+  .action-row {
+    padding: 16px 24px;
+    border-top: 1px solid var(--line);
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  button {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 500;
+    padding: 9px 14px;
+    border: 1px solid var(--line-2);
+    background: transparent;
+    color: var(--ink);
+    cursor: pointer;
+    transition: all 0.12s;
+    border-radius: 2px;
+  }
+
+  button:hover { border-color: var(--ink-2); background: var(--bg-3); }
+
+  button.primary {
+    background: var(--accent);
+    color: var(--bg);
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+  button.primary:hover { background: var(--accent-2); border-color: var(--accent-2); }
+
+  .spacer { flex: 1; }
+
+  /* Output tape */
+  .tape {
+    margin-top: 20px;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 18px 22px;
+  }
+
+  .tape-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+
+  .tape-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  .tape-legend {
+    display: flex;
+    gap: 14px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--ink-2);
+  }
+
+  .tape-legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .tape-legend .swatch {
+    width: 10px; height: 10px; border-radius: 2px;
+  }
+
+  #tape-svg {
+    display: block;
+    width: 100%;
+    height: 70px;
+  }
+
+  /* Log */
+  .log {
+    margin-top: 20px;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 14px 18px;
+    max-height: 200px;
+    overflow-y: auto;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    line-height: 1.75;
+  }
+
+  .log-entry {
+    display: grid;
+    grid-template-columns: 60px 100px 1fr;
+    gap: 12px;
+    color: var(--ink-2);
+  }
+
+  .log-entry .t { color: var(--ink-3); }
+  .log-entry.h .status { color: var(--q-high); font-weight: 600; }
+  .log-entry.m .status { color: var(--q-med); font-weight: 600; }
+  .log-entry.l .status { color: var(--q-low); font-weight: 600; }
+  .log-entry .detail { color: var(--ink); }
+
+  /* Callout */
+  .callout {
+    background: var(--bg-2);
+    border-left: 2px solid var(--accent);
+    padding: 18px 22px;
+    margin: 20px 0;
+    border-radius: 0 3px 3px 0;
+  }
+  .callout strong { color: var(--accent); font-weight: 500; }
+
+  /* Compare box */
+  .compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 0;
+    margin-top: 12px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .compare-col {
+    padding: 18px 18px;
+    background: var(--bg-2);
+  }
+  .compare-col + .compare-col { border-left: 1px solid var(--line); }
+
+  .compare-col h4 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--line);
+    color: var(--ink);
+  }
+
+  .compare-col ul { list-style: none; padding: 0; margin: 0; }
+  .compare-col li {
+    padding: 6px 0;
+    font-size: 12px;
+    color: var(--ink-2);
+    border-bottom: 1px dashed var(--line);
+    line-height: 1.5;
+  }
+  .compare-col li:last-child { border-bottom: none; }
+
+  footer {
+    margin-top: 56px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  @media (max-width: 820px) {
+    .page { padding: 28px 18px; }
+    h1 { font-size: 32px; }
+    .doc-header { grid-template-columns: 1fr; }
+    .sim-stage { grid-template-columns: 1fr; }
+    .stage-main { border-right: none; border-bottom: 1px solid var(--line); }
+    .compare { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="doc-header">
+    <div>
+      <div class="doc-stamp">Egress scheduling · transmission selection algorithms</div>
+      <h1>Queuing<span class="sub">FIFO · Strict priority · WRR · WFQ.</span></h1>
+    </div>
+    <div class="spec-badge">Latency, jitter, fairness · <strong>pick two</strong></div>
+  </div>
+
+  <p class="muted">
+    Every output port on a bridge runs a <em class="hl">transmission selection algorithm</em> that decides which queued packet leaves next. The choice determines the port's latency, jitter, and fairness behaviour — and the failure modes it's prone to. Four disciplines are worth knowing well: the degenerate baseline (FIFO), the strict-priority scheduler (SP), and two fair-share variants (WRR, WFQ). They sit on a spectrum from simplest-but-worst-guarantees to most-complex-but-best-fairness.
+  </p>
+
+  <h2><span class="num">01</span>FIFO · the degenerate case</h2>
+
+  <p>
+    A FIFO port has <em>one queue</em>. Packets leave in the order they arrived. There is no prioritisation, no fairness, no shaping. A single congested talker fills the queue and delays every packet behind it — including latency-critical frames that would have been trivially ahead in any priority scheme.
+  </p>
+
+  <div class="fifo-mini">
+    <svg id="fifo-svg" viewBox="0 0 720 120" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ar-f" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </marker>
+      </defs>
+
+      <text x="20" y="24" font-family="IBM Plex Mono" font-size="10" fill="#6d6a65" letter-spacing="1">ARRIVALS</text>
+      <text x="700" y="24" text-anchor="end" font-family="IBM Plex Mono" font-size="10" fill="#6d6a65" letter-spacing="1">TRANSMIT</text>
+
+      <!-- Single queue showing mixed packets in arrival order -->
+      <rect x="80" y="40" width="560" height="50" rx="3" fill="none" stroke="#3a4049" stroke-width="0.8" stroke-dasharray="4 3"/>
+
+      <!-- Packets in arrival order: red, slate, amber, slate, slate, red, amber, slate -->
+      <g>
+        <rect x="96"  y="52" width="48" height="26" rx="2" fill="#f87171" opacity="0.7"/>
+        <rect x="156" y="52" width="64" height="26" rx="2" fill="#94a3b8" opacity="0.7"/>
+        <rect x="232" y="52" width="36" height="26" rx="2" fill="#fbbf24" opacity="0.7"/>
+        <rect x="280" y="52" width="80" height="26" rx="2" fill="#94a3b8" opacity="0.7"/>
+        <rect x="372" y="52" width="64" height="26" rx="2" fill="#94a3b8" opacity="0.7"/>
+        <rect x="448" y="52" width="48" height="26" rx="2" fill="#f87171" opacity="0.7"/>
+        <rect x="508" y="52" width="36" height="26" rx="2" fill="#fbbf24" opacity="0.7"/>
+        <rect x="556" y="52" width="72" height="26" rx="2" fill="#94a3b8" opacity="0.7"/>
+      </g>
+
+      <line x1="44" y1="65" x2="78" y2="65" stroke="#a8a59e" stroke-width="1" marker-end="url(#ar-f)"/>
+      <line x1="642" y1="65" x2="680" y2="65" stroke="#a8a59e" stroke-width="1" marker-end="url(#ar-f)"/>
+
+      <text x="360" y="110" text-anchor="middle" font-family="IBM Plex Sans" font-size="11" fill="#a8a59e" font-style="italic">One queue. Arrival order = departure order. A red urgent packet behind a slate bulk stream waits its turn.</text>
+    </svg>
+  </div>
+
+  <p class="muted">
+    FIFO is acceptable only when exactly one traffic class exists on the port. The moment a port carries mixed latency classes — which is the default in any TSN-aware design — FIFO becomes a liability. Every scheduler below exists because FIFO is not enough.
+  </p>
+
+  <h2><span class="num">02</span>Interactive: SP, WRR, WFQ</h2>
+
+  <p>
+    Three queues, one output link. The same packets are enqueued in all three schedulers — only the <em>selection rule</em> differs. Toggle the mode to see the same packets drain in different orders. Packet widths reflect their byte size, which is what makes WRR vs WFQ diverge (WRR counts packets, WFQ counts bytes).
+  </p>
+
+  <div class="callout">
+    The setup: <em class="h">High</em> queue carries small 400-byte control frames (tight latency class). <em class="m">Medium</em> queue carries medium 800-byte frames. <em class="l">Low</em> queue carries large 1500-byte bulk frames. Weights are <strong>4 : 2 : 1</strong> where applicable.
+  </div>
+
+  <div class="sim">
+    <div class="sim-stage">
+      <div class="stage-main">
+        <svg id="sched-svg" viewBox="0 0 580 440" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="ar-s" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </marker>
+          </defs>
+
+          <!-- Queue labels -->
+          <text x="16" y="50" font-family="IBM Plex Mono" font-size="10" fill="#f87171" letter-spacing="0.5" font-weight="500">HIGH</text>
+          <text x="16" y="62" font-family="IBM Plex Mono" font-size="9" fill="#6d6a65">w=4</text>
+          <text x="16" y="74" font-family="IBM Plex Mono" font-size="9" fill="#6d6a65">400B</text>
+
+          <text x="16" y="170" font-family="IBM Plex Mono" font-size="10" fill="#fbbf24" letter-spacing="0.5" font-weight="500">MED</text>
+          <text x="16" y="182" font-family="IBM Plex Mono" font-size="9" fill="#6d6a65">w=2</text>
+          <text x="16" y="194" font-family="IBM Plex Mono" font-size="9" fill="#6d6a65">800B</text>
+
+          <text x="16" y="290" font-family="IBM Plex Mono" font-size="10" fill="#94a3b8" letter-spacing="0.5" font-weight="500">LOW</text>
+          <text x="16" y="302" font-family="IBM Plex Mono" font-size="9" fill="#6d6a65">w=1</text>
+          <text x="16" y="314" font-family="IBM Plex Mono" font-size="9" fill="#6d6a65">1500B</text>
+
+          <!-- Three queue containers, head on the right (toward scheduler) -->
+          <rect x="56" y="40" width="340" height="54" rx="3" fill="none" stroke="#3a4049" stroke-width="0.8" stroke-dasharray="4 3"/>
+          <rect x="56" y="160" width="340" height="54" rx="3" fill="none" stroke="#3a4049" stroke-width="0.8" stroke-dasharray="4 3"/>
+          <rect x="56" y="280" width="340" height="54" rx="3" fill="none" stroke="#3a4049" stroke-width="0.8" stroke-dasharray="4 3"/>
+
+          <!-- Head markers on the right -->
+          <line x1="396" y1="40" x2="396" y2="94" stroke="#3a4049" stroke-width="0.8"/>
+          <line x1="396" y1="160" x2="396" y2="214" stroke="#3a4049" stroke-width="0.8"/>
+          <line x1="396" y1="280" x2="396" y2="334" stroke="#3a4049" stroke-width="0.8"/>
+          <text x="396" y="32" text-anchor="middle" font-family="IBM Plex Mono" font-size="8" fill="#6d6a65">HEAD →</text>
+
+          <!-- Arrow from each queue to scheduler -->
+          <line x1="396" y1="67" x2="458" y2="140" stroke="#3a4049" stroke-width="0.8" stroke-dasharray="3 3"/>
+          <line x1="396" y1="187" x2="458" y2="180" stroke="#3a4049" stroke-width="0.8" stroke-dasharray="3 3"/>
+          <line x1="396" y1="307" x2="458" y2="220" stroke="#3a4049" stroke-width="0.8" stroke-dasharray="3 3"/>
+
+          <!-- Scheduler box -->
+          <rect x="456" y="140" width="80" height="80" rx="4" fill="#1d2229" stroke="#7dd3fc" stroke-width="1.2"/>
+          <text x="496" y="165" text-anchor="middle" font-family="IBM Plex Mono" font-size="10" fill="#7dd3fc" letter-spacing="0.5" font-weight="600" id="sched-label">SP</text>
+          <text x="496" y="182" text-anchor="middle" font-family="IBM Plex Mono" font-size="8" fill="#a8a59e">select</text>
+          <text x="496" y="198" text-anchor="middle" font-family="IBM Plex Mono" font-size="8" fill="#a8a59e">next</text>
+
+          <!-- Pointer indicating which queue is currently selected -->
+          <g id="select-arrow" opacity="0">
+            <line x1="420" y1="0" x2="454" y2="0" stroke="#4ade80" stroke-width="2" marker-end="url(#ar-s)"/>
+          </g>
+
+          <!-- Output link -->
+          <line x1="536" y1="180" x2="564" y2="180" stroke="#a8a59e" stroke-width="1.2" marker-end="url(#ar-s)"/>
+          <text x="548" y="208" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="#6d6a65" letter-spacing="0.5">OUT</text>
+
+          <!-- Packet groups, will be populated by JS -->
+          <g id="q-high-pkts"></g>
+          <g id="q-med-pkts"></g>
+          <g id="q-low-pkts"></g>
+
+          <!-- Served packet animation area -->
+          <g id="served-pkt"></g>
+
+          <!-- Scheduler state annotation area -->
+          <rect x="40" y="370" width="510" height="48" rx="3" fill="#1d2229" stroke="#3a4049" stroke-width="0.5" stroke-dasharray="3 3"/>
+          <text x="56" y="390" font-family="IBM Plex Mono" font-size="10" fill="#6d6a65" letter-spacing="1">SCHEDULER STATE</text>
+          <text x="56" y="410" font-family="IBM Plex Mono" font-size="11" fill="#e8e6e1" id="sched-state">ready — click Step or Run to serve packets</text>
+        </svg>
+      </div>
+
+      <div class="stage-side">
+        <div class="mode-panel">
+          <div class="mode-label">Scheduler</div>
+          <div class="mode-grid">
+            <button class="mode-btn active" data-mode="sp">SP</button>
+            <button class="mode-btn" data-mode="wrr">WRR</button>
+            <button class="mode-btn" data-mode="wfq">WFQ</button>
+            <button class="mode-btn" data-mode="fifo">FIFO</button>
+          </div>
+        </div>
+
+        <div class="state-block">
+          <div class="state-label">Mode description</div>
+          <div class="state-val" id="mode-desc" style="font-size:12px; color: var(--ink-2);"></div>
+        </div>
+
+        <div class="state-block">
+          <div class="state-label">Queue depth</div>
+          <div class="counters" style="border-top:none; padding-top: 0;">
+            <div class="counter h">
+              <div class="counter-label"><span class="dot"></span>High</div>
+              <div class="counter-val" id="qd-h">0</div>
+            </div>
+            <div class="counter m">
+              <div class="counter-label"><span class="dot"></span>Med</div>
+              <div class="counter-val" id="qd-m">0</div>
+            </div>
+            <div class="counter l">
+              <div class="counter-label"><span class="dot"></span>Low</div>
+              <div class="counter-val" id="qd-l">0</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="state-block">
+          <div class="state-label">Bytes served</div>
+          <div class="counters" style="border-top:none; padding-top: 0;">
+            <div class="counter h">
+              <div class="counter-label"><span class="dot"></span>High</div>
+              <div class="counter-val" id="bs-h">0</div>
+            </div>
+            <div class="counter m">
+              <div class="counter-label"><span class="dot"></span>Med</div>
+              <div class="counter-val" id="bs-m">0</div>
+            </div>
+            <div class="counter l">
+              <div class="counter-label"><span class="dot"></span>Low</div>
+              <div class="counter-val" id="bs-l">0</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="action-row">
+      <button class="primary" id="btn-step">Step ▸</button>
+      <button id="btn-run">Run ⟳</button>
+      <button id="btn-pause" style="display:none">Pause</button>
+      <button id="btn-fill">Refill queues</button>
+      <button id="btn-reset">Reset</button>
+      <div class="spacer"></div>
+      <span style="font-family: 'IBM Plex Mono'; font-size: 10px; color: var(--ink-3); letter-spacing: 0.1em; text-transform: uppercase;">Tick rate</span>
+      <select id="speed" style="padding: 6px 10px;">
+        <option value="700">Slow</option>
+        <option value="350" selected>Normal</option>
+        <option value="150">Fast</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="tape">
+    <div class="tape-header">
+      <div class="tape-title">Output tape · packets in order served</div>
+      <div class="tape-legend">
+        <span><span class="swatch" style="background: var(--q-high)"></span>High</span>
+        <span><span class="swatch" style="background: var(--q-med)"></span>Med</span>
+        <span><span class="swatch" style="background: var(--q-low)"></span>Low</span>
+      </div>
+    </div>
+    <svg id="tape-svg" viewBox="0 0 1040 70" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMinYMid meet">
+      <line x1="0" y1="50" x2="1040" y2="50" stroke="#3a4049" stroke-width="0.5"/>
+      <g id="tape-pkts"></g>
+    </svg>
+  </div>
+
+  <h3>Event log</h3>
+  <div class="log" id="log"></div>
+
+  <h2><span class="num">03</span>How to read the output tape</h2>
+
+  <p>
+    The tape along the bottom shows each served packet laid out left-to-right in the order the scheduler dequeued them, with width proportional to byte size. This is the single most useful view for building intuition. Compare the same queued packets under different schedulers — the pattern on the tape tells you what the scheduler is actually doing.
+  </p>
+
+  <div class="params">
+    <div class="key">SP</div>
+    <div class="val">The tape starts with a run of <em class="h">red</em> packets. Only once all red packets have been served does any <em class="m">amber</em> appear. <em class="l">Slate</em> only shows after red and amber are both exhausted. This is strict priority — lower classes starve behind higher classes.</div>
+    <div class="key">WRR</div>
+    <div class="val">The tape cycles <em class="h">red × 4 → amber × 2 → slate × 1</em>, then repeats. Count packets, not bytes: each round always serves the same number of packets per queue regardless of packet size. Notice how few slate bytes are served compared to red, even though slate packets are ~4× larger.</div>
+    <div class="key">WFQ</div>
+    <div class="val">The tape mixes the three colours in a more intricate pattern — the scheduler interleaves packets so that the <em>total bytes served</em> from each queue track the 4:2:1 weight ratio. Small high-priority packets come in clusters between the larger low-priority ones.</div>
+    <div class="key">FIFO</div>
+    <div class="val">In FIFO mode, the three queues are merged into a single arrival-ordered queue. The tape shows packets in enqueue order regardless of class — no smoothing, no prioritisation.</div>
+  </div>
+
+  <h2><span class="num">04</span>The byte-vs-packet fairness question</h2>
+
+  <p>
+    WRR and WFQ exist for the same job — proportional sharing according to weights — but they measure different things. Watch the <em>Bytes served</em> panel after running each scheduler for several seconds with the defaults:
+  </p>
+
+  <p>
+    Under <em class="hl">WRR</em>, the packet counts ratio will match 4:2:1 but the byte counts will be skewed: low gets disproportionately many bytes because each of its packets carries 1500 bytes, while high gets fewer bytes because its packets are only 400 bytes. If your contract promises bandwidth in bytes per second — which is what every SLA actually says — WRR will under-deliver to queues with small packets and over-deliver to queues with large ones.
+  </p>
+  <p>
+    Under <em class="hl">WFQ</em>, the <em>byte</em> ratio settles at 4:2:1 regardless of packet size. This is what WFQ exists to fix. The cost is per-packet timestamp computation: each enqueued packet gets a <em>virtual finish time</em> of <code>finish = max(virtualClock, prevFinish) + size / weight</code>, and the scheduler always serves the packet with the smallest finish time next. It's a priority queue keyed on a computed quantity rather than a round-robin pointer.
+  </p>
+
+  <div class="callout">
+    In practice, most hardware implements <strong>Deficit Round Robin (DRR)</strong> rather than pure WFQ. DRR approximates byte-fairness using a per-queue deficit counter instead of virtual finish times — much cheaper to implement, and the fairness error is bounded by one MTU per queue per round. For automotive and industrial TSN switches, DRR is the default "fair" scheduler you'll actually find.
+  </div>
+
+  <h2><span class="num">05</span>Schedulers at a glance</h2>
+
+  <div class="compare">
+    <div class="compare-col">
+      <h4 style="color: var(--ink-2)">FIFO</h4>
+      <ul>
+        <li>One queue</li>
+        <li>Arrival order = departure order</li>
+        <li>No prioritisation</li>
+        <li>HOL blocking</li>
+        <li>Single-class links only</li>
+      </ul>
+    </div>
+    <div class="compare-col">
+      <h4 style="color: var(--q-high)">SP</h4>
+      <ul>
+        <li>N queues, one priority each</li>
+        <li>Always drains highest non-empty</li>
+        <li>Minimum latency for top class</li>
+        <li><em>Starves</em> lower classes</li>
+        <li>Top 1–2 queues only (PTP, net-ctrl)</li>
+      </ul>
+    </div>
+    <div class="compare-col">
+      <h4 style="color: var(--q-med)">WRR</h4>
+      <ul>
+        <li>N queues, per-queue weight</li>
+        <li>Round-robin by packet count</li>
+        <li>Starvation-free</li>
+        <li>Byte-unfair with mixed sizes</li>
+        <li>Cheap to implement</li>
+      </ul>
+    </div>
+    <div class="compare-col">
+      <h4 style="color: var(--accent)">WFQ</h4>
+      <ul>
+        <li>N queues, per-queue weight</li>
+        <li>Selects by virtual finish time</li>
+        <li>Exact byte-fairness</li>
+        <li>Priority-queue in hardware</li>
+        <li>DRR used as cheap proxy</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2><span class="num">06</span>Composing schedulers</h2>
+  <p class="muted">
+    Real TSN egress ports never run one algorithm across all queues. A typical 8-queue port runs a <em>hierarchy</em>: SP for the top two queues (PTP event messages, gPTP/network control), CBS-shaped transmission for the two below (AVB class A and B, or ADAS streams), WRR or DRR across the remaining best-effort queues. The selector at each tick asks: "is there a non-empty, credit-eligible SP queue? If yes, serve from it. Otherwise, is there a credit-eligible CBS queue? If yes, serve from it. Otherwise, run WRR across the best-effort queues." This composition is how one port simultaneously delivers bounded latency to control traffic, reserved bandwidth to ADAS, and fair sharing to bulk traffic — all with a few dozen registers of hardware state.
+  </p>
+
+  <footer>
+    <span>Queuing policies · FIFO · SP · WRR · WFQ</span>
+    <span>v 1.0</span>
+  </footer>
+
+</div>
+
+<script>
+(() => {
+  // ======================================================
+  // State
+  // ======================================================
+  const QH = { key: 'h', label: 'High', weight: 4, size: 400,  color: '#f87171' };
+  const QM = { key: 'm', label: 'Med',  weight: 2, size: 800,  color: '#fbbf24' };
+  const QL = { key: 'l', label: 'Low',  weight: 1, size: 1500, color: '#94a3b8' };
+  const QUEUES = [QH, QM, QL];
+
+  const S = {
+    mode: 'sp',
+    queues: { h: [], m: [], l: [] },   // arrays of { id, qkey, size, color, arrivalOrder, virtualFinish }
+    served: [],                         // { qkey, size, color }
+    bytesServed: { h: 0, m: 0, l: 0 },
+    wrrRoundCounts: { h: 0, m: 0, l: 0 },   // served this round
+    wrrCurrent: 'h',                    // current active queue in WRR round
+    fifoSeq: [],                        // merged FIFO stream (arrival order)
+    wfqVirtualClock: 0,                 // WFQ virtual time
+    wfqPrevFinish: { h: 0, m: 0, l: 0 },
+    nextPktId: 1,
+    arrivalCounter: 0,
+    running: false,
+    runTimer: null,
+  };
+
+  const $ = id => document.getElementById(id);
+
+  const QH_G = $('q-high-pkts'), QM_G = $('q-med-pkts'), QL_G = $('q-low-pkts');
+  const servedG = $('served-pkt');
+  const logEl = $('log');
+  const tapeG = $('tape-pkts');
+  const schedLabel = $('sched-label');
+  const schedState = $('sched-state');
+  const modeDesc = $('mode-desc');
+
+  const MODE_LABELS = { sp: 'SP', wrr: 'WRR', wfq: 'WFQ', fifo: 'FIFO' };
+  const MODE_DESCRIPTIONS = {
+    sp:   'Drain highest-priority non-empty queue. Lower queues starve until High empties.',
+    wrr:  'Cycle queues: 4 packets from High, then 2 from Med, then 1 from Low. Counts packets, not bytes.',
+    wfq:  'Serve the packet with the smallest virtual finish time. Byte-fair across weights.',
+    fifo: 'Merge all queues into a single arrival-ordered stream. No prioritisation.',
+  };
+
+  // ======================================================
+  // Fill queues with realistic starter content
+  // ======================================================
+  function fillQueues() {
+    // clear
+    for (const k of ['h','m','l']) S.queues[k] = [];
+    S.wfqVirtualClock = 0;
+    S.wfqPrevFinish = { h: 0, m: 0, l: 0 };
+    S.fifoSeq = [];
+    S.arrivalCounter = 0;
+
+    // Enqueue a mix — interleaved arrivals so FIFO has an interesting pattern
+    const sequence = [
+      'h', 'l', 'h', 'm', 'l', 'h', 'l', 'h',
+      'm', 'h', 'l', 'h', 'l', 'm', 'h', 'h',
+      'l', 'h', 'm', 'l'
+    ];
+    for (const qk of sequence) {
+      enqueue(qk);
+    }
+    renderQueues();
+    updateState();
+  }
+
+  function enqueue(qkey) {
+    const q = qkey === 'h' ? QH : qkey === 'm' ? QM : QL;
+    const arrivalOrder = ++S.arrivalCounter;
+
+    // WFQ virtual finish time
+    S.wfqPrevFinish[qkey] = Math.max(S.wfqVirtualClock, S.wfqPrevFinish[qkey]) + q.size / q.weight;
+    const vfin = S.wfqPrevFinish[qkey];
+
+    const pkt = {
+      id: S.nextPktId++,
+      qkey,
+      size: q.size,
+      color: q.color,
+      arrivalOrder,
+      virtualFinish: vfin,
+    };
+    S.queues[qkey].push(pkt);
+    S.fifoSeq.push(pkt);
+  }
+
+  // ======================================================
+  // Render queues as visible packet rects
+  // ======================================================
+  // Queue container: x=60..394 (width 334), head at right (x=394)
+  // Packet widths: high=28, med=44, low=60 (visual scale)
+  const QV = {
+    h: { y: 54, groupEl: QH_G, pktW: 28 },
+    m: { y: 174, groupEl: QM_G, pktW: 44 },
+    l: { y: 294, groupEl: QL_G, pktW: 60 },
+  };
+
+  function renderQueues() {
+    for (const k of ['h','m','l']) {
+      QV[k].groupEl.innerHTML = '';
+      const pkts = S.queues[k];
+      const { y, groupEl, pktW } = QV[k];
+      // Place packets starting from head (x=392) leftward
+      pkts.forEach((pkt, i) => {
+        // i=0 is head, others stack behind
+        const x = 392 - pktW/2 - i * (pktW + 3);
+        if (x < 60) return; // overflow: hide
+        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        g.setAttribute('transform', `translate(${x}, ${y})`);
+        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.setAttribute('x', -pktW/2); rect.setAttribute('y', -13);
+        rect.setAttribute('width', pktW); rect.setAttribute('height', 26);
+        rect.setAttribute('rx', 2);
+        rect.setAttribute('fill', pkt.color);
+        rect.setAttribute('opacity', i === 0 ? 0.9 : 0.55);
+        const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        t.setAttribute('x', 0); t.setAttribute('y', 0);
+        t.setAttribute('text-anchor', 'middle');
+        t.setAttribute('dominant-baseline', 'central');
+        t.setAttribute('font-family', 'IBM Plex Mono');
+        t.setAttribute('font-size', '9');
+        t.setAttribute('fill', '#0f1216');
+        t.setAttribute('font-weight', 600);
+        t.textContent = '#' + pkt.id;
+        g.appendChild(rect);
+        g.appendChild(t);
+        groupEl.appendChild(g);
+      });
+
+      // Overflow indicator
+      const visible = Math.min(pkts.length, Math.floor((392 - 60) / (pktW + 3)));
+      if (pkts.length > visible) {
+        const more = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        more.setAttribute('x', 64); more.setAttribute('y', y);
+        more.setAttribute('dominant-baseline', 'central');
+        more.setAttribute('font-family', 'IBM Plex Mono');
+        more.setAttribute('font-size', '9');
+        more.setAttribute('fill', '#6d6a65');
+        more.textContent = `+${pkts.length - visible}`;
+        groupEl.appendChild(more);
+      }
+    }
+  }
+
+  // ======================================================
+  // Select next packet based on mode
+  // ======================================================
+  function pickNext() {
+    if (S.mode === 'fifo') return pickFifo();
+    if (S.mode === 'sp')   return pickSP();
+    if (S.mode === 'wrr')  return pickWRR();
+    if (S.mode === 'wfq')  return pickWFQ();
+  }
+
+  function pickFifo() {
+    // Next packet in fifoSeq that still exists in its queue
+    while (S.fifoSeq.length > 0) {
+      const pkt = S.fifoSeq[0];
+      if (S.queues[pkt.qkey][0] === pkt) {
+        return { pkt, reason: `FIFO: #${pkt.id} was enqueued first among remaining` };
+      } else {
+        S.fifoSeq.shift();
+      }
+    }
+    return null;
+  }
+
+  function pickSP() {
+    for (const k of ['h', 'm', 'l']) {
+      if (S.queues[k].length > 0) {
+        const pkt = S.queues[k][0];
+        return { pkt, reason: `SP: serving ${k.toUpperCase()} (highest non-empty)` };
+      }
+    }
+    return null;
+  }
+
+  function pickWRR() {
+    // Order: h (w=4), m (w=2), l (w=1). Advance through weights.
+    const order = ['h', 'm', 'l'];
+    const weights = { h: 4, m: 2, l: 1 };
+    // Try current; if its quota not spent and queue non-empty → serve
+    // Otherwise advance to next queue (reset its quota count) until found or full cycle.
+    for (let attempts = 0; attempts < order.length; attempts++) {
+      const q = S.wrrCurrent;
+      if (S.wrrRoundCounts[q] < weights[q] && S.queues[q].length > 0) {
+        S.wrrRoundCounts[q]++;
+        const pkt = S.queues[q][0];
+        return {
+          pkt,
+          reason: `WRR: ${q.toUpperCase()} turn ${S.wrrRoundCounts[q]}/${weights[q]}`,
+        };
+      }
+      // Move on
+      const idx = order.indexOf(S.wrrCurrent);
+      const nextIdx = (idx + 1) % order.length;
+      S.wrrCurrent = order[nextIdx];
+      // New queue → reset its round counter to start its quota
+      if (nextIdx === 0) {
+        // finished a full cycle — reset all
+        S.wrrRoundCounts = { h: 0, m: 0, l: 0 };
+      }
+    }
+    return null; // all queues empty
+  }
+
+  function pickWFQ() {
+    // Serve packet with smallest virtualFinish among heads
+    let best = null;
+    for (const k of ['h', 'm', 'l']) {
+      if (S.queues[k].length > 0) {
+        const pkt = S.queues[k][0];
+        if (!best || pkt.virtualFinish < best.virtualFinish) best = pkt;
+      }
+    }
+    if (best) {
+      S.wfqVirtualClock = best.virtualFinish;
+      return { pkt: best, reason: `WFQ: #${best.id} vfin=${best.virtualFinish.toFixed(0)}` };
+    }
+    return null;
+  }
+
+  // ======================================================
+  // Step: pick one, animate its departure, update counters
+  // ======================================================
+  function step() {
+    const result = pickNext();
+    if (!result) {
+      setSchedState('all queues empty — click Refill to restart');
+      return false;
+    }
+    const { pkt, reason } = result;
+
+    // Remove from its queue
+    const q = S.queues[pkt.qkey];
+    const idx = q.indexOf(pkt);
+    q.splice(idx, 1);
+
+    S.served.push(pkt);
+    S.bytesServed[pkt.qkey] += pkt.size;
+
+    setSchedState(reason);
+
+    // Animate: a copy of the packet flies from queue head to scheduler, then out
+    animateServe(pkt);
+    addLog(pkt, reason);
+    addTapeMark(pkt);
+    renderQueues();
+    updateState();
+    return true;
+  }
+
+  function animateServe(pkt) {
+    const qv = QV[pkt.qkey];
+    const startX = 392 - qv.pktW/2;
+    const startY = qv.y;
+
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('transform', `translate(${startX}, ${startY})`);
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('x', -qv.pktW/2); rect.setAttribute('y', -13);
+    rect.setAttribute('width', qv.pktW); rect.setAttribute('height', 26);
+    rect.setAttribute('rx', 2);
+    rect.setAttribute('fill', pkt.color);
+    rect.setAttribute('opacity', 1);
+    g.appendChild(rect);
+    servedG.appendChild(g);
+
+    // Phase 1: to scheduler (x=496, y=180)
+    const start = performance.now();
+    const D1 = 260;
+    (function a() {
+      const p = (performance.now() - start) / D1;
+      if (p >= 1) {
+        // Phase 2: out of scheduler rightward
+        const start2 = performance.now();
+        const D2 = 220;
+        (function b() {
+          const p2 = (performance.now() - start2) / D2;
+          if (p2 >= 1) { g.remove(); return; }
+          const x = 496 + p2 * 70;
+          g.setAttribute('transform', `translate(${x}, 180)`);
+          g.setAttribute('opacity', 1 - p2);
+          requestAnimationFrame(b);
+        })();
+        return;
+      }
+      const x = startX + p * (496 - startX);
+      const y = startY + p * (180 - startY);
+      g.setAttribute('transform', `translate(${x}, ${y})`);
+      requestAnimationFrame(a);
+    })();
+  }
+
+  // ======================================================
+  // Output tape
+  // ======================================================
+  const TAPE = { x0: 8, x1: 1032, y: 40 };
+  function addTapeMark(pkt) {
+    // Each packet takes horizontal space proportional to its size (scaled)
+    // High=400 → 10px, Med=800 → 20px, Low=1500 → 38px
+    const scale = 0.025;
+    const w = Math.max(8, pkt.size * scale);
+
+    // Where to place it: right after the last mark
+    const lastX = +tapeG.getAttribute('data-lastx') || TAPE.x0;
+    const x = lastX;
+    const newLastX = lastX + w + 2;
+    tapeG.setAttribute('data-lastx', newLastX);
+
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('x', x);
+    rect.setAttribute('y', TAPE.y - 12);
+    rect.setAttribute('width', w);
+    rect.setAttribute('height', 24);
+    rect.setAttribute('fill', pkt.color);
+    rect.setAttribute('opacity', 0.85);
+    rect.setAttribute('rx', 1);
+    tapeG.appendChild(rect);
+
+    // Auto-scroll: if newLastX exceeds viewBox, shift contents left
+    const viewW = 1040;
+    if (newLastX > viewW - 20) {
+      const shift = newLastX - (viewW - 20);
+      // Translate all marks left
+      Array.from(tapeG.children).forEach(el => {
+        const cx = parseFloat(el.getAttribute('x'));
+        el.setAttribute('x', cx - shift);
+      });
+      tapeG.setAttribute('data-lastx', newLastX - shift);
+    }
+  }
+
+  // ======================================================
+  // Log
+  // ======================================================
+  function addLog(pkt, reason) {
+    const e = document.createElement('div');
+    e.className = 'log-entry ' + pkt.qkey;
+    const label = { h: 'HIGH', m: 'MED', l: 'LOW' }[pkt.qkey];
+    const seq = S.served.length;
+    e.innerHTML = `<span class="t">#${seq}</span><span class="status">${label}</span><span class="detail">pkt #${pkt.id} · ${pkt.size}B · ${reason}</span>`;
+    logEl.prepend(e);
+    while (logEl.children.length > 60) logEl.lastChild.remove();
+  }
+
+  function setSchedState(text) {
+    schedState.textContent = text;
+  }
+
+  function updateState() {
+    $('qd-h').textContent = S.queues.h.length;
+    $('qd-m').textContent = S.queues.m.length;
+    $('qd-l').textContent = S.queues.l.length;
+    $('bs-h').textContent = S.bytesServed.h.toLocaleString();
+    $('bs-m').textContent = S.bytesServed.m.toLocaleString();
+    $('bs-l').textContent = S.bytesServed.l.toLocaleString();
+    schedLabel.textContent = MODE_LABELS[S.mode];
+    modeDesc.textContent = MODE_DESCRIPTIONS[S.mode];
+  }
+
+  // ======================================================
+  // Controls
+  // ======================================================
+  $('btn-step').addEventListener('click', () => {
+    if (S.running) stopRun();
+    step();
+  });
+
+  $('btn-run').addEventListener('click', () => {
+    if (S.running) return;
+    startRun();
+  });
+
+  $('btn-pause').addEventListener('click', stopRun);
+
+  function startRun() {
+    S.running = true;
+    $('btn-run').style.display = 'none';
+    $('btn-pause').style.display = 'inline-block';
+    const speed = parseInt($('speed').value);
+    S.runTimer = setInterval(() => {
+      const didStep = step();
+      if (!didStep) stopRun();
+    }, speed);
+  }
+
+  function stopRun() {
+    S.running = false;
+    $('btn-run').style.display = 'inline-block';
+    $('btn-pause').style.display = 'none';
+    if (S.runTimer) { clearInterval(S.runTimer); S.runTimer = null; }
+  }
+
+  $('btn-fill').addEventListener('click', () => {
+    if (S.running) stopRun();
+    // Top up each queue by adding more packets (without clearing served state)
+    const sequence = ['h', 'l', 'h', 'm', 'h', 'l', 'h', 'm', 'h', 'l'];
+    for (const qk of sequence) enqueue(qk);
+    renderQueues();
+    updateState();
+  });
+
+  $('btn-reset').addEventListener('click', () => {
+    if (S.running) stopRun();
+    S.served = [];
+    S.bytesServed = { h: 0, m: 0, l: 0 };
+    S.wrrRoundCounts = { h: 0, m: 0, l: 0 };
+    S.wrrCurrent = 'h';
+    S.nextPktId = 1;
+    logEl.innerHTML = '';
+    tapeG.innerHTML = '';
+    tapeG.removeAttribute('data-lastx');
+    servedG.innerHTML = '';
+    fillQueues();
+    setSchedState('reset — queues refilled');
+  });
+
+  document.querySelectorAll('.mode-btn').forEach(b => {
+    b.addEventListener('click', () => {
+      if (S.running) stopRun();
+      document.querySelectorAll('.mode-btn').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      S.mode = b.dataset.mode;
+      // Reset scheduler-specific state on mode change
+      S.wrrRoundCounts = { h: 0, m: 0, l: 0 };
+      S.wrrCurrent = 'h';
+      updateState();
+      setSchedState(`mode → ${MODE_LABELS[S.mode]}`);
+    });
+  });
+
+  $('speed').addEventListener('change', () => {
+    if (S.running) {
+      stopRun();
+      startRun();
+    }
+  });
+
+  // Init
+  fillQueues();
+  updateState();
+  setSchedState('ready — click Step to serve one packet, or Run to drain');
+})();
+</script>
+</body>
+</html>

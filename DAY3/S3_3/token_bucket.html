@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Token Bucket — Interactive Explainer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1a1a;
+    --paper: #f5f1e8;
+    --paper-2: #ebe5d4;
+    --rule: #2a2a2a;
+    --accent: #c2410c;
+    --accent-soft: #fed7aa;
+    --green: #15803d;
+    --green-soft: #bbf7d0;
+    --red: #b91c1c;
+    --red-soft: #fecaca;
+    --muted: #6b6863;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    line-height: 1.65;
+    min-height: 100vh;
+  }
+
+  .page {
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: 56px 40px 80px;
+  }
+
+  .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .eyebrow::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--ink);
+    opacity: 0.15;
+  }
+
+  h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 52px;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    margin-bottom: 20px;
+  }
+
+  h1 em {
+    font-style: italic;
+    font-weight: 400;
+    color: var(--accent);
+  }
+
+  .lede {
+    font-family: 'Fraunces', serif;
+    font-size: 20px;
+    line-height: 1.5;
+    max-width: 720px;
+    color: #2a2a2a;
+    margin-bottom: 56px;
+  }
+
+  h2 {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 28px;
+    letter-spacing: -0.01em;
+    margin-bottom: 16px;
+    margin-top: 56px;
+  }
+
+  h2:first-of-type { margin-top: 0; }
+
+  h3 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  p { margin-bottom: 16px; max-width: 680px; }
+
+  code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.92em;
+    background: var(--paper-2);
+    padding: 1px 6px;
+    border-radius: 3px;
+  }
+
+  .rule-row {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    gap: 24px;
+    padding: 16px 0;
+    border-top: 1px solid rgba(26, 26, 26, 0.12);
+  }
+
+  .rule-row:last-child { border-bottom: 1px solid rgba(26, 26, 26, 0.12); }
+
+  .rule-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    padding-top: 2px;
+  }
+
+  .rule-text { max-width: 640px; }
+
+  /* Simulator */
+  .sim {
+    margin-top: 24px;
+    background: var(--paper-2);
+    border: 1px solid rgba(26, 26, 26, 0.15);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .sim-stage {
+    display: grid;
+    grid-template-columns: 1fr 280px;
+    gap: 0;
+    min-height: 420px;
+  }
+
+  .stage-main {
+    position: relative;
+    padding: 32px 28px;
+    border-right: 1px solid rgba(26, 26, 26, 0.12);
+    overflow: hidden;
+  }
+
+  .stage-side {
+    padding: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  /* Bucket SVG area */
+  #bucket-svg {
+    display: block;
+    width: 100%;
+    height: 360px;
+  }
+
+  /* Readouts */
+  .readout-block { }
+
+  .readout-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  .readout-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 28px;
+    font-weight: 500;
+    color: var(--ink);
+    line-height: 1;
+  }
+
+  .readout-value .unit {
+    font-size: 13px;
+    color: var(--muted);
+    font-weight: 400;
+    margin-left: 4px;
+  }
+
+  .counters {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(26, 26, 26, 0.12);
+  }
+
+  .counter-pass .readout-value { color: var(--green); }
+  .counter-drop .readout-value { color: var(--red); }
+
+  /* Controls */
+  .controls {
+    padding: 24px 28px;
+    background: var(--paper);
+    border-top: 1px solid rgba(26, 26, 26, 0.15);
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr auto;
+    gap: 24px;
+    align-items: end;
+  }
+
+  .ctrl label {
+    display: block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  .ctrl-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ink);
+    margin-left: 6px;
+  }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 2px;
+    background: var(--ink);
+    opacity: 0.3;
+    outline: none;
+    border-radius: 0;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    background: var(--accent);
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid var(--paper);
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+
+  input[type="range"]::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    background: var(--accent);
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid var(--paper);
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+
+  .btn-row {
+    display: flex;
+    gap: 8px;
+  }
+
+  button {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 500;
+    padding: 10px 16px;
+    border: 1px solid var(--ink);
+    background: var(--paper);
+    color: var(--ink);
+    cursor: pointer;
+    transition: all 0.15s;
+    border-radius: 2px;
+  }
+
+  button:hover {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  button.primary {
+    background: var(--accent);
+    color: var(--paper);
+    border-color: var(--accent);
+  }
+
+  button.primary:hover {
+    background: #9a3412;
+    border-color: #9a3412;
+  }
+
+  button.active {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  .mode-row {
+    display: flex;
+    gap: 6px;
+    margin-top: 10px;
+  }
+
+  .mode-btn {
+    flex: 1;
+    padding: 8px 10px;
+    font-size: 10px;
+  }
+
+  /* Event log */
+  .log {
+    margin-top: 28px;
+    background: var(--paper-2);
+    border: 1px solid rgba(26, 26, 26, 0.12);
+    border-radius: 4px;
+    padding: 16px 20px;
+    max-height: 160px;
+    overflow-y: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    line-height: 1.7;
+  }
+
+  .log-entry {
+    display: grid;
+    grid-template-columns: 60px 90px 1fr;
+    gap: 12px;
+    color: var(--muted);
+  }
+
+  .log-entry .t { color: var(--muted); }
+  .log-entry.pass .status { color: var(--green); font-weight: 600; }
+  .log-entry.drop .status { color: var(--red); font-weight: 600; }
+  .log-entry .detail { color: var(--ink); }
+
+  footer {
+    margin-top: 64px;
+    padding-top: 24px;
+    border-top: 1px solid rgba(26, 26, 26, 0.15);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+  }
+
+  @media (max-width: 820px) {
+    .page { padding: 32px 20px; }
+    h1 { font-size: 36px; }
+    .sim-stage { grid-template-columns: 1fr; }
+    .stage-main { border-right: none; border-bottom: 1px solid rgba(26,26,26,0.12); }
+    .controls { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="eyebrow">Chapter 01 · Traffic shaping fundamentals</div>
+  <h1>The token <em>bucket</em>.</h1>
+  <p class="lede">
+    A policer that answers one question: <em>may this packet pass now?</em> Tokens drip into a
+    bucket at a steady rate. Packets consume tokens on arrival. If the bucket runs dry,
+    packets wait or are marked non-conforming. Simple to state, subtle in its behaviour.
+  </p>
+
+  <h2>How it works</h2>
+  <p>
+    Three parameters and one invariant govern everything. Keep these in your head and the rest
+    of the algorithm falls out naturally.
+  </p>
+
+  <div class="rule-row">
+    <div class="rule-label">r · rate</div>
+    <div class="rule-text">Tokens arrive at a fixed rate of <code>r</code> tokens per second. This is the <em>average</em> rate the flow is allowed to sustain over the long run.</div>
+  </div>
+  <div class="rule-row">
+    <div class="rule-label">b · depth</div>
+    <div class="rule-text">The bucket holds at most <code>b</code> tokens. Any tokens that would overflow a full bucket are discarded. This is the <em>burst</em> — the maximum number of back-to-back tokens available after an idle period.</div>
+  </div>
+  <div class="rule-row">
+    <div class="rule-label">s · cost</div>
+    <div class="rule-text">A packet of size <code>s</code> bytes needs <code>s</code> tokens to pass. If tokens are in units of bytes, the cost is the packet's length. If tokens are packets, the cost is 1.</div>
+  </div>
+  <div class="rule-row">
+    <div class="rule-label">test</div>
+    <div class="rule-text">On arrival: if <code>tokens ≥ s</code>, forward the packet and subtract <code>s</code> from the count. Otherwise the packet is <em>non-conforming</em> — dropped, delayed, or remarked depending on policy.</div>
+  </div>
+
+  <h2>Try it</h2>
+  <p>
+    Watch the bucket fill at rate <code>r</code>. Drop packets by clicking <em>send</em> or switch to steady or bursty mode. Green flashes mean the packet passed; red means the bucket was too empty to cover it. Notice what happens when you let the bucket fill and then release a burst — the bucket empties quickly, and the next packets face the full waiting cost.
+  </p>
+
+  <div class="sim">
+    <div class="sim-stage">
+      <div class="stage-main">
+        <svg id="bucket-svg" viewBox="0 0 560 360" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="drip-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M2 1L8 5L2 9" fill="none" stroke="#c2410c" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </marker>
+          </defs>
+
+          <!-- Token source label -->
+          <text x="120" y="28" font-family="JetBrains Mono" font-size="11" fill="#6b6863" letter-spacing="1">TOKEN SOURCE · r tok/s</text>
+          <line x1="120" y1="40" x2="280" y2="40" stroke="#1a1a1a" stroke-width="0.5" stroke-dasharray="2 3"/>
+
+          <!-- Drip line -->
+          <line id="drip-line" x1="200" y1="44" x2="200" y2="90" stroke="#c2410c" stroke-width="1.5" stroke-dasharray="3 4"/>
+
+          <!-- Animated drip tokens -->
+          <g id="drips"></g>
+
+          <!-- Bucket -->
+          <g id="bucket">
+            <!-- Bucket walls: open top, closed sides + bottom -->
+            <path id="bucket-walls" d="M 140 100 L 140 280 L 260 280 L 260 100"
+                  fill="none" stroke="#1a1a1a" stroke-width="2" stroke-linecap="square"/>
+            <!-- Fill (updated via JS) -->
+            <rect id="bucket-fill" x="140" y="280" width="120" height="0" fill="#c2410c" opacity="0.85"/>
+            <!-- Fill ceiling (wavy indicator of current level) -->
+            <line id="fill-line" x1="140" y1="280" x2="260" y2="280" stroke="#9a3412" stroke-width="1.5"/>
+
+            <!-- Capacity tick marks -->
+            <g id="ticks" stroke="#1a1a1a" stroke-width="0.5" opacity="0.4"></g>
+
+            <!-- Labels -->
+            <text x="130" y="105" text-anchor="end" font-family="JetBrains Mono" font-size="10" fill="#6b6863" letter-spacing="0.5">b</text>
+            <text x="130" y="285" text-anchor="end" font-family="JetBrains Mono" font-size="10" fill="#6b6863" letter-spacing="0.5">0</text>
+          </g>
+
+          <!-- Live token count -->
+          <text id="token-count-svg" x="200" y="200" text-anchor="middle" font-family="JetBrains Mono" font-size="22" font-weight="500" fill="#f5f1e8" opacity="0">0</text>
+
+          <!-- Packet track (arrives from right) -->
+          <text x="440" y="28" font-family="JetBrains Mono" font-size="11" fill="#6b6863" letter-spacing="1">ARRIVALS</text>
+          <line x1="320" y1="40" x2="540" y2="40" stroke="#1a1a1a" stroke-width="0.5" stroke-dasharray="2 3"/>
+
+          <!-- Packet queue visualization -->
+          <g id="packets"></g>
+
+          <!-- Gate / test point -->
+          <g id="gate">
+            <line x1="290" y1="180" x2="320" y2="180" stroke="#1a1a1a" stroke-width="2"/>
+            <text x="305" y="168" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#6b6863" letter-spacing="0.5">TEST</text>
+          </g>
+
+          <!-- Outflow arrow -->
+          <line x1="260" y1="200" x2="330" y2="200" stroke="#1a1a1a" stroke-width="1" marker-end="url(#drip-arrow)"/>
+          <text x="295" y="218" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#6b6863" letter-spacing="0.5">PASS</text>
+
+          <!-- Baseline for arrival track -->
+          <line x1="320" y1="200" x2="560" y2="200" stroke="#1a1a1a" stroke-width="0.5" opacity="0.3"/>
+
+          <!-- Ground / conveyor -->
+          <line x1="80" y1="310" x2="480" y2="310" stroke="#1a1a1a" stroke-width="0.5" opacity="0.5"/>
+          <text x="200" y="330" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="#6b6863" letter-spacing="1">BUCKET</text>
+          <text x="440" y="330" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="#6b6863" letter-spacing="1">PACKET STREAM</text>
+        </svg>
+      </div>
+
+      <div class="stage-side">
+        <div class="readout-block">
+          <div class="readout-label">Tokens in bucket</div>
+          <div class="readout-value"><span id="rd-tokens">0</span><span class="unit">/ <span id="rd-cap">10</span></span></div>
+        </div>
+
+        <div class="readout-block">
+          <div class="readout-label">Conformance (last 20)</div>
+          <div class="readout-value"><span id="rd-conform">—</span><span class="unit">%</span></div>
+        </div>
+
+        <div class="counters">
+          <div class="counter-pass">
+            <div class="readout-label">Passed</div>
+            <div class="readout-value" id="rd-pass">0</div>
+          </div>
+          <div class="counter-drop">
+            <div class="readout-label">Dropped</div>
+            <div class="readout-value" id="rd-drop">0</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="ctrl">
+        <label>Token rate <span class="ctrl-value" id="rate-val">4</span> tok/s</label>
+        <input type="range" id="rate" min="1" max="12" step="0.5" value="4">
+      </div>
+
+      <div class="ctrl">
+        <label>Bucket depth <span class="ctrl-value" id="depth-val">10</span> tok</label>
+        <input type="range" id="depth" min="2" max="30" step="1" value="10">
+      </div>
+
+      <div class="ctrl">
+        <label>Packet cost <span class="ctrl-value" id="cost-val">3</span> tok</label>
+        <input type="range" id="cost" min="1" max="8" step="1" value="3">
+      </div>
+
+      <div class="ctrl">
+        <label>Arrivals</label>
+        <div class="mode-row">
+          <button class="mode-btn" data-mode="manual">Manual</button>
+          <button class="mode-btn active" data-mode="steady">Steady</button>
+          <button class="mode-btn" data-mode="bursty">Bursty</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="controls" style="grid-template-columns: auto auto auto 1fr; gap: 12px;">
+      <button class="primary" id="send-btn">Send packet →</button>
+      <button id="reset-btn">Reset</button>
+      <button id="pause-btn">Pause</button>
+      <div></div>
+    </div>
+  </div>
+
+  <h3 style="margin-top: 28px;">Event log</h3>
+  <div class="log" id="log"></div>
+
+  <h2>A worked example</h2>
+  <p>
+    Consider a flow rate-limited to <code>r = 1 Mbps</code> with a <code>b = 8 KB</code> bucket,
+    token unit = 1 byte. Packets are 1000 bytes.
+  </p>
+  <div class="rule-row">
+    <div class="rule-label">steady</div>
+    <div class="rule-text">Packets arrive at exactly 1 Mbps (125 packet/s). Tokens arrive at 125,000/s. Each packet costs 1000 tokens. The bucket hovers near full — every packet passes.</div>
+  </div>
+  <div class="rule-row">
+    <div class="rule-label">burst</div>
+    <div class="rule-text">After 64 ms of idle, the bucket is full (8000 tokens). A sudden burst arrives: 8 packets back-to-back consume 8000 tokens in a few hundred microseconds. All 8 pass. The 9th packet faces an empty bucket and waits ~8 ms for enough tokens to accumulate.</div>
+  </div>
+  <div class="rule-row">
+    <div class="rule-label">sustained</div>
+    <div class="rule-text">If the source tries to sustain 2 Mbps (twice <code>r</code>), the bucket drains faster than it fills. After the initial burst budget is spent, exactly half the packets fail — the long-term rate is clamped to <code>r</code> regardless of offered load.</div>
+  </div>
+
+  <h2>Where it's used</h2>
+  <p>
+    Token bucket is the default policer in Linux <code>tc</code>, the shaping primitive behind
+    committed information rate on carrier Ethernet, and — in a modified form — the basis of
+    the Credit-Based Shaper used in TSN. The credit counter in CBS is conceptually a signed
+    token bucket with different accumulation and drain slopes.
+  </p>
+
+  <footer>
+    <span>Token bucket · interactive explainer</span>
+    <span>v 1.0</span>
+  </footer>
+
+</div>
+
+<script>
+(() => {
+  // --- State ---
+  const state = {
+    tokens: 5,        // current tokens
+    rate: 4,          // tokens per second
+    depth: 10,        // bucket capacity
+    cost: 3,          // tokens per packet
+    passed: 0,
+    dropped: 0,
+    lastResults: [],  // last 20: true=pass, false=drop
+    mode: 'steady',   // manual | steady | bursty
+    paused: false,
+    lastT: performance.now(),
+    nextArrival: 0,
+    burstPhase: 0,
+  };
+
+  // --- DOM ---
+  const $ = id => document.getElementById(id);
+  const rdTokens = $('rd-tokens');
+  const rdCap = $('rd-cap');
+  const rdPass = $('rd-pass');
+  const rdDrop = $('rd-drop');
+  const rdConform = $('rd-conform');
+  const rateVal = $('rate-val');
+  const depthVal = $('depth-val');
+  const costVal = $('cost-val');
+  const bucketFill = $('bucket-fill');
+  const fillLine = $('fill-line');
+  const ticks = $('ticks');
+  const packetsG = $('packets');
+  const dripsG = $('drips');
+  const logEl = $('log');
+  const tokenCountSvg = $('token-count-svg');
+
+  // --- Geometry ---
+  const BUCKET = { x: 140, y: 100, w: 120, h: 180, bottom: 280 };
+
+  // --- Tick marks ---
+  function drawTicks() {
+    ticks.innerHTML = '';
+    const cap = state.depth;
+    const step = Math.max(1, Math.floor(cap / 5));
+    for (let t = step; t < cap; t += step) {
+      const y = BUCKET.bottom - (t / cap) * BUCKET.h;
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('x1', BUCKET.x - 4);
+      line.setAttribute('y1', y);
+      line.setAttribute('x2', BUCKET.x);
+      line.setAttribute('y2', y);
+      line.setAttribute('stroke', '#1a1a1a');
+      line.setAttribute('stroke-width', '0.5');
+      ticks.appendChild(line);
+    }
+  }
+
+  function renderBucket() {
+    const frac = Math.max(0, Math.min(1, state.tokens / state.depth));
+    const h = frac * BUCKET.h;
+    bucketFill.setAttribute('y', BUCKET.bottom - h);
+    bucketFill.setAttribute('height', h);
+    fillLine.setAttribute('y1', BUCKET.bottom - h);
+    fillLine.setAttribute('y2', BUCKET.bottom - h);
+  }
+
+  function renderReadouts() {
+    rdTokens.textContent = state.tokens.toFixed(1);
+    rdCap.textContent = state.depth;
+    rdPass.textContent = state.passed;
+    rdDrop.textContent = state.dropped;
+    const lr = state.lastResults;
+    if (lr.length === 0) {
+      rdConform.textContent = '—';
+    } else {
+      const pct = Math.round((lr.filter(Boolean).length / lr.length) * 100);
+      rdConform.textContent = pct;
+    }
+  }
+
+  // --- Drip animation ---
+  let dripCounter = 0;
+  function spawnDrip() {
+    const drip = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    drip.setAttribute('cx', 200);
+    drip.setAttribute('cy', 50);
+    drip.setAttribute('r', 3);
+    drip.setAttribute('fill', '#c2410c');
+    dripsG.appendChild(drip);
+
+    const start = performance.now();
+    const duration = 520;
+    function animate() {
+      const t = (performance.now() - start) / duration;
+      if (t >= 1) {
+        drip.remove();
+        return;
+      }
+      drip.setAttribute('cy', 50 + t * 40);
+      drip.setAttribute('opacity', 1 - t * 0.4);
+      requestAnimationFrame(animate);
+    }
+    animate();
+  }
+
+  // --- Packet animation (arrives from right, hits gate) ---
+  function spawnPacket() {
+    const cost = state.cost;
+    const sz = Math.max(10, Math.min(30, 6 + cost * 2.5));
+    const pkt = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('x', -sz/2);
+    rect.setAttribute('y', -sz/2);
+    rect.setAttribute('width', sz);
+    rect.setAttribute('height', sz);
+    rect.setAttribute('fill', '#1a1a1a');
+    rect.setAttribute('rx', '1');
+
+    const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    label.setAttribute('x', 0);
+    label.setAttribute('y', 0);
+    label.setAttribute('text-anchor', 'middle');
+    label.setAttribute('dominant-baseline', 'central');
+    label.setAttribute('font-family', 'JetBrains Mono');
+    label.setAttribute('font-size', '9');
+    label.setAttribute('fill', '#f5f1e8');
+    label.setAttribute('font-weight', '600');
+    label.textContent = cost;
+
+    pkt.appendChild(rect);
+    pkt.appendChild(label);
+    pkt.setAttribute('transform', 'translate(540, 200)');
+    packetsG.appendChild(pkt);
+
+    // animate from x=540 -> 305 (gate), decide there
+    const start = performance.now();
+    const arriveMs = 600;
+    const gateX = 305;
+    function animate() {
+      const t = (performance.now() - start) / arriveMs;
+      if (t >= 1) {
+        // decide pass/drop
+        decidePacket(pkt, rect, cost);
+        return;
+      }
+      const x = 540 - t * (540 - gateX);
+      pkt.setAttribute('transform', `translate(${x}, 200)`);
+      requestAnimationFrame(animate);
+    }
+    animate();
+  }
+
+  function decidePacket(pktG, rect, cost) {
+    const pass = state.tokens >= cost;
+    if (pass) {
+      state.tokens -= cost;
+      state.passed++;
+      state.lastResults.push(true);
+      rect.setAttribute('fill', '#15803d');
+      addLog('pass', cost);
+      // fly through to left
+      const start = performance.now();
+      const dur = 400;
+      function animate() {
+        const t = (performance.now() - start) / dur;
+        if (t >= 1) { pktG.remove(); return; }
+        const x = 305 - t * 285;
+        pktG.setAttribute('transform', `translate(${x}, 200)`);
+        pktG.setAttribute('opacity', 1 - t * 0.7);
+        requestAnimationFrame(animate);
+      }
+      animate();
+    } else {
+      state.dropped++;
+      state.lastResults.push(false);
+      rect.setAttribute('fill', '#b91c1c');
+      addLog('drop', cost);
+      // drop down
+      const start = performance.now();
+      const dur = 500;
+      function animate() {
+        const t = (performance.now() - start) / dur;
+        if (t >= 1) { pktG.remove(); return; }
+        const y = 200 + t * 80;
+        pktG.setAttribute('transform', `translate(305, ${y})`);
+        pktG.setAttribute('opacity', 1 - t);
+        requestAnimationFrame(animate);
+      }
+      animate();
+    }
+    if (state.lastResults.length > 20) state.lastResults.shift();
+    renderReadouts();
+  }
+
+  // --- Log ---
+  let logCount = 0;
+  function addLog(kind, cost) {
+    logCount++;
+    const entry = document.createElement('div');
+    entry.className = 'log-entry ' + kind;
+    const t = (performance.now() / 1000).toFixed(1);
+    const statusText = kind === 'pass' ? 'PASS' : 'DROP';
+    const detail = kind === 'pass'
+      ? `consumed ${cost} tok · ${state.tokens.toFixed(1)} left`
+      : `needed ${cost} tok · only ${state.tokens.toFixed(1)} available`;
+    entry.innerHTML = `<span class="t">t=${t}s</span><span class="status">${statusText}</span><span class="detail">${detail}</span>`;
+    logEl.prepend(entry);
+    // keep last ~30
+    while (logEl.children.length > 30) logEl.lastChild.remove();
+  }
+
+  // --- Simulation loop ---
+  let dripAccum = 0;
+  function tick(now) {
+    const dt = (now - state.lastT) / 1000;
+    state.lastT = now;
+
+    if (!state.paused) {
+      // accumulate tokens
+      state.tokens = Math.min(state.depth, state.tokens + state.rate * dt);
+
+      // drip animation: spawn a drop at a rate proportional to `rate`
+      dripAccum += state.rate * dt;
+      while (dripAccum >= 1) {
+        spawnDrip();
+        dripAccum -= 1;
+      }
+
+      // auto arrivals
+      if (state.mode === 'steady') {
+        state.nextArrival -= dt;
+        if (state.nextArrival <= 0) {
+          spawnPacket();
+          state.nextArrival = 1.0; // 1 packet per sec
+        }
+      } else if (state.mode === 'bursty') {
+        state.nextArrival -= dt;
+        if (state.nextArrival <= 0) {
+          // phase: 5 packets fast, then quiet
+          if (state.burstPhase < 5) {
+            spawnPacket();
+            state.burstPhase++;
+            state.nextArrival = 0.18;
+          } else {
+            state.burstPhase = 0;
+            state.nextArrival = 3.0;
+          }
+        }
+      }
+    }
+
+    renderBucket();
+    renderReadouts();
+    requestAnimationFrame(tick);
+  }
+
+  // --- Controls ---
+  $('rate').addEventListener('input', e => {
+    state.rate = parseFloat(e.target.value);
+    rateVal.textContent = state.rate;
+  });
+  $('depth').addEventListener('input', e => {
+    state.depth = parseInt(e.target.value);
+    depthVal.textContent = state.depth;
+    if (state.tokens > state.depth) state.tokens = state.depth;
+    drawTicks();
+  });
+  $('cost').addEventListener('input', e => {
+    state.cost = parseInt(e.target.value);
+    costVal.textContent = state.cost;
+  });
+
+  document.querySelectorAll('.mode-btn').forEach(b => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('.mode-btn').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      state.mode = b.dataset.mode;
+      state.nextArrival = 0;
+      state.burstPhase = 0;
+    });
+  });
+
+  $('send-btn').addEventListener('click', () => spawnPacket());
+  $('reset-btn').addEventListener('click', () => {
+    state.tokens = state.depth / 2;
+    state.passed = 0;
+    state.dropped = 0;
+    state.lastResults = [];
+    logEl.innerHTML = '';
+    packetsG.innerHTML = '';
+    dripsG.innerHTML = '';
+    renderReadouts();
+  });
+  $('pause-btn').addEventListener('click', e => {
+    state.paused = !state.paused;
+    e.target.textContent = state.paused ? 'Resume' : 'Pause';
+  });
+
+  // --- Init ---
+  drawTicks();
+  renderBucket();
+  renderReadouts();
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
