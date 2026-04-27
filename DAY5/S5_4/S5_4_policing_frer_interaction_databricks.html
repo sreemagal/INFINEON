@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Policing + FRER Interaction in TSN Switches</title>
+<style>
+:root{
+  --bg:#0b0f19; --bg2:#111827; --panel:#151b2d; --panel2:#1b2236; --panel3:#101624;
+  --text:#e9edf7; --muted:#aeb8cc; --faint:#738099; --line:#2a344d;
+  --orange:#ff5f1f; --orange2:#ff8a3d; --blue:#4db8ff; --cyan:#50e3c2; --green:#7ee787;
+  --yellow:#ffd166; --red:#ff6b6b; --purple:#c084fc; --pink:#ff7ab6;
+  --shadow:0 18px 44px rgba(0,0,0,.45); --radius:18px;
+  --mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+  --sans:Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+}
+*{box-sizing:border-box} html{scroll-behavior:smooth}
+body{margin:0;background:radial-gradient(circle at 8% -8%,rgba(255,95,31,.23),transparent 34%),radial-gradient(circle at 94% 0%,rgba(77,184,255,.16),transparent 31%),radial-gradient(circle at 45% 8%,rgba(192,132,252,.11),transparent 25%),var(--bg);color:var(--text);font-family:var(--sans);line-height:1.56}
+a{color:var(--blue);text-decoration:none} a:hover{text-decoration:underline}
+.topbar{position:sticky;top:0;z-index:1000;background:rgba(11,15,25,.92);backdrop-filter:blur(16px);border-bottom:1px solid var(--line)}
+.top-inner{max-width:1460px;margin:auto;padding:12px 22px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:center}
+.brand{display:flex;gap:12px;align-items:center;min-width:0}.logo{width:36px;height:36px;border-radius:11px;background:linear-gradient(135deg,var(--orange),#d3266e);box-shadow:0 0 26px rgba(255,95,31,.35)}
+.brand h1{font-size:15px;margin:0;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.brand .sub{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.context{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.context a{font-size:12px;color:var(--muted);padding:7px 9px;border:1px solid var(--line);border-radius:999px;background:rgba(21,27,45,.64)}.context a.active{color:#fff;background:linear-gradient(135deg,rgba(255,95,31,.95),rgba(255,138,61,.65));border-color:rgba(255,138,61,.75);box-shadow:0 0 0 2px rgba(255,95,31,.1)}
+.hero{max-width:1460px;margin:0 auto;padding:46px 22px 28px;display:grid;grid-template-columns:minmax(0,1.32fr) minmax(330px,.68fr);gap:22px;align-items:stretch}.hero-card,.side-card,.card{background:linear-gradient(180deg,rgba(21,27,45,.94),rgba(16,22,36,.96));border:1px solid var(--line);box-shadow:var(--shadow)}.hero-card{border-radius:28px;padding:34px;position:relative;overflow:hidden}.hero-card:before{content:"";position:absolute;inset:-84px -120px auto auto;width:280px;height:280px;background:radial-gradient(circle,rgba(255,95,31,.26),transparent 64%);pointer-events:none}.kicker{color:var(--orange2);font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.14em;margin-bottom:12px}.hero h2{font-size:44px;margin:0 0 16px;line-height:1.03;letter-spacing:-.04em}.hero p{font-size:17px;color:var(--muted);margin:0 0 15px;max-width:990px}.pills{display:flex;gap:8px;flex-wrap:wrap;margin-top:22px}.pill{border:1px solid var(--line);background:rgba(255,255,255,.04);border-radius:999px;padding:8px 11px;color:#dfe7f8;font-size:12px;font-weight:700}.side-card{border-radius:28px;padding:23px}.side-card h3{margin:0 0 12px;font-size:20px}.side-card ul{padding-left:18px;color:var(--muted);margin:0}.side-card li{margin:8px 0}
+main{max-width:1460px;margin:0 auto;padding:0 22px 70px}.section{scroll-margin-top:92px;margin:25px 0}.section-title{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin:0 0 14px}.section-title h2{font-size:29px;margin:0;letter-spacing:-.02em}.section-title p{margin:0;color:var(--muted);max-width:800px}
+.grid{display:grid;gap:16px}.grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}.grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}.grid.four{grid-template-columns:repeat(4,minmax(0,1fr))}.card{border-radius:var(--radius);padding:20px}.card h3{margin:0 0 10px;font-size:20px}.card h4{margin:0 0 8px;font-size:15px;color:#fff}.card p{color:var(--muted);margin:0 0 12px}.card ul,.card ol{color:var(--muted);padding-left:20px;margin:8px 0}.card li{margin:6px 0}.mini{font-size:13px;color:var(--faint)}.accent{color:var(--orange2);font-weight:900}.blue{color:var(--blue);font-weight:900}.green{color:var(--green);font-weight:900}.yellow{color:var(--yellow);font-weight:900}.red{color:var(--red);font-weight:900}.purple{color:var(--purple);font-weight:900}.pink{color:var(--pink);font-weight:900}
+.callout{border-left:4px solid var(--orange);background:rgba(255,95,31,.08);padding:13px 14px;border-radius:12px;color:#ffe7dd;margin:12px 0}.callout.blue{border-color:var(--blue);background:rgba(77,184,255,.08);color:#dcf3ff}.callout.green{border-color:var(--green);background:rgba(126,231,135,.08);color:#e8ffe9}.callout.red{border-color:var(--red);background:rgba(255,107,107,.08);color:#ffe6e6}.callout.yellow{border-color:var(--yellow);background:rgba(255,209,102,.08);color:#fff2cf}.callout.purple{border-color:var(--purple);background:rgba(192,132,252,.08);color:#f2e8ff}
+.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:16px;background:rgba(0,0,0,.12)}table{width:100%;border-collapse:collapse;min-width:780px}th,td{border-bottom:1px solid var(--line);padding:12px 12px;text-align:left;vertical-align:top}th{background:rgba(255,255,255,.045);font-size:12px;color:#fff;text-transform:uppercase;letter-spacing:.08em}td{color:var(--muted)}tr:last-child td{border-bottom:none}.code{font-family:var(--mono);font-size:12.5px;background:rgba(0,0,0,.28);border:1px solid var(--line);border-radius:12px;padding:12px;overflow:auto;color:#d9e8ff;white-space:pre}.kbd{font-family:var(--mono);font-size:12px;border:1px solid var(--line);background:#0b1020;border-radius:6px;padding:2px 6px;color:#fff}.badge{font-size:11px;text-transform:uppercase;letter-spacing:.08em;border-radius:999px;padding:4px 7px;font-weight:800;display:inline-block}.badge.pass{background:rgba(126,231,135,.14);color:var(--green)}.badge.drop{background:rgba(255,107,107,.14);color:var(--red)}.badge.info{background:rgba(77,184,255,.14);color:var(--blue)}.badge.warn{background:rgba(255,209,102,.15);color:var(--yellow)}.badge.purple{background:rgba(192,132,252,.15);color:var(--purple)}
+.pipeline{display:grid;grid-template-columns:repeat(9,minmax(115px,1fr));gap:10px;align-items:stretch}.pipe{position:relative;padding:13px;border:1px solid var(--line);background:rgba(255,255,255,.035);border-radius:16px;min-height:132px}.pipe:after{content:"→";position:absolute;right:-14px;top:43%;color:var(--orange);font-weight:900;font-size:18px}.pipe:last-child:after{display:none}.pipe b{display:block;color:#fff;margin-bottom:7px}.pipe span{display:block;font-size:12px;color:var(--muted)}.pipe small{display:inline-block;margin-top:8px;color:var(--orange2);font-family:var(--mono);font-size:11px}.pipe.hot{border-color:rgba(255,95,31,.5);background:rgba(255,95,31,.09)}.pipe.blue{border-color:rgba(77,184,255,.5);background:rgba(77,184,255,.08)}.pipe.green{border-color:rgba(126,231,135,.45);background:rgba(126,231,135,.07)}.pipe.red{border-color:rgba(255,107,107,.5);background:rgba(255,107,107,.07)}
+.frame{display:flex;align-items:stretch;gap:2px;overflow:auto;padding:14px;background:rgba(0,0,0,.22);border:1px solid var(--line);border-radius:16px}.field{min-width:92px;padding:10px 9px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);border-radius:9px;text-align:center}.field.long{min-width:150px}.field.xlong{min-width:190px}.field.tiny{min-width:64px}.field.rtag{background:rgba(255,95,31,.15);border-color:rgba(255,95,31,.36)}.field.vlan{background:rgba(77,184,255,.13);border-color:rgba(77,184,255,.34)}.field.payload{background:rgba(126,231,135,.1);border-color:rgba(126,231,135,.24)}.field.ip{background:rgba(192,132,252,.12);border-color:rgba(192,132,252,.34)}.field.pol{background:rgba(255,209,102,.12);border-color:rgba(255,209,102,.34)}.field b{display:block;font-size:12px;color:#fff}.field span{display:block;color:var(--muted);font-size:11px;font-family:var(--mono);margin-top:5px}.legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;color:var(--muted);font-size:12px}.dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;background:var(--orange)}.dot.v{background:var(--blue)}.dot.p{background:var(--green)}.dot.i{background:var(--purple)}.dot.y{background:var(--yellow)}
+.metadata{display:grid;grid-template-columns:repeat(6,minmax(110px,1fr));gap:8px}.meta{border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.045);padding:10px}.meta b{display:block;color:#fff;font-size:12px}.meta span{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px}.tab{cursor:pointer;border:1px solid var(--line);background:rgba(255,255,255,.035);color:var(--muted);border-radius:999px;padding:9px 12px;font:inherit;font-size:13px}.tab.active{border-color:rgba(255,95,31,.8);background:rgba(255,95,31,.16);color:#fff}.tab-panel{display:none}.tab-panel.active{display:block}
+.scenario-shell{display:grid;grid-template-columns:330px 1fr;gap:16px}.scenario-list{display:flex;flex-direction:column;gap:8px;max-height:820px;overflow:auto}.scenario-btn{cursor:pointer;text-align:left;border:1px solid var(--line);background:rgba(255,255,255,.035);color:var(--muted);border-radius:14px;padding:12px 13px;font:inherit}.scenario-btn b{color:#fff}.scenario-btn:hover{background:rgba(255,255,255,.065)}.scenario-btn.active{border-color:rgba(255,95,31,.85);background:rgba(255,95,31,.15);color:#fff}.scenario-panel{min-height:610px}.scenario-panel h3{font-size:25px;margin-bottom:8px}.chips{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.chip{font-family:var(--mono);font-size:12px;padding:5px 8px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid var(--line);color:#e8eefc}.decision{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:12px}.decision-step{border:1px solid var(--line);border-radius:15px;padding:14px;background:rgba(255,255,255,.035)}.decision-step b{color:#fff}.decision-step p{font-size:13px;margin:7px 0 0;color:var(--muted)}
+.seqbox{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.seq{min-width:58px;height:58px;border:1px solid var(--line);border-radius:13px;display:flex;align-items:center;justify-content:center;flex-direction:column;background:rgba(255,255,255,.04);font-family:var(--mono);padding:0 8px}.seq.pass{border-color:rgba(126,231,135,.6);background:rgba(126,231,135,.12)}.seq.drop{border-color:rgba(255,107,107,.6);background:rgba(255,107,107,.12)}.seq.warn{border-color:rgba(255,209,102,.7);background:rgba(255,209,102,.12)}.seq.info{border-color:rgba(77,184,255,.6);background:rgba(77,184,255,.11)}.seq small{font-size:10px;color:var(--muted)}
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:14px}.meter-card{border:1px solid var(--line);border-radius:16px;background:rgba(0,0,0,.16);padding:16px}.meterbar{height:18px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden;border:1px solid var(--line);margin:10px 0}.meterfill{height:100%;width:50%;background:linear-gradient(90deg,var(--green),var(--yellow),var(--red))}.sliderrow{display:grid;grid-template-columns:160px 1fr 80px;gap:12px;align-items:center;color:var(--muted);margin:8px 0}.sliderrow input{width:100%}.result{font-family:var(--mono);border:1px solid var(--line);background:rgba(0,0,0,.22);padding:12px;border-radius:12px;color:#d9e8ff;margin-top:12px}
+.diagram{position:relative;min-height:280px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(180deg,rgba(255,255,255,.025),rgba(0,0,0,.12));overflow:hidden;padding:18px}.node{position:absolute;border:1px solid var(--line);border-radius:16px;background:rgba(21,27,45,.94);padding:12px;min-width:130px;text-align:center;box-shadow:0 8px 18px rgba(0,0,0,.24)}.node b{display:block;color:#fff}.node span{display:block;color:var(--muted);font-size:12px}.line{position:absolute;height:3px;background:linear-gradient(90deg,var(--blue),var(--orange));transform-origin:left center;border-radius:99px}.line.alt{background:linear-gradient(90deg,var(--purple),var(--green))}.packet{position:absolute;border:1px solid rgba(255,255,255,.18);border-radius:999px;padding:6px 9px;background:rgba(255,95,31,.2);font-family:var(--mono);font-size:12px;color:#fff}.packet.green{background:rgba(126,231,135,.18)}.packet.red{background:rgba(255,107,107,.18)}.packet.blue{background:rgba(77,184,255,.18)}
+.accordion{border:1px solid var(--line);border-radius:15px;overflow:hidden}.acc-head{cursor:pointer;padding:14px 16px;background:rgba(255,255,255,.045);display:flex;justify-content:space-between;gap:12px}.acc-body{display:none;padding:16px;background:rgba(0,0,0,.12);color:var(--muted)}.accordion.open .acc-body{display:block}.footer{color:var(--faint);font-size:12px;border-top:1px solid var(--line);margin-top:34px;padding-top:16px}.warnbox{border:1px dashed rgba(255,209,102,.5);background:rgba(255,209,102,.07);border-radius:14px;padding:12px;color:#fff0c9}
+@media (max-width:1180px){.hero{grid-template-columns:1fr}.pipeline{grid-template-columns:repeat(3,minmax(0,1fr))}.pipe:after{display:none}.scenario-shell{grid-template-columns:1fr}.grid.four{grid-template-columns:repeat(2,minmax(0,1fr))}.metadata{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:760px){.top-inner{grid-template-columns:1fr}.context{justify-content:flex-start}.hero h2{font-size:33px}.grid.two,.grid.three,.grid.four,.decision,.compare{grid-template-columns:1fr}.metadata{grid-template-columns:1fr}.sliderrow{grid-template-columns:1fr}.section-title{display:block}.pipeline{grid-template-columns:1fr}.node,.line,.packet{position:static;margin:10px}.diagram{min-height:auto}.line{height:2px;width:100%!important;transform:none!important}}
+@media print{.topbar{position:static}.context,.tabs,.scenario-list,.sliderrow{display:none}.hero,.grid.two,.grid.three,.grid.four,.scenario-shell,.decision,.compare{display:block}.card,.hero-card,.side-card{break-inside:avoid;box-shadow:none}body{background:#0b0f19}.tab-panel{display:block}.scenario-panel{min-height:0}}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="top-inner">
+    <div class="brand"><div class="logo" aria-hidden="true"></div><div><h1>Policing + FRER Interaction</h1><div class="sub">IEEE 802.1Qci PSFP + IEEE 802.1CB FRER • header/PDU view • scenario-driven explanation</div></div></div>
+    <nav class="context" id="contextNav">
+      <a href="#thesis">Core</a><a href="#standards">Standards</a><a href="#pdu">PDU</a><a href="#psfp">PSFP</a><a href="#frer">FRER</a><a href="#pipeline">Pipeline</a><a href="#scenarios">Scenarios</a><a href="#calculator">Metering</a><a href="#debug">Debug</a>
+    </nav>
+  </div>
+</header>
+<section class="hero">
+  <div class="hero-card">
+    <div class="kicker">TSN switch training artifact</div>
+    <h2>Policing and FRER do not merely coexist. Their ordering changes what gets counted, dropped, hidden, or recovered.</h2>
+    <p><b>Per-Stream Filtering and Policing (PSFP)</b> protects the bridge and downstream network from disruptive traffic. <b>Frame Replication and Elimination for Reliability (FRER)</b> protects the application from packet loss by sending redundant copies and eliminating duplicates. The subtle part is this: standards-model policing can occur after stream identification but before FRER recovery, so a frame later discarded as a duplicate may already have consumed gate, meter, and counter resources.</p>
+    <div class="pills"><span class="pill">No new PSFP header</span><span class="pill">R-TAG EtherType 0xF1C1</span><span class="pill">stream_handle metadata</span><span class="pill">gate + meter + max SDU</span><span class="pill">duplicate elimination after policing in model</span></div>
+  </div>
+  <aside class="side-card">
+    <h3>What this HTML explains</h3>
+    <ul>
+      <li>Which headers are visible to classification and recovery.</li>
+      <li>How <span class="accent">stream filters</span>, <span class="blue">stream gates</span>, and <span class="green">flow meters</span> interact with FRER.</li>
+      <li>Why duplicates can consume policer budget before they are eliminated.</li>
+      <li>How to interpret counters when redundancy hides faults from the listener.</li>
+      <li>Interesting failure scenarios with precise packet walk-throughs.</li>
+    </ul>
+  </aside>
+</section>
+<main>
+<section class="section" id="thesis">
+  <div class="section-title"><h2>1. Core mental model</h2><p>Think in two planes: the wire PDU and the bridge’s internal service metadata.</p></div>
+  <div class="grid three">
+    <div class="card"><h3>Wire PDU</h3><p>The Ethernet frame carries MAC addresses, optional VLAN tags, optional R-TAG, EtherType/length, and payload. PSFP adds no protocol header of its own.</p><div class="callout blue">A packet can be policed without having a special “policing tag” on the wire.</div></div>
+    <div class="card"><h3>Internal metadata</h3><p>The switch pipeline attaches internal values such as <span class="kbd">stream_handle</span>, priority, input port, <span class="kbd">sequence_number</span>, gate state, color, and drop eligibility.</p><div class="callout green">FRER and PSFP share the stream identification result.</div></div>
+    <div class="card"><h3>Ordering</h3><p>In the IEEE 802.1CB bridge model, flow metering is placed after passive stream identification and before individual or sequence recovery. That means PSFP can be charged for frames that FRER later discards.</p><div class="callout red">This is the main interaction trap.</div></div>
+  </div>
+</section>
+<section class="section" id="standards">
+  <div class="section-title"><h2>2. Standards map</h2><p>Use this map to keep the responsibilities separated.</p></div>
+  <div class="card">
+    <div class="table-wrap"><table><thead><tr><th>Standard / function</th><th>What it contributes</th><th>Objects or fields that matter here</th><th>Important interaction with the other function</th></tr></thead><tbody>
+      <tr><td><b>IEEE 802.1CB</b><br><span class="mini">Frame Replication and Elimination for Reliability</span></td><td>Stream identification, sequence generation, sequence encode/decode, individual recovery, sequence recovery, packet replication and elimination.</td><td><span class="kbd">stream_handle</span>, <span class="kbd">sequence_number</span>, R-TAG, recovery window, reset timeout, member streams, compound stream.</td><td>Provides the <span class="kbd">stream_handle</span> that PSFP uses. Its model also shows flow metering before FRER recovery.</td></tr>
+      <tr><td><b>IEEE 802.1Qci</b><br><span class="mini">Per-Stream Filtering and Policing</span></td><td>Per-stream frame counting, max SDU filtering, stream gates, interval octet limiting, flow metering, service class selection through internal priority value.</td><td>Stream filter table, stream gate table, flow meter table, priority match, gate ID, meter ID, counters, IPV, max SDU, green/yellow/red result.</td><td>Requires stream identification from IEEE 802.1CB because it needs <span class="kbd">stream_handle</span> for per-stream decisions.</td></tr>
+      <tr><td><b>IEEE 802.1Q bridge forwarding</b></td><td>VLAN classification, ingress/egress filtering, forwarding database lookup, queuing, traffic class selection.</td><td>VID, PCP, DEI, FDB result, outbound port vector, traffic class table, queue selection.</td><td>FRER can be integrated with forwarding. PSFP can also select an internal priority value that influences traffic class.</td></tr>
+      <tr><td><b>IEEE 802.1CBdb</b></td><td>Extended stream identification, especially mask-and-match style identification.</td><td>Configured byte positions, masks, matches over selected header or payload regions.</td><td>Important when ordinary DMAC/VLAN/IP identification is not enough, for example tunneled CAN or proprietary payloads.</td></tr>
+    </tbody></table></div>
+  </div>
+  <div class="grid two" style="margin-top:16px">
+    <div class="card"><h3>Standards-consistent takeaway</h3><p>PSFP is not a substitute for FRER. PSFP decides whether a frame is allowed to continue based on stream, priority, size, time, and bandwidth contract. FRER decides whether an allowed frame is a useful first copy, an out-of-order useful copy, a duplicate, a rogue sequence, or a tagless case.</p></div>
+    <div class="card"><h3>Engineering takeaway</h3><p>A redundancy design must budget policing for the actual placement. If policing is applied to each member stream before elimination, the network sees and meters the redundant copies, not just the application’s unique payload rate.</p></div>
+  </div>
+</section>
+<section class="section" id="pdu">
+  <div class="section-title"><h2>3. PDU and header format view</h2><p>The on-wire frame and the internal service metadata are different views of the same packet.</p></div>
+  <div class="grid two">
+    <div class="card">
+      <h3>Typical Ethernet + VLAN + R-TAG example</h3>
+      <div class="frame" aria-label="Ethernet frame with VLAN and R-TAG">
+        <div class="field long"><b>Destination MAC</b><span>6 octets</span></div>
+        <div class="field long"><b>Source MAC</b><span>6 octets</span></div>
+        <div class="field vlan"><b>C-TAG TPID</b><span>0x8100</span></div>
+        <div class="field vlan"><b>TCI</b><span>PCP/DEI/VID</span></div>
+        <div class="field rtag"><b>R-TAG TPID</b><span>0xF1C1</span></div>
+        <div class="field rtag"><b>Reserved</b><span>16 bits = 0</span></div>
+        <div class="field rtag"><b>SeqNum</b><span>16 bits</span></div>
+        <div class="field ip"><b>Type/Length</b><span>IPv4/IPv6/etc.</span></div>
+        <div class="field payload long"><b>Payload</b><span>upper-layer PDU</span></div>
+        <div class="field tiny"><b>FCS</b><span>4</span></div>
+      </div>
+      <div class="legend"><span><i class="dot v"></i>VLAN tag</span><span><i class="dot"></i>FRER sequence tag</span><span><i class="dot i"></i>L3/L4 discriminator</span><span><i class="dot p"></i>payload</span></div>
+      <div class="callout blue"><b>Placement nuance:</b> This is a common teaching layout. The exact position of R-TAG relative to other tags depends on where the sequence encode/decode function is placed in that implementation’s stack.</div>
+    </div>
+    <div class="card">
+      <h3>R-TAG details</h3>
+      <div class="table-wrap"><table style="min-width:560px"><thead><tr><th>Bytes</th><th>Field</th><th>Meaning</th></tr></thead><tbody>
+        <tr><td>0–1</td><td><b>TPID / EtherType</b></td><td><span class="kbd">0xF1C1</span>, identifying the Redundancy tag.</td></tr>
+        <tr><td>2–3</td><td><b>Reserved</b></td><td>Transmitted as zeros and ignored on receipt.</td></tr>
+        <tr><td>4–5</td><td><b>Sequence Number</b></td><td>Low-order 16 bits of the sequence number used by FRER recovery.</td></tr>
+      </tbody></table></div>
+      <div class="code">Sequence 300 decimal encoded as R-TAG bytes:
+F1 C1  00 00  01 2C
+│      │      └── Sequence Number = 300
+│      └───────── Reserved
+└──────────────── R-TAG EtherType / TPID</div>
+      <div class="callout red"><b>Important:</b> R-TAG does not carry the PSFP meter ID, gate ID, stream filter ID, path ID, or stream name. Those are local configuration and metadata.</div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <h3>Internal metadata record after parsing and stream identification</h3>
+    <p>The switch pipeline behaves as if the packet is accompanied by an internal record. The exact implementation may use registers, descriptors, sideband bus fields, or metadata in packet memory, but the logical model is the same.</p>
+    <div class="metadata">
+      <div class="meta"><b>ingress_port</b><span>P2</span></div>
+      <div class="meta"><b>stream_handle</b><span>0x4101</span></div>
+      <div class="meta"><b>priority</b><span>PCP 5</span></div>
+      <div class="meta"><b>sequence_number</b><span>300</span></div>
+      <div class="meta"><b>gate_id</b><span>G7</span></div>
+      <div class="meta"><b>meter_id</b><span>M21</span></div>
+      <div class="meta"><b>gate_state</b><span>open</span></div>
+      <div class="meta"><b>meter_color</b><span>green</span></div>
+      <div class="meta"><b>drop_eligible</b><span>false</span></div>
+      <div class="meta"><b>IPV</b><span>6</span></div>
+      <div class="meta"><b>recovery_result</b><span>not yet run</span></div>
+      <div class="meta"><b>queue</b><span>pending</span></div>
+    </div>
+  </div>
+</section>
+<section class="section" id="psfp">
+  <div class="section-title"><h2>4. PSFP: what policing sees and decides</h2><p>PSFP is table-driven. It first selects a stream filter using stream and priority, then applies gate, filter, and meter behavior.</p></div>
+  <div class="grid three">
+    <div class="card"><h3>Stream filter</h3><p>Matches <span class="kbd">stream_handle</span> and priority. It points to a stream gate and optionally to a flow meter. It can also enforce maximum SDU size.</p><ul><li>Match specific stream or wildcard stream.</li><li>Match specific priority or wildcard priority.</li><li>First matching ordered filter wins.</li><li>No match means ordinary processing unless a catch-all closed filter is configured.</li></ul></div>
+    <div class="card"><h3>Stream gate</h3><p>Open gates pass frames. Closed gates drop frames. A gate may also assign an internal priority value and execute a time-aware control list.</p><ul><li>Open or closed state.</li><li>Optional IPV for traffic class selection.</li><li>Optional interval octet limit.</li><li>Optional latch-on-invalid-rx behavior.</li></ul></div>
+    <div class="card"><h3>Flow meter</h3><p>Bandwidth profile metering colors frames green, yellow, or red using committed and excess rate/burst parameters.</p><ul><li>Green: within committed profile.</li><li>Yellow: excess but possibly still allowed.</li><li>Red: discard.</li><li><span class="kbd">DropOnYellow</span> controls whether yellow is discarded or only marked drop-eligible.</li></ul></div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <h3>PSFP table anatomy</h3>
+    <div class="table-wrap"><table><thead><tr><th>PSFP component</th><th>Key configured elements</th><th>Decision made</th><th>FRER-relevant implication</th></tr></thead><tbody>
+      <tr><td><b>Stream filter instance</b></td><td>Filter ID, stream_handle spec, priority spec, gate ID, meter ID, maximum SDU size, counters, blocked-due-to-oversize controls.</td><td>Selects which gate/meter/filter actions apply to this frame.</td><td>Incorrect stream identification or too broad wildcarding can police several FRER member streams together by accident.</td></tr>
+      <tr><td><b>Maximum SDU filter</b></td><td>Per-stream maximum SDU size.</td><td>Drops frames whose SDU exceeds the limit. Can optionally latch a stream-blocked state.</td><td>FRER cannot recover a talker-wide oversize fault because both redundant copies contain the same oversize frame.</td></tr>
+      <tr><td><b>Stream gate</b></td><td>Open/closed state, IPV, optional control list, optional interval octet maximum.</td><td>Allows or blocks frames by time window and optional interval byte budget.</td><td>One member stream may be blocked by a timing mismatch while the other member stream still recovers the packet.</td></tr>
+      <tr><td><b>Flow meter</b></td><td>CIR, CBS, EIR, EBS, coupling flag, color mode, DropOnYellow, MarkAllFramesRed controls.</td><td>Classifies bandwidth behavior and discards red or configured yellow frames.</td><td>Duplicate copies may consume meter budget before duplicate elimination if the meter is before recovery.</td></tr>
+      <tr><td><b>IPV result</b></td><td>Null or internal priority value.</td><td>Overrides received priority for traffic-class selection only.</td><td>Useful when a protected stream must be placed in a specific queue regardless of PCP rewriting.</td></tr>
+    </tbody></table></div>
+  </div>
+</section>
+<section class="section" id="frer">
+  <div class="section-title"><h2>5. FRER: what recovery sees and decides</h2><p>FRER recovery operates on the stream and sequence context after classification and sequence decode.</p></div>
+  <div class="grid two">
+    <div class="card">
+      <h3>Sequence recovery classification</h3>
+      <p>A sequence recovery function receives a stream context and a sequence number. It then decides whether the arrival is useful or should be eliminated.</p>
+      <div class="seqbox"><div class="seq pass">300<small>new</small></div><div class="seq drop">300<small>duplicate</small></div><div class="seq pass">299<small>old unseen</small></div><div class="seq warn">260<small>rogue</small></div><div class="seq info">—<small>tagless</small></div></div>
+      <ul><li><b>New:</b> higher acceptable sequence, advance recovery state.</li><li><b>Duplicate:</b> already accepted in the recovery history, discard.</li><li><b>Old but unseen:</b> may pass if still inside the recovery window.</li><li><b>Rogue:</b> too far outside the recovery window, discard.</li><li><b>Tagless:</b> handled according to <span class="kbd">frerSeqRcvyTakeNoSequence</span>.</li></ul>
+    </div>
+    <div class="card">
+      <h3>Individual recovery versus sequence recovery</h3>
+      <p>Individual recovery can be applied to a single member stream before merging. Sequence recovery eliminates duplicates across the compound stream.</p>
+      <div class="code">Member stream A: seq 300, 301, 302...
+Member stream B: seq 300, 301, 302...
+
+Individual recovery can suppress repeated junk on A alone.
+Sequence recovery suppresses the second valid copy across A+B.</div>
+      <div class="callout yellow"><b>Why this matters with policing:</b> A bad member stream can consume PSFP resources unless it is also gated, metered, or individually recovered in the right place.</div>
+    </div>
+  </div>
+</section>
+<section class="section" id="pipeline">
+  <div class="section-title"><h2>6. Integrated switch pipeline</h2><p>This is the most useful standards-consistent mental pipeline for the policing + FRER interaction.</p></div>
+  <div class="card">
+    <div class="pipeline">
+      <div class="pipe blue"><b>1. Ingress parser</b><span>Read MAC, VLAN, R-TAG, IP/UDP/TCP, payload markers.</span><small>wire fields</small></div>
+      <div class="pipe blue"><b>2. Stream identification</b><span>Assign stream_handle using 802.1CB methods.</span><small>stream_handle</small></div>
+      <div class="pipe"><b>3. Sequence decode</b><span>Extract sequence_number from R-TAG or other sequence encoding.</span><small>sequence_number</small></div>
+      <div class="pipe hot"><b>4. Stream filter</b><span>Match stream_handle + priority; select gate and meter.</span><small>PSFP</small></div>
+      <div class="pipe hot"><b>5. Gate + max SDU</b><span>Drop if closed, oversize, or interval octet budget exceeded.</span><small>PSFP</small></div>
+      <div class="pipe hot"><b>6. Flow meter</b><span>Green/yellow/red decision. Red drops; yellow may drop or mark.</span><small>PSFP</small></div>
+      <div class="pipe green"><b>7. Individual recovery</b><span>Optional per-member duplicate suppression and fault containment.</span><small>FRER</small></div>
+      <div class="pipe green"><b>8. Sequence recovery</b><span>Eliminate duplicates across redundant copies.</span><small>FRER</small></div>
+      <div class="pipe"><b>9. Queue / egress</b><span>Use priority or IPV for traffic class and scheduling.</span><small>802.1Q</small></div>
+    </div>
+    <div class="callout red"><b>Critical insight:</b> In this model, PSFP can count and meter both redundant copies even though FRER will later forward only one useful copy to the listener.</div>
+  </div>
+  <div class="grid two" style="margin-top:16px">
+    <div class="card"><h3>Why standards place metering early</h3><p>Policing is a network protection function. It prevents disruptive transmissions from consuming bridge resources and harming downstream traffic. If duplicate or rogue traffic were eliminated only later, the bridge might already have spent scarce bandwidth, gate budget, memory, or processing resources on it.</p></div>
+    <div class="card"><h3>Why engineers get surprised</h3><p>Reliability engineers often think in application payload rate after duplicate elimination. Switch policers often think in received frame rate before elimination. Those are different rates when redundancy is active.</p></div>
+  </div>
+</section>
+<section class="section" id="scenarios">
+  <div class="section-title"><h2>7. Interesting interaction scenarios</h2><p>Select a scenario. Each one shows packet walk-through, decision points, and what counters tell you.</p></div>
+  <div class="scenario-shell">
+    <div class="scenario-list" id="scenarioList"></div>
+    <div class="scenario-panel card" id="scenarioPanel"></div>
+  </div>
+</section>
+<section class="section" id="calculator">
+  <div class="section-title"><h2>8. Metering effect calculator</h2><p>Use this mini-calculator to show why policing budget depends on whether the meter sees unique payloads or redundant copies.</p></div>
+  <div class="card">
+    <div class="grid two">
+      <div>
+        <div class="sliderrow"><label>Unique application frames/s</label><input id="fps" type="range" min="10" max="5000" value="1000" step="10"><span id="fpsV">1000</span></div>
+        <div class="sliderrow"><label>Frame size bytes</label><input id="bytes" type="range" min="64" max="1500" value="300" step="4"><span id="bytesV">300</span></div>
+        <div class="sliderrow"><label>Redundancy factor</label><input id="rf" type="range" min="1" max="3" value="2" step="1"><span id="rfV">2</span></div>
+        <div class="sliderrow"><label>Meter CIR Mb/s</label><input id="cir" type="range" min="1" max="100" value="8" step="1"><span id="cirV">8</span></div>
+        <div class="result" id="meterResult"></div>
+      </div>
+      <div class="compare">
+        <div class="meter-card"><h3>Meter sees unique stream</h3><p>Useful when metering is after elimination or before replication.</p><div class="meterbar"><div class="meterfill" id="uniqueFill"></div></div><div id="uniqueText" class="mini"></div></div>
+        <div class="meter-card"><h3>Meter sees redundant copies</h3><p>Typical concern when metering each received copy before elimination or when copies share a meter.</p><div class="meterbar"><div class="meterfill" id="copyFill"></div></div><div id="copyText" class="mini"></div></div>
+      </div>
+    </div>
+    <div class="callout yellow"><b>Use this in class:</b> Keep the unique application rate unchanged and increase redundancy factor from 1 to 2. The listener still wants one copy, but a pre-recovery policer may see twice the byte rate.</div>
+  </div>
+</section>
+<section class="section" id="debug">
+  <div class="section-title"><h2>9. Debugging and counter interpretation</h2><p>FRER can hide faults from applications. PSFP counters tell you where frames were rejected before recovery.</p></div>
+  <div class="card">
+    <div class="table-wrap"><table><thead><tr><th>Symptom</th><th>Likely counter pattern</th><th>Interpretation</th><th>What to check</th></tr></thead><tbody>
+      <tr><td>Listener sees no loss, but switch counters show drops.</td><td>One member stream has gate/meter/SDU drops; sequence recovery still passes the other copy.</td><td>FRER is masking a path-specific policing or timing problem.</td><td>Compare per-member PSFP counters and FRER discarded duplicate counters.</td></tr>
+      <tr><td>Application loss occurs even though duplicates are enabled.</td><td>Both member streams show gate closed, oversize, or red drops for the same sequence range.</td><td>Both copies were removed before sequence recovery could accept one.</td><td>Gate schedules, meter sizing, max SDU, interval octet limits.</td></tr>
+      <tr><td>Meter drops appear too early.</td><td>Meter counts roughly equal redundancy factor times application rate.</td><td>The meter is seeing redundant copies or both legs share a meter.</td><td>Meter binding: per-member, per-compound, pre-recovery, or post-recovery.</td></tr>
+      <tr><td>Many FRER duplicates plus high meter consumption.</td><td>PSFP passed frames count high; FRER duplicate discard high.</td><td>The network is carrying normal redundant copies, or a replay/stuck fault is active.</td><td>Individual recovery, replay source, member stream health.</td></tr>
+      <tr><td>Sequence recovery stuck after talker restart.</td><td>FRER rogue/discard counters rise until reset timeout; PSFP counters may still show pass.</td><td>PSFP permits the traffic, but FRER sequence window rejects the reset sequence range.</td><td><span class="kbd">frerSeqRcvyResetMSec</span>, sequence generator restart behavior.</td></tr>
+      <tr><td>Unexpected unpoliced frames.</td><td>No stream filter match counters increment, but traffic still forwards.</td><td>Unmatched frames are processed as if PSFP is not supported unless a catch-all policy blocks them.</td><td>Add final wildcard stream filter pointing to a permanently closed gate if required.</td></tr>
+    </tbody></table></div>
+  </div>
+  <div class="grid two" style="margin-top:16px">
+    <div class="card"><h3>Good commissioning checklist</h3><ol><li>Verify stream identification before policing.</li><li>Verify that each redundant member stream maps to the intended filter and meter.</li><li>Size CIR/CBS/EIR/EBS for the rate actually seen by the meter.</li><li>Check gate schedules on both redundant paths.</li><li>Read FRER duplicate, rogue, tagless, passed, and reset counters together with PSFP counters.</li><li>Test talker reset and sequence wrap-around explicitly.</li></ol></div>
+    <div class="card"><h3>Design rule of thumb</h3><div class="warnbox">Do not configure PSFP from the application’s single-copy rate unless you know the policer is before replication or after duplicate elimination. If the policer sees redundant copies, budget for the member-stream aggregate that reaches that policer.</div></div>
+  </div>
+</section>
+<section class="section" id="quiz">
+  <div class="section-title"><h2>10. Knowledge check</h2><p>Use these questions for training discussion.</p></div>
+  <div class="grid two">
+    <div class="card"><h3>Concept questions</h3><ol><li>Why does PSFP require stream identification but not an on-wire PSFP header?</li><li>Why can a duplicate FRER copy consume meter tokens before being discarded?</li><li>What is the difference between <span class="kbd">stream_handle</span> and R-TAG sequence number?</li><li>When should a catch-all closed stream filter be used?</li><li>What does <span class="kbd">DropOnYellow</span> change?</li></ol></div>
+    <div class="card"><h3>Scenario questions</h3><ol><li>If leg A is closed by a stream gate and leg B passes, what does the listener see?</li><li>If both legs share one meter, why might a compliant application be marked non-compliant?</li><li>If the talker reboots and sequence goes from 5000 to 1, why can PSFP pass frames while FRER drops them?</li><li>Why is a maximum SDU fault not normally fixed by redundancy?</li><li>Which counters separate path-specific PSFP loss from FRER duplicate elimination?</li></ol></div>
+  </div>
+</section>
+<div class="footer">
+  Standards basis summarized in this artifact: IEEE 802.1CB-2017 Frame Replication and Elimination for Reliability; IEEE 802.1Qci-2017 Per-Stream Filtering and Policing, now rolled into later IEEE 802.1Q revisions; IEEE 802.1CBdb-2021 extended stream identification. This is training material, not a replacement for the normative standards text.
+</div>
+</main>
+<script>
+const sections=[...document.querySelectorAll('.section')];
+const nav=[...document.querySelectorAll('#contextNav a')];
+const io=new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isIntersecting){nav.forEach(a=>a.classList.toggle('active',a.getAttribute('href')==='#'+e.target.id));}})},{rootMargin:'-45% 0px -45% 0px',threshold:.01});
+sections.forEach(s=>io.observe(s));
+
+document.querySelectorAll('.accordion .acc-head').forEach(h=>h.addEventListener('click',()=>h.parentElement.classList.toggle('open')));
+
+const scenarios=[
+  {title:'1. Clean redundant stream, duplicate still charged',tags:['two member streams','pre-recovery PSFP','normal FRER'],summary:'Talker sends one logical packet as two member-stream copies A and B. Both copies are within policing contract. A reaches recovery first and passes. B reaches recovery later and is discarded as duplicate. If PSFP is before recovery, both A and B have already used PSFP counters and possibly meter tokens.',seq:[['A:300','PSFP pass','pass'],['B:300','PSFP pass','drop'],['out','one copy delivered','info']],steps:[['Parse + identify','Both frames map to the same compound stream identity after member-stream handling, but may first arrive as distinct member streams.'],['PSFP decision','Both copies pass max SDU, gate, and meter. Counters increment for both copies.'],['FRER decision','First seq 300 is useful and passes. Second seq 300 is a duplicate and is eliminated.'],['Training insight','A perfectly healthy FRER stream can show more PSFP passed frames than application-delivered frames.']],debug:'Expect high FRER duplicate discard count. This is not automatically a fault. Compare against redundancy factor and member-stream design.'},
+  {title:'2. Shared meter accidentally polices both legs together',tags:['configuration trap','aggregate rate doubles','yellow/red surprise'],summary:'The application emits 4 Mb/s unique traffic. FRER creates two 4 Mb/s copies. A shared 6 Mb/s meter sees 8 Mb/s and begins marking yellow or red. The application was compliant at the unique rate, but the policer was configured for the wrong observation point.',seq:[['A:410','green','pass'],['B:410','yellow','warn'],['A:411','yellow','warn'],['B:411','red','drop']],steps:[['Identify','Both member streams select the same meter ID due to wildcard or incorrect table mapping.'],['Meter','The meter counts the aggregate of redundant copies. Effective byte rate is roughly redundancy factor × unique rate.'],['FRER','Some duplicates may still be eliminated later, but meter damage has already happened.'],['Fix','Use per-member meters sized per member, or a post-elimination meter sized for unique payloads, or increase the shared meter budget intentionally.']],debug:'Look for meter discard or yellow-mark counters on a meter referenced by both member streams.'},
+  {title:'3. Gate schedule asymmetry, FRER hides the path fault',tags:['gate closed','path timing','masked by redundancy'],summary:'Path A is delayed by a switch or link and reaches its stream gate after the allowed window. Path B reaches its gate during the open window. A is dropped by PSFP before recovery. B passes and FRER delivers the packet. The listener is happy, but one redundant path is unhealthy.',seq:[['A:520','gate closed','drop'],['B:520','gate open','pass'],['out','seq 520 delivered','pass']],steps:[['Frame A','Stream filter selects gate G12. Gate is closed at arrival time, so A is dropped.'],['Frame B','Stream filter selects gate G13. Gate is open, so B continues to recovery.'],['FRER','Seq 520 from B is accepted as the first valid copy.'],['Interpretation','FRER masks the path fault. PSFP not-passing-gate counters reveal it.']],debug:'Compare per-leg gate-not-passing counters. A rising counter on one leg with no listener loss often means timing asymmetry.'},
+  {title:'4. Policer drops first copy, later copy recovers packet',tags:['meter red','redundancy saves loss','pre-recovery'],summary:'The first arriving copy is red due to a temporary burst and is dropped by the flow meter. The second redundant copy arrives on another path with available meter budget and passes. FRER accepts the second copy because it has not seen that sequence before.',seq:[['A:700','red drop','drop'],['B:700','green pass','pass'],['out','accepted late','pass']],steps:[['A copy','Meter result is red or yellow with DropOnYellow enabled. The frame is discarded before recovery.'],['B copy','Meter result is green. The frame is admitted.'],['FRER','Because A never reached recovery, B is not a duplicate. It is the first accepted copy for seq 700.'],['Design insight','Redundancy can compensate for path-local policing loss, but only if at least one copy survives PSFP.']],debug:'PSFP meter drops on A, FRER passed packet from B, no duplicate count for that sequence because only one copy reached recovery.'},
+  {title:'5. Replay or stuck transmitter floods one member stream',tags:['same sequence repeated','individual recovery','meter consumption'],summary:'A faulty bridge or attacker repeats the same R-TAG sequence on member stream A. PSFP may meter many repeated frames before individual recovery or sequence recovery discards them. Individual recovery on the member stream can reduce the effect later in the pipeline, but early policing is still important.',seq:[['A:900','pass meter','pass'],['A:900','replay','drop'],['A:900','replay','drop'],['B:901','normal','pass']],steps:[['Ingress','Repeated frames carry plausible headers and same sequence number.'],['PSFP','If gate and meter allow the frames, they consume counters and tokens.'],['Individual recovery','Repeated sequence values on A can be suppressed.'],['Sequence recovery','If repeats reach compound recovery, only the first useful copy passes.']],debug:'Look for high same-sequence duplicate counters and high PSFP passed/metered count on one member stream. Add rate limits and individual recovery for the member stream.'},
+  {title:'6. Oversize fault latches the stream blocked state',tags:['max SDU','latch behavior','FRER cannot fix talker-wide fault'],summary:'A talker starts sending frames larger than the stream maximum SDU. PSFP drops them. If StreamBlockedDueToOversize is enabled, the stream can be blocked until management clears it. If both redundant copies are generated from the same oversize original, FRER cannot recover the loss.',seq:[['A:1000','oversize','drop'],['B:1000','oversize','drop'],['latch','blocked','drop']],steps:[['Stream filter','Maximum SDU filter fails.'],['Optional latch','StreamBlockedDueToOversizeFrame is set. The stream behaves as blocked until reset.'],['FRER','No valid copy reaches sequence recovery, so the sequence is lost.'],['Fix','Correct talker frame sizing or configured max SDU. Do not expect redundancy to fix common-mode oversize faults.']],debug:'Both legs show SDU-not-passing counters. FRER may show missing/lost sequences rather than duplicates.'},
+  {title:'7. Missing R-TAG, PSFP may pass but FRER cannot recover normally',tags:['tagless','invalid sequence','policy choice'],summary:'A frame matches the stream identity but arrives without a valid R-TAG or other sequence encoding. PSFP may still pass it because policing uses stream and priority. Sequence recovery sees invalid sequence and follows the configured take-no-sequence behavior.',seq:[['frame','no R-TAG','warn'],['PSFP','gate/meter pass','pass'],['FRER','tagless policy','warn']],steps:[['Classification','Stream identification can still assign stream_handle from MAC/VLAN/IP fields.'],['PSFP','The frame can pass size, gate, and meter checks.'],['Sequence decode','No valid sequence_number is available.'],['Recovery policy','If take-no-sequence is false, discard. If true, pass but without duplicate-elimination protection.']],debug:'Tagless packet counters rise. Check R-TAG insertion/removal points and whether a proxy switch is expected to encode sequence numbers.'},
+  {title:'8. Talker reboot or sequence generator reset',tags:['sequence reset','timeout','PSFP not enough'],summary:'The talker restarts and sequence numbers return to a low value. PSFP only sees stream contract compliance and may pass the frames. FRER recovery may reject them as out-of-window rogue packets until its reset timeout allows resynchronization.',seq:[['old','5000','pass'],['reset','1','drop'],['reset','2','drop'],['timeout','accept any','pass']],steps:[['Before reboot','Recovery window is centered near 5000.'],['After reboot','Incoming seq 1 appears far behind/outside the window.'],['PSFP','Gate and meter may still pass because rate, size, and time are valid.'],['FRER reset','After recovery reset timeout with no accepted packets, the next packet can be accepted.']],debug:'PSFP pass counters rise while FRER rogue/discard counters rise. Tune reset behavior and validate talker restart requirements.'},
+  {title:'9. Policing before replication at an FRER proxy',tags:['non-FRER talker','proxy switch','single-copy policing'],summary:'A non-FRER talker sends one frame to an FRER-capable bridge. The bridge identifies the stream, optionally polices the single incoming flow, generates sequence numbers, and then replicates on two egress ports. Here the ingress policer sees unique payload rate, while downstream policers on member streams see redundant copies.',seq:[['in','one frame','pass'],['seq','add R-TAG','info'],['split','A+B copies','info']],steps:[['Ingress proxy','IP or MAC/VLAN stream identification recognizes the non-FRER flow.'],['PSFP before split','A policer here sees only the original single-copy rate.'],['FRER encode + split','Sequence number is generated and copies are sent on distinct member streams.'],['Downstream','Later policers may see each member stream separately and must be sized accordingly.']],debug:'Be explicit in diagrams: ingress policer before replication and downstream policers after replication observe different rates.'}
+];
+const list=document.getElementById('scenarioList');
+const panel=document.getElementById('scenarioPanel');
+function renderScenario(i){
+  document.querySelectorAll('.scenario-btn').forEach((b,idx)=>b.classList.toggle('active',idx===i));
+  const s=scenarios[i];
+  panel.innerHTML=`<h3>${s.title}</h3><p>${s.summary}</p><div class="chips">${s.tags.map(t=>`<span class="chip">${t}</span>`).join('')}</div><div class="seqbox">${s.seq.map(x=>`<div class="seq ${x[2]}">${x[0]}<small>${x[1]}</small></div>`).join('')}</div><div class="decision">${s.steps.map(st=>`<div class="decision-step"><b>${st[0]}</b><p>${st[1]}</p></div>`).join('')}</div><div class="callout blue"><b>Counter/debug clue:</b> ${s.debug}</div>`;
+}
+scenarios.forEach((s,i)=>{const b=document.createElement('button');b.className='scenario-btn';b.innerHTML=`<b>${s.title}</b><br><span class="mini">${s.tags.join(' • ')}</span>`;b.addEventListener('click',()=>renderScenario(i));list.appendChild(b);});
+renderScenario(0);
+
+function updateMeter(){
+  const fps=+document.getElementById('fps').value, bytes=+document.getElementById('bytes').value, rf=+document.getElementById('rf').value, cir=+document.getElementById('cir').value;
+  document.getElementById('fpsV').textContent=fps;document.getElementById('bytesV').textContent=bytes;document.getElementById('rfV').textContent=rf;document.getElementById('cirV').textContent=cir;
+  const uniqueMbps=fps*bytes*8/1e6; const copyMbps=uniqueMbps*rf;
+  const upct=Math.min(100,uniqueMbps/cir*100); const cpct=Math.min(100,copyMbps/cir*100);
+  document.getElementById('uniqueFill').style.width=upct+'%'; document.getElementById('copyFill').style.width=cpct+'%';
+  document.getElementById('uniqueText').innerHTML=`Observed rate: <b>${uniqueMbps.toFixed(2)} Mb/s</b> versus CIR ${cir} Mb/s. ${uniqueMbps<=cir?'<span class="green">Within CIR</span>':'<span class="red">Exceeds CIR</span>'}.`;
+  document.getElementById('copyText').innerHTML=`Observed rate: <b>${copyMbps.toFixed(2)} Mb/s</b> versus CIR ${cir} Mb/s. ${copyMbps<=cir?'<span class="green">Within CIR</span>':'<span class="red">Exceeds CIR</span>'}.`;
+  document.getElementById('meterResult').textContent=`Unique payload = ${uniqueMbps.toFixed(2)} Mb/s. Pre-recovery redundant-copy observation = ${copyMbps.toFixed(2)} Mb/s. Multiplier = ${rf}×.`;
+}
+['fps','bytes','rf','cir'].forEach(id=>document.getElementById(id).addEventListener('input',updateMeter));updateMeter();
+</script>
+</body>
+</html>

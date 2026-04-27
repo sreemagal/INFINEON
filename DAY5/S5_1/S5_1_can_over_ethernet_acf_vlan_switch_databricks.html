@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CAN-over-Ethernet Tunnelling using IEEE 1722 ACF in a VLAN Switch</title>
+<style>
+:root{
+  --db-bg:#0b1020;
+  --db-bg2:#111827;
+  --db-panel:#161f33;
+  --db-panel2:#1f2a44;
+  --db-card:#151f32;
+  --db-border:#334155;
+  --db-border-soft:#26364f;
+  --db-text:#eef2ff;
+  --db-muted:#a7b1c2;
+  --db-muted2:#7d8aa3;
+  --db-orange:#ff5f46;
+  --db-orange2:#ff8a65;
+  --db-blue:#38bdf8;
+  --db-green:#34d399;
+  --db-yellow:#fbbf24;
+  --db-red:#fb7185;
+  --db-purple:#a78bfa;
+  --code:#0a0f1e;
+  --shadow:0 16px 42px rgba(0,0,0,.38);
+}
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  margin:0;
+  font-family:Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background:radial-gradient(circle at 20% 0%, rgba(255,95,70,.18), transparent 28%),
+             radial-gradient(circle at 85% 10%, rgba(56,189,248,.14), transparent 30%),
+             linear-gradient(135deg,#080b16 0%, #0b1020 38%, #111827 100%);
+  color:var(--db-text);
+  line-height:1.6;
+}
+.topbar{
+  position:sticky;top:0;z-index:50;
+  background:rgba(9,13,26,.90);
+  backdrop-filter:blur(14px);
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+.context{
+  max-width:1440px;margin:0 auto;padding:12px 24px;
+  display:flex;align-items:center;gap:16px;justify-content:space-between;
+}
+.brand{display:flex;align-items:center;gap:12px;font-weight:800;letter-spacing:.2px;}
+.logo{
+  width:34px;height:34px;border-radius:10px;
+  background:linear-gradient(135deg,var(--db-orange),#ffb199);
+  box-shadow:0 0 0 4px rgba(255,95,70,.15);
+}
+.ctx-pill{
+  color:#fff;background:rgba(255,95,70,.16);border:1px solid rgba(255,95,70,.38);
+  padding:6px 12px;border-radius:999px;font-size:13px;
+}
+.wrapper{max-width:1440px;margin:0 auto;display:grid;grid-template-columns:300px minmax(0,1fr);gap:26px;padding:28px 24px 80px;}
+nav{
+  position:sticky;top:74px;align-self:start;max-height:calc(100vh - 92px);overflow:auto;
+  background:rgba(15,23,42,.75);border:1px solid var(--db-border-soft);border-radius:18px;padding:18px;box-shadow:var(--shadow);
+}
+nav h3{font-size:13px;text-transform:uppercase;letter-spacing:.14em;color:var(--db-orange2);margin:0 0 12px;}
+nav a{display:block;color:var(--db-muted);text-decoration:none;border-radius:10px;padding:8px 10px;font-size:14px;}
+nav a:hover{background:rgba(255,95,70,.10);color:#fff;}
+main{min-width:0;}
+.hero{
+  background:linear-gradient(135deg,rgba(255,95,70,.16),rgba(56,189,248,.08)),rgba(15,23,42,.72);
+  border:1px solid rgba(255,255,255,.08);border-radius:28px;padding:34px;box-shadow:var(--shadow);position:relative;overflow:hidden;
+}
+.hero:after{content:"";position:absolute;right:-120px;top:-140px;width:360px;height:360px;border-radius:50%;background:rgba(255,95,70,.13);filter:blur(6px);}
+h1{font-size:clamp(34px,5vw,58px);line-height:1.03;margin:0 0 18px;letter-spacing:-.04em;position:relative;z-index:2;}
+.subtitle{font-size:19px;color:#dbe5f5;max-width:980px;margin:0 0 22px;position:relative;z-index:2;}
+.badges{display:flex;flex-wrap:wrap;gap:10px;position:relative;z-index:2;}
+.badge{border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);padding:7px 11px;border-radius:999px;color:#e5eefc;font-size:13px;}
+section{margin-top:28px;background:rgba(15,23,42,.72);border:1px solid var(--db-border-soft);border-radius:22px;padding:28px;box-shadow:0 10px 30px rgba(0,0,0,.22);}
+h2{font-size:30px;line-height:1.18;margin:0 0 16px;letter-spacing:-.025em;}
+h3{font-size:22px;margin:26px 0 10px;color:#f8fafc;}
+h4{font-size:17px;margin:18px 0 8px;color:#e5edff;}
+p{color:#d6deed;margin:0 0 14px;}
+ul,ol{color:#d6deed;margin-top:8px;}
+li{margin:7px 0;}
+strong{color:#fff;}
+.small{font-size:13px;color:var(--db-muted);}
+.callout{border-left:4px solid var(--db-orange);background:rgba(255,95,70,.09);padding:15px 17px;border-radius:12px;margin:16px 0;color:#f5f7fb;}
+.callout.blue{border-color:var(--db-blue);background:rgba(56,189,248,.08);}
+.callout.green{border-color:var(--db-green);background:rgba(52,211,153,.08);}
+.callout.yellow{border-color:var(--db-yellow);background:rgba(251,191,36,.08);}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:16px 0;}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin:16px 0;}
+.card{background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.09);border-radius:18px;padding:18px;}
+.card h4{margin-top:0;color:#fff;}
+.kpi{font-size:29px;font-weight:800;color:var(--db-orange2);line-height:1.1;margin:6px 0;}
+pre{
+  background:linear-gradient(180deg,#07101f,#0b1325);border:1px solid rgba(148,163,184,.24);border-radius:16px;padding:18px;overflow:auto;color:#dce7ff;
+  font-family:"JetBrains Mono","Fira Code",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px;line-height:1.52;
+}
+code{font-family:"JetBrains Mono","Fira Code",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#fff;background:rgba(255,255,255,.07);padding:2px 6px;border-radius:7px;}
+.table-wrap{overflow:auto;border:1px solid rgba(255,255,255,.1);border-radius:16px;margin:16px 0;}
+table{width:100%;border-collapse:collapse;min-width:760px;background:rgba(12,18,34,.65);}
+th,td{padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.08);vertical-align:top;text-align:left;}
+th{background:rgba(255,95,70,.13);color:#fff;font-size:13px;text-transform:uppercase;letter-spacing:.05em;}
+td{color:#d6deed;}
+tr:last-child td{border-bottom:0;}
+.bitbox{display:grid;grid-template-columns:repeat(32,1fr);gap:2px;margin:12px 0 22px;}
+.bit{background:#0e172a;border:1px solid #27364f;border-radius:6px;min-height:44px;display:flex;align-items:center;justify-content:center;text-align:center;color:#eaf2ff;font-family:ui-monospace,monospace;font-size:11px;padding:4px;}
+.b-orange{background:rgba(255,95,70,.18);border-color:rgba(255,95,70,.45);}
+.b-blue{background:rgba(56,189,248,.15);border-color:rgba(56,189,248,.42);}
+.b-green{background:rgba(52,211,153,.14);border-color:rgba(52,211,153,.42);}
+.b-yellow{background:rgba(251,191,36,.14);border-color:rgba(251,191,36,.40);}
+.b-purple{background:rgba(167,139,250,.14);border-color:rgba(167,139,250,.40);}
+.span7{grid-column:span 7}.span9{grid-column:span 9}.span2{grid-column:span 2}.span1{grid-column:span 1}.span3{grid-column:span 3}.span5{grid-column:span 5}.span8{grid-column:span 8}.span11{grid-column:span 11}.span16{grid-column:span 16}.span24{grid-column:span 24}.span32{grid-column:span 32}
+.pipeline{display:flex;flex-wrap:wrap;gap:10px;align-items:stretch;margin:18px 0;}
+.step{flex:1 1 180px;min-width:170px;border:1px solid rgba(255,255,255,.10);border-radius:16px;background:rgba(255,255,255,.04);padding:13px;position:relative;}
+.step:after{content:"→";position:absolute;right:-13px;top:45%;color:var(--db-orange2);font-weight:800;}
+.step:last-child:after{content:"";}
+.step .n{display:inline-flex;width:26px;height:26px;border-radius:50%;align-items:center;justify-content:center;background:var(--db-orange);font-weight:800;margin-bottom:7px;}
+.step h4{margin:4px 0 4px;font-size:15px;}
+.step p{font-size:13px;color:#c5d0e3;margin:0;}
+.diagram-title{font-size:13px;text-transform:uppercase;letter-spacing:.11em;color:var(--db-orange2);margin:18px 0 8px;font-weight:800;}
+.legend{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0 16px;}
+.legend span{font-size:12px;color:#d7e1f3;border:1px solid rgba(255,255,255,.1);border-radius:999px;padding:4px 8px;background:rgba(255,255,255,.04)}
+.warn{color:#ffd7d7;}
+.ok{color:#b8ffe0;}
+.footer{padding:30px;color:var(--db-muted);font-size:13px;text-align:center;}
+@media(max-width:980px){.wrapper{grid-template-columns:1fr}.context{flex-direction:column;align-items:flex-start}nav{position:relative;top:0;max-height:none}.grid,.grid3{grid-template-columns:1fr}.step:after{display:none}}
+@media print{body{background:#fff;color:#000}.topbar,nav{display:none}.wrapper{display:block;padding:0}section,.hero{box-shadow:none;border:1px solid #ccc;background:#fff;color:#000}p,td,li{color:#000}pre{white-space:pre-wrap}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="context">
+    <div class="brand"><div class="logo"></div><div>Databricks Dark Training Note</div></div>
+    <div class="ctx-pill">Current context: CAN-over-Ethernet tunnelling using IEEE 1722 ACF inside an automotive VLAN switch</div>
+  </div>
+</div>
+<div class="wrapper">
+<nav>
+  <h3>Contents</h3>
+  <a href="#mental-model">1. Mental model</a>
+  <a href="#why">2. Why tunnel CAN over Ethernet?</a>
+  <a href="#acf">3. What ACF is</a>
+  <a href="#frame-stack">4. Full Ethernet/VLAN/AVTP stack</a>
+  <a href="#ntscf-tscf">5. NTSCF and TSCF headers</a>
+  <a href="#acf-can">6. ACF_CAN and ACF_CAN_BRIEF headers</a>
+  <a href="#packing">7. Packing multiple CAN frames</a>
+  <a href="#tx-rx">8. CAN-to-Ethernet and Ethernet-to-CAN flows</a>
+  <a href="#switch">9. VLAN switch implementation</a>
+  <a href="#tables">10. Configuration tables</a>
+  <a href="#example">11. Worked byte-level example</a>
+  <a href="#checks">12. Engineering checks</a>
+  <a href="#misconceptions">13. Misconceptions</a>
+  <a href="#references">14. References</a>
+</nav>
+<main>
+  <div class="hero">
+    <h1>CAN-over-Ethernet tunnelling using IEEE 1722 ACF</h1>
+    <p class="subtitle">A first-principles explanation of why CAN tunnelling is needed, how the AVTP Control Format carries CAN and CAN FD frames, and how a VLAN-aware automotive Ethernet switch forwards, filters, schedules, or terminates those frames.</p>
+    <div class="badges">
+      <span class="badge">CAN and CAN FD</span>
+      <span class="badge">IEEE 1722 AVTP</span>
+      <span class="badge">ACF_CAN / ACF_CAN_BRIEF</span>
+      <span class="badge">802.1Q VLAN and PCP</span>
+      <span class="badge">Stream ID based filtering</span>
+      <span class="badge">Zonal architecture</span>
+    </div>
+  </div>
+
+  <section id="mental-model">
+    <h2>1. The mental model</h2>
+    <p><strong>Controller Area Network (CAN)</strong> is a local fieldbus. A CAN frame is identified mainly by a CAN identifier, not by a source and destination address. The identifier says what the message means and also participates in bus arbitration. <strong>Ethernet</strong> is a frame-switched network. An Ethernet frame is forwarded using a destination Media Access Control (MAC) address, a source MAC address, optionally a Virtual Local Area Network (VLAN) tag, and an EtherType that identifies the payload protocol.</p>
+    <div class="callout">
+      <strong>CAN-over-Ethernet tunnelling does not turn CAN into Ethernet at the signal level.</strong> The CAN frame is captured, wrapped inside an IEEE 1722 Audio Video Transport Protocol (AVTP) frame as an AVTP Control Format (ACF) message, transported over Ethernet, unpacked at the far end, and then optionally retransmitted onto a local CAN bus.
+    </div>
+    <div class="grid3">
+      <div class="card"><h4>CAN view</h4><p>“A CAN frame with identifier 0x18DAF110 appeared on CAN bus 2.”</p></div>
+      <div class="card"><h4>ACF view</h4><p>“This CAN frame becomes one ACF_CAN or ACF_CAN_BRIEF message in an AVTP ACF payload.”</p></div>
+      <div class="card"><h4>Ethernet switch view</h4><p>“This is an Ethernet frame with VLAN, priority, destination MAC, EtherType 0x22F0, and an AVTP Stream ID.”</p></div>
+    </div>
+    <p>The most important practical distinction is this:</p>
+    <ul>
+      <li>A <strong>plain Layer 2 VLAN switch</strong> normally forwards the IEEE 1722 ACF frame as an Ethernet frame. It does not need to understand the CAN identifier.</li>
+      <li>An <strong>ACF-aware zonal gateway or switch-integrated gateway</strong> terminates or originates the ACF stream. It parses the ACF message, maps <code>can_bus_id</code> and <code>can_identifier</code> to a physical CAN controller or routing rule, and then transmits or receives real CAN frames.</li>
+    </ul>
+  </section>
+
+  <section id="why">
+    <h2>2. Why tunnel CAN over Ethernet?</h2>
+    <p>Vehicle networks are moving from many small domain-specific buses toward zonal and centralized architectures. Legacy CAN, CAN FD, Local Interconnect Network (LIN), and other fieldbus islands still exist close to sensors and actuators, but high-bandwidth inter-zone communication increasingly uses Ethernet. Tunnelling solves the mismatch without replacing every end device at once.</p>
+    <div class="grid">
+      <div class="card">
+        <h4>Need 1: Preserve legacy CAN semantics</h4>
+        <p>Existing Electronic Control Units (ECUs), diagnostics, and application software may already be built around CAN identifiers, CAN payloads, and CAN timing. Tunnelling keeps the CAN frame intact over the Ethernet backbone.</p>
+      </div>
+      <div class="card">
+        <h4>Need 2: Reduce gateway explosion</h4>
+        <p>Instead of a chain of CAN gateways translating message by message, a zonal gateway can encapsulate collected CAN frames into an Ethernet stream and send them to another zone or to a central compute node.</p>
+      </div>
+      <div class="card">
+        <h4>Need 3: Use Ethernet quality-of-service</h4>
+        <p>Once wrapped into Ethernet, the traffic can use VLAN membership, Priority Code Point (PCP), stream filters, policing, shaping, and scheduled or asynchronous traffic classes.</p>
+      </div>
+      <div class="card">
+        <h4>Need 4: Add stream timing</h4>
+        <p>The time-synchronous ACF stream form can carry an AVTP presentation time. This lets a receiver defer delivery until the intended synchronized time where the implementation supports that behavior.</p>
+      </div>
+    </div>
+    <pre>
+Old distributed style:
+
+  CAN island A  ── gateway ── CAN/FlexRay/Ethernet ── gateway ── CAN island B
+
+Zonal style with tunnelling:
+
+  CAN devices ── zonal ECU ── Ethernet VLAN/TSN backbone ── zonal ECU ── CAN devices
+                    │                                         │
+                    └── pack CAN into IEEE 1722 ACF ──────────┘</pre>
+  </section>
+
+  <section id="acf">
+    <h2>3. What ACF is</h2>
+    <p><strong>AVTP Control Format (ACF)</strong> is the IEEE 1722 mechanism used to carry control or fieldbus-style messages inside an AVTP stream. In the automotive use case, an ACF stream can transport CAN, CAN FD, LIN, and other bus-frame messages as a sequence of ACF messages.</p>
+    <p>The architecture has two nested layers:</p>
+    <ol>
+      <li><strong>The AVTP stream layer.</strong> This chooses whether the stream is non-time-synchronous or time-synchronous, identifies the stream, carries a sequence number, and gives the length of the ACF payload.</li>
+      <li><strong>The ACF message layer.</strong> The payload contains one or more ACF messages. Each ACF message begins with an ACF message type and an ACF message length, followed by message-type-specific fields and payload bytes.</li>
+    </ol>
+    <div class="diagram-title">Layer nesting</div>
+    <pre>
+Ethernet frame
+└─ Optional 802.1Q VLAN tag
+   └─ EtherType = 0x22F0 for AVTP over Ethernet
+      └─ AVTP ACF stream header
+         ├─ NTSCF header, or
+         └─ TSCF header
+            └─ ACF payload
+               ├─ ACF message #1: ACF_CAN or ACF_CAN_BRIEF
+               ├─ ACF message #2: ACF_CAN or ACF_CAN_BRIEF
+               └─ ACF message #n: possibly another supported ACF type</pre>
+    <div class="callout blue">
+      <strong>Important implementation point:</strong> ACF is not a separate Ethernet EtherType. It is a payload format inside IEEE 1722 AVTP. The Ethernet switch first sees an AVTP Ethernet frame. Only an ACF-aware function parses deeper into the AVTP subtype and ACF message fields.
+    </div>
+  </section>
+
+  <section id="frame-stack">
+    <h2>4. Complete Ethernet, VLAN, AVTP, and CAN frame stack</h2>
+    <p>The CAN frame becomes application data inside an Ethernet frame. On the wire, the receiver first decodes normal Ethernet framing, then optional VLAN tagging, then the IEEE 1722 AVTP payload, then the ACF message, and only then the original CAN/CAN FD information.</p>
+    <div class="diagram-title">Outer Ethernet frame with VLAN tag</div>
+    <pre>
++----------------+----------------+---------------------------+----------------+--------------------+---------+
+| Destination MAC| Source MAC     | 802.1Q VLAN tag           | EtherType      | AVTP / ACF payload | FCS     |
+| 6 bytes        | 6 bytes        | TPID + TCI = 4 bytes      | 0x22F0         | variable           | 4 bytes |
++----------------+----------------+---------------------------+----------------+--------------------+---------+
+                                  | TPID 0x8100 | PCP | DEI | VLAN Identifier |
+                                  | 16 bits     | 3   | 1   | 12 bits         |</pre>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Field</th><th>Meaning in CAN-over-Ethernet tunnelling</th><th>Switch use</th></tr></thead>
+        <tbody>
+          <tr><td>Destination MAC</td><td>Usually a unicast or multicast MAC associated with the ACF stream consumer group.</td><td>MAC lookup, multicast replication, destination-port decision.</td></tr>
+          <tr><td>Source MAC</td><td>MAC of the stream-producing ECU, gateway, or internal switch/CPU port.</td><td>Source learning, filtering, diagnostics.</td></tr>
+          <tr><td>VLAN Identifier</td><td>Separates service domains, zones, safety domains, diagnostics, or traffic classes. It is not the CAN identifier.</td><td>Ingress membership check, VLAN forwarding, egress tagging/untagging.</td></tr>
+          <tr><td>PCP</td><td>Priority Code Point. Commonly used to place ACF traffic into a deterministic or high-priority egress queue.</td><td>Priority regeneration, traffic-class selection, queue mapping.</td></tr>
+          <tr><td>EtherType 0x22F0</td><td>Identifies IEEE 1722 AVTP over Ethernet.</td><td>Protocol recognition and optional stream filtering.</td></tr>
+          <tr><td>AVTP Stream ID</td><td>Identifies the AVTP stream independent of the VLAN and MAC destination.</td><td>Stream identification, Per-Stream Filtering and Policing (PSFP), routing to an ACF gateway function.</td></tr>
+          <tr><td>ACF fields</td><td>Carry CAN bus ID, CAN identifier, payload bytes, timestamp-valid flag, CAN FD flags, and optional message timestamp.</td><td>Usually ignored by a pure switch. Parsed by an ACF gateway, CPU, or deep packet inspection block.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="ntscf-tscf">
+    <h2>5. NTSCF and TSCF ACF stream headers</h2>
+    <p>An ACF payload is carried inside one of two AVTP stream subtypes:</p>
+    <ul>
+      <li><strong>Non-Time-Synchronous Control Format (NTSCF)</strong>: used when the stream does not carry an AVTP presentation timestamp.</li>
+      <li><strong>Time-Synchronous Control Format (TSCF)</strong>: used when the stream carries an AVTP timestamp so receivers can schedule delivery relative to synchronized time.</li>
+    </ul>
+
+    <h3>5.1 NTSCF header view</h3>
+    <p>NTSCF is the smaller form. It carries the AVTP subtype, header control flags, an ACF payload length, a sequence number, and the 64-bit Stream ID.</p>
+    <pre>
+NTSCF ACF AVTPDU, simplified
+
++------------------------------ 32 bits ------------------------------+
+| subtype=0x82 | common control bits | ntscf_data_length | seq_num     |
++---------------------------------------------------------------------+
+| stream_id, high 32 bits                                             |
++---------------------------------------------------------------------+
+| stream_id, low 32 bits                                              |
++---------------------------------------------------------------------+
+| ACF payload: one or more ACF messages                               |
++---------------------------------------------------------------------+</pre>
+    <div class="callout yellow"><strong>Use NTSCF when:</strong> the receiver should forward the CAN frame as soon as it is processed, or when the deployment does not need an AVTP presentation time for the encapsulated bus frame.</div>
+
+    <h3>5.2 TSCF header view</h3>
+    <p>TSCF adds an AVTP timestamp and a stream-data length field. The timestamp-valid bit tells the receiver whether the AVTP timestamp is meaningful.</p>
+    <pre>
+TSCF ACF AVTPDU, simplified
+
++------------------------------ 32 bits ------------------------------+
+| subtype=0x05 | common control bits | sequence_num and status bits    |
++---------------------------------------------------------------------+
+| stream_id, high 32 bits                                             |
++---------------------------------------------------------------------+
+| stream_id, low 32 bits                                              |
++---------------------------------------------------------------------+
+| avtp_timestamp                                                      |
++---------------------------------------------------------------------+
+| format-specific fields and stream_data_length                       |
++---------------------------------------------------------------------+
+| ACF payload: one or more ACF messages                               |
++---------------------------------------------------------------------+</pre>
+    <div class="callout green"><strong>Use TSCF when:</strong> the receiver must release the encapsulated CAN frame at a particular synchronized time, for example when a command must be aligned across several consumers.</div>
+
+    <div class="grid">
+      <div class="card"><h4>NTSCF</h4><p>Shorter header. Good for immediate forwarding and asynchronous bus-frame transport.</p><p class="kpi">Subtype 0x82</p></div>
+      <div class="card"><h4>TSCF</h4><p>Includes AVTP timestamp semantics. Good for controlled time-aligned release at consumers.</p><p class="kpi">Subtype 0x05</p></div>
+    </div>
+  </section>
+
+  <section id="acf-can">
+    <h2>6. ACF_CAN and ACF_CAN_BRIEF header formats</h2>
+    <p>IEEE 1722 defines different ACF message types. For CAN tunnelling, the two important forms are <strong>ACF_CAN</strong> and <strong>ACF_CAN_BRIEF</strong>. Both carry the CAN identifier, CAN/CAN FD flags, a logical CAN bus identifier, and the CAN payload. The difference is that ACF_CAN includes a message timestamp field, while ACF_CAN_BRIEF omits it.</p>
+
+    <h3>6.1 First 32-bit quadlet common to ACF_CAN and ACF_CAN_BRIEF</h3>
+    <p>The first 32-bit word combines the ACF message type and length with CAN-specific control flags.</p>
+    <div class="legend"><span class="b-orange">ACF common</span><span class="b-blue">payload alignment</span><span class="b-green">CAN control flags</span><span class="b-purple">bus mapping</span></div>
+    <div class="bitbox">
+      <div class="bit b-orange span7">acf_msg_type<br/>7 b</div>
+      <div class="bit b-orange span9">acf_msg_length<br/>9 b</div>
+      <div class="bit b-blue span2">pad<br/>2 b</div>
+      <div class="bit b-green span1">mtv</div>
+      <div class="bit b-green span1">rtr</div>
+      <div class="bit b-green span1">eff</div>
+      <div class="bit b-green span1">brs</div>
+      <div class="bit b-green span1">fdf</div>
+      <div class="bit b-green span1">esi</div>
+      <div class="bit span3">rsv</div>
+      <div class="bit b-purple span5">can_bus_id<br/>5 b</div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Field</th><th>Meaning</th><th>Implementation rule</th></tr></thead>
+        <tbody>
+          <tr><td><code>acf_msg_type</code></td><td>Identifies the ACF message type. CAN is one type; CAN Brief is another.</td><td>Parser dispatches to the correct ACF message decoder.</td></tr>
+          <tr><td><code>acf_msg_length</code></td><td>Length of this ACF message in the quadlet-oriented ACF layout.</td><td>Used to skip to the next ACF message in the same AVTPDU.</td></tr>
+          <tr><td><code>pad</code></td><td>Number of padding bytes after the CAN payload to align to a 32-bit boundary.</td><td>Receiver removes padding before giving data to the CAN controller or upper layer.</td></tr>
+          <tr><td><code>mtv</code></td><td>Message timestamp valid.</td><td>Meaningful for ACF_CAN. For ACF_CAN_BRIEF there is no timestamp field.</td></tr>
+          <tr><td><code>rtr</code></td><td>Remote Transmission Request bit for classical CAN remote frames.</td><td>Should be validated against CAN FD rules, because CAN FD does not use classical remote frames.</td></tr>
+          <tr><td><code>eff</code></td><td>Extended Frame Format. 0 means 11-bit identifier. 1 means 29-bit identifier.</td><td>Receiver must interpret <code>can_identifier</code> according to this bit.</td></tr>
+          <tr><td><code>brs</code></td><td>Bit Rate Switch flag for CAN FD.</td><td>Passed to CAN FD controller where supported.</td></tr>
+          <tr><td><code>fdf</code></td><td>Flexible Data-rate Format. 0 means classical CAN. 1 means CAN FD.</td><td>Controls maximum payload interpretation: classical CAN up to 8 bytes, CAN FD up to 64 bytes.</td></tr>
+          <tr><td><code>esi</code></td><td>Error State Indicator for CAN FD.</td><td>Useful for preserving CAN FD transmitter state semantics.</td></tr>
+          <tr><td><code>can_bus_id</code></td><td>Logical bus number inside the ACF message.</td><td>Gateway maps this to a physical CAN controller, virtual CAN interface, or software routing table entry.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>6.2 ACF_CAN full message with timestamp</h3>
+    <p>ACF_CAN is the timestamp-carrying CAN encapsulation. It has a 16-byte header before the CAN payload.</p>
+    <pre>
+ACF_CAN message
+
+Quadlet 0:  acf_msg_type | acf_msg_length | pad | mtv | rtr | eff | brs | fdf | esi | rsv | can_bus_id
+Quadlet 1:  message_timestamp bits 63..32
+Quadlet 2:  message_timestamp bits 31..0
+Quadlet 3:  reserved bits | can_identifier, 29-bit field
+Payload:    CAN or CAN FD data bytes, followed by pad bytes to 32-bit boundary</pre>
+    <div class="bitbox">
+      <div class="bit b-orange span32">Quadlet 0: common ACF_CAN control word shown above</div>
+      <div class="bit b-yellow span32">Quadlets 1 and 2: 64-bit message_timestamp</div>
+      <div class="bit b-green span3">rsv<br/>3 b</div>
+      <div class="bit b-green span29" style="grid-column:span 29">can_identifier<br/>29 b field, 11-bit or 29-bit meaning selected by eff</div>
+    </div>
+    <p class="small">For an 11-bit CAN identifier, the identifier is carried in the same field but only the relevant lower identifier value is meaningful according to the selected frame-format interpretation.</p>
+
+    <h3>6.3 ACF_CAN_BRIEF message without timestamp</h3>
+    <p>ACF_CAN_BRIEF is smaller. It has no 64-bit message timestamp, so it has an 8-byte header before the CAN payload.</p>
+    <pre>
+ACF_CAN_BRIEF message
+
+Quadlet 0:  acf_msg_type | acf_msg_length | pad | mtv | rtr | eff | brs | fdf | esi | rsv | can_bus_id
+Quadlet 1:  reserved bits | can_identifier, 29-bit field
+Payload:    CAN or CAN FD data bytes, followed by pad bytes to 32-bit boundary</pre>
+    <div class="callout">
+      <strong>Practical choice:</strong> use ACF_CAN when the individual CAN message timestamp must be preserved. Use ACF_CAN_BRIEF when the stream-level timing or immediate delivery is sufficient and you want lower overhead.
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Form</th><th>Header before CAN payload</th><th>Timestamp field</th><th>Best use</th></tr></thead>
+        <tbody>
+          <tr><td>ACF_CAN</td><td>16 bytes</td><td>Yes, 64-bit message timestamp</td><td>Timestamp-preserving tunnelling and time-aware replay.</td></tr>
+          <tr><td>ACF_CAN_BRIEF</td><td>8 bytes</td><td>No</td><td>Lower-overhead tunnelling where the individual CAN message timestamp is not required.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="packing">
+    <h2>7. Packing multiple CAN frames into one ACF payload</h2>
+    <p>The AVTP ACF payload can contain one or more ACF messages. This is important because a CAN bus produces small frames. Sending one Ethernet frame per tiny CAN frame is simple but inefficient. Collecting several CAN frames into one AVTPDU improves bandwidth efficiency but increases waiting time.</p>
+    <div class="grid">
+      <div class="card">
+        <h4>Low latency policy</h4>
+        <p>Transmit immediately when a configured critical CAN identifier arrives. This minimizes delay but wastes more Ethernet overhead.</p>
+      </div>
+      <div class="card">
+        <h4>Batching policy</h4>
+        <p>Collect until a byte threshold, frame-count threshold, or timeout fires. This improves bandwidth efficiency but adds bounded latency.</p>
+      </div>
+    </div>
+    <pre>
+One AVTP ACF payload can look like this:
+
++------------------------+------------------------+------------------------+
+| ACF_CAN_BRIEF msg #1   | ACF_CAN_BRIEF msg #2   | ACF_CAN msg #3         |
+| CAN ID 0x120           | CAN ID 0x18DAF110      | CAN ID 0x301 + time    |
++------------------------+------------------------+------------------------+
+
+Receiver parses message #1 using acf_msg_length,
+then jumps to message #2,
+then jumps to message #3,
+then stops when the ACF payload length is consumed.</pre>
+    <div class="callout yellow">
+      <strong>Trade-off:</strong> batching is a network-engineering decision. It must be chosen together with CAN signal deadlines, Ethernet queueing delay, VLAN priority, and stream policing limits.
+    </div>
+  </section>
+
+  <section id="tx-rx">
+    <h2>8. CAN-to-Ethernet and Ethernet-to-CAN flows</h2>
+    <h3>8.1 CAN frame enters a zonal ECU and leaves as Ethernet ACF</h3>
+    <div class="pipeline">
+      <div class="step"><div class="n">1</div><h4>CAN RX</h4><p>CAN controller receives a classical CAN or CAN FD frame from a local bus.</p></div>
+      <div class="step"><div class="n">2</div><h4>Classify</h4><p>Gateway matches CAN channel, CAN identifier, direction, and freshness policy.</p></div>
+      <div class="step"><div class="n">3</div><h4>Build ACF</h4><p>Create ACF_CAN or ACF_CAN_BRIEF. Set flags, CAN bus ID, identifier, payload, padding, and optional timestamp.</p></div>
+      <div class="step"><div class="n">4</div><h4>Build AVTP</h4><p>Select NTSCF or TSCF. Add subtype, sequence number, Stream ID, payload length, and optional AVTP timestamp.</p></div>
+      <div class="step"><div class="n">5</div><h4>Build Ethernet</h4><p>Add destination MAC, source MAC, VLAN ID, PCP, EtherType 0x22F0, and FCS.</p></div>
+      <div class="step"><div class="n">6</div><h4>Switch</h4><p>Forward according to VLAN, stream filters, queue selection, and egress-port rules.</p></div>
+    </div>
+
+    <h3>8.2 Ethernet ACF enters a zonal ECU and leaves as CAN</h3>
+    <div class="pipeline">
+      <div class="step"><div class="n">1</div><h4>Ethernet RX</h4><p>Switch port receives an IEEE 1722 frame, possibly VLAN-tagged.</p></div>
+      <div class="step"><div class="n">2</div><h4>Ingress checks</h4><p>Apply VLAN membership, EtherType recognition, Stream ID filters, and policing.</p></div>
+      <div class="step"><div class="n">3</div><h4>ACF parse</h4><p>ACF-aware block parses NTSCF/TSCF and then each ACF message.</p></div>
+      <div class="step"><div class="n">4</div><h4>Map to CAN</h4><p>Use can_bus_id and CAN identifier rules to select local CAN controller and transmit policy.</p></div>
+      <div class="step"><div class="n">5</div><h4>Schedule</h4><p>For TSCF or timestamped ACF_CAN, defer until the intended presentation or message time if configured.</p></div>
+      <div class="step"><div class="n">6</div><h4>CAN TX</h4><p>Transmit a real CAN or CAN FD frame on the local physical CAN bus.</p></div>
+    </div>
+  </section>
+
+  <section id="switch">
+    <h2>9. How this is implemented in a VLAN switch</h2>
+    <p>The phrase “implemented in a VLAN switch” can mean two different designs. Mixing them up causes confusion.</p>
+
+    <h3>9.1 Case A: the switch is only an Ethernet VLAN bridge</h3>
+    <p>In this case, the switch does not know that the payload contains CAN. It forwards the ACF traffic as ordinary IEEE 1722 Ethernet traffic.</p>
+    <pre>
+Ingress Ethernet port
+  ↓
+Parser: Destination MAC, Source MAC, VLAN tag, EtherType 0x22F0
+  ↓
+VLAN ingress membership and filtering
+  ↓
+Optional stream identification: EtherType + VLAN + Destination MAC + IEEE 1722 Stream ID
+  ↓
+Optional PSFP: stream gate, flow meter, maximum frame size, destination-port action
+  ↓
+FDB / multicast / configured destination-port decision
+  ↓
+Priority regeneration and queue selection from PCP or internal priority
+  ↓
+Egress VLAN decision: tagged, untagged, or not a member
+  ↓
+Transmit unchanged AVTP/ACF payload</pre>
+    <div class="callout blue">
+      <strong>Key point:</strong> a pure bridge can enforce VLAN and stream-level behavior without parsing <code>can_identifier</code>. It may match EtherType 0x22F0 and IEEE 1722 Stream ID, but it usually leaves the ACF_CAN payload untouched.
+    </div>
+
+    <h3>9.2 Case B: the switch or zonal gateway is ACF-aware</h3>
+    <p>In this case, the switch complex includes a CPU, Direct Memory Access (DMA) path, packet accelerator, or gateway engine that terminates the IEEE 1722 ACF stream. The Ethernet switch fabric still performs VLAN switching, but selected frames are redirected to an internal processing port.</p>
+    <pre>
+Ethernet ingress port
+  ↓
+Normal VLAN bridge pipeline
+  ↓
+Stream filter matches: VLAN=100, EtherType=0x22F0, Stream ID=S_CAN_ZONE_2
+  ↓
+Destination-port action redirects or mirrors frame to internal ACF gateway port
+  ↓
+ACF gateway parses NTSCF/TSCF
+  ↓
+For each ACF message:
+    if acf_msg_type == ACF_CAN or ACF_CAN_BRIEF:
+        validate length, padding, fdf/brs/rtr/eff combination
+        extract can_bus_id, can_identifier, payload
+        apply whitelist/routing table
+        enqueue to CAN controller TX FIFO
+    else:
+        drop or forward according to configured policy
+  ↓
+Physical CAN controller transmits on the selected CAN bus</pre>
+    <div class="callout green">
+      <strong>Correct architectural statement:</strong> the VLAN switch forwards the IEEE 1722 ACF stream; the CAN tunnelling function is implemented either in the endpoints, in a switch-integrated gateway block, or in host software attached to an internal switch port. The pure 802.1Q bridge function is not itself a CAN controller.
+    </div>
+
+    <h3>9.3 Detailed VLAN switch pipeline for ACF traffic</h3>
+    <div class="pipeline">
+      <div class="step"><div class="n">1</div><h4>Ingress parser</h4><p>Extract MAC destination/source, optional 802.1Q tag, PCP, DEI, VLAN ID, EtherType.</p></div>
+      <div class="step"><div class="n">2</div><h4>Tag handling</h4><p>If untagged, apply default VLAN and priority or drop. If tagged, validate TPID and VLAN policy.</p></div>
+      <div class="step"><div class="n">3</div><h4>VLAN membership</h4><p>Drop if ingress port is not a member of the received or assigned VLAN.</p></div>
+      <div class="step"><div class="n">4</div><h4>Stream identification</h4><p>Optionally match EtherType 0x22F0, VLAN, PCP, destination MAC, and IEEE 1722 Stream ID to assign a stream handle.</p></div>
+      <div class="step"><div class="n">5</div><h4>Filtering and policing</h4><p>Apply PSFP: stream gate, flow meter, max SDU, destination-port modification, or VLAN modification.</p></div>
+      <div class="step"><div class="n">6</div><h4>Forwarding</h4><p>Use FDB, multicast rules, or configured stream action to select egress ports.</p></div>
+      <div class="step"><div class="n">7</div><h4>Queueing</h4><p>Map PCP/internal priority to traffic class. Apply shaping or scheduled gates where configured.</p></div>
+      <div class="step"><div class="n">8</div><h4>Egress</h4><p>Transmit tagged, untagged, or not at all depending on egress VLAN membership and policy.</p></div>
+    </div>
+
+    <h3>9.4 Where the CAN fields are used</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Field</th><th>Used by plain VLAN bridge?</th><th>Used by ACF gateway?</th></tr></thead>
+        <tbody>
+          <tr><td>Destination MAC</td><td>Yes. Forwarding and multicast replication.</td><td>Yes. Also useful to select stream consumer group.</td></tr>
+          <tr><td>VLAN ID and PCP</td><td>Yes. Membership, filtering, priority, queueing.</td><td>Yes. Select service domain and QoS policy.</td></tr>
+          <tr><td>EtherType 0x22F0</td><td>Yes if stream filtering is configured.</td><td>Yes. Indicates AVTP frame candidate.</td></tr>
+          <tr><td>AVTP subtype</td><td>Sometimes. A deep filter may inspect it.</td><td>Yes. Select NTSCF/TSCF parser.</td></tr>
+          <tr><td>AVTP Stream ID</td><td>Yes in stream identification capable switches.</td><td>Yes. Selects configured tunnel instance.</td></tr>
+          <tr><td>ACF message type</td><td>Usually no.</td><td>Yes. Selects ACF_CAN, ACF_CAN_BRIEF, or another parser.</td></tr>
+          <tr><td>can_bus_id</td><td>No.</td><td>Yes. Maps to physical or virtual CAN channel.</td></tr>
+          <tr><td>can_identifier</td><td>No.</td><td>Yes. Routing, filtering, diagnostics, CAN TX setup.</td></tr>
+          <tr><td>CAN payload</td><td>No.</td><td>Yes. Becomes the CAN data field.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="tables">
+    <h2>10. Example configuration tables</h2>
+    <p>The following tables show the type of configuration a production implementation normally needs. Names and exact register paths vary by vendor, but the logic is stable.</p>
+
+    <h3>10.1 VLAN and egress membership</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>VLAN</th><th>Purpose</th><th>Ingress ports</th><th>Egress policy</th><th>PCP</th></tr></thead>
+        <tbody>
+          <tr><td>100</td><td>Zone 2 CAN-tunnel ACF stream</td><td>Zonal ECU port, internal ACF engine port</td><td>Backbone uplink tagged, diagnostic port not a member</td><td>5</td></tr>
+          <tr><td>101</td><td>Zone 3 CAN-tunnel ACF stream</td><td>Zonal ECU port, internal ACF engine port</td><td>Backbone uplink tagged, central-compute port tagged</td><td>5</td></tr>
+          <tr><td>200</td><td>Best-effort diagnostics</td><td>Service port, central compute</td><td>Tagged on backbone, untagged on service port</td><td>0</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>10.2 Stream identification and policing</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Match primitive</th><th>Example</th><th>Action</th></tr></thead>
+        <tbody>
+          <tr><td>Ingress port</td><td>Backbone port 1</td><td>Accept only expected tunnel direction.</td></tr>
+          <tr><td>VLAN ID</td><td>100</td><td>Bind to zone-specific ACF service.</td></tr>
+          <tr><td>EtherType</td><td>0x22F0</td><td>Recognize IEEE 1722 AVTP.</td></tr>
+          <tr><td>IEEE 1722 Stream ID</td><td>0xA0B1C2D300000102</td><td>Assign stream handle <code>S_CAN_ZONE2</code>.</td></tr>
+          <tr><td>Max SDU</td><td>256 bytes</td><td>Drop malformed or oversized tunnel frames.</td></tr>
+          <tr><td>Flow meter</td><td>Configured rate for collected CAN frames</td><td>Prevent a faulty tunnel from starving other traffic.</td></tr>
+          <tr><td>Destination-port action</td><td>Limit to internal ACF engine and uplink</td><td>Prevent leakage to diagnostic or unrelated VLAN ports.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>10.3 CAN tunnel mapping</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Local CAN channel</th><th>ACF can_bus_id</th><th>CAN identifiers</th><th>AVTP Stream ID</th><th>VLAN/PCP</th><th>Policy</th></tr></thead>
+        <tbody>
+          <tr><td>CAN2</td><td>2</td><td>0x100-0x1FF</td><td>S_CAN_ZONE2_BODY</td><td>100 / PCP 5</td><td>ACF_CAN_BRIEF, immediate transmit</td></tr>
+          <tr><td>CAN2</td><td>2</td><td>0x18DA0000-0x18DAFFFF</td><td>S_CAN_ZONE2_DIAG</td><td>200 / PCP 0</td><td>ACF_CAN_BRIEF, best effort</td></tr>
+          <tr><td>CAN3</td><td>3</td><td>0x300-0x37F</td><td>S_CAN_ZONE3_TIME</td><td>101 / PCP 6</td><td>ACF_CAN with timestamp, TSCF stream</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="example">
+    <h2>11. Worked byte-level example</h2>
+    <p>Assume the zonal gateway receives a CAN FD frame from physical CAN channel 2:</p>
+    <pre>
+Input CAN FD frame
+  Physical channel: CAN2
+  CAN identifier:   0x18DAF110
+  Identifier type:  extended, 29-bit
+  Payload length:   12 bytes
+  Payload bytes:    11 22 33 44 55 66 77 88 99 AA BB CC
+  CAN FD:           yes
+  BRS:              yes
+  ESI:              0</pre>
+    <p>The gateway chooses ACF_CAN_BRIEF because it does not need a per-message timestamp. Since the payload is 12 bytes, it is already aligned to a 4-byte boundary, so <code>pad = 0</code>. The ACF message contains 8 bytes of ACF_CAN_BRIEF header plus 12 payload bytes, so the ACF message occupies 20 bytes, or 5 quadlets in the quadlet-oriented layout.</p>
+    <pre>
+ACF_CAN_BRIEF construction
+  acf_msg_type    = ACF_CAN_BRIEF
+  acf_msg_length  = 5 quadlets
+  pad             = 0
+  mtv             = 0, because no message timestamp field is present
+  rtr             = 0
+  eff             = 1, extended CAN identifier
+  brs             = 1
+  fdf             = 1, CAN FD frame
+  esi             = 0
+  can_bus_id      = 2
+  can_identifier  = 0x18DAF110
+  can_payload     = 11 22 33 44 55 66 77 88 99 AA BB CC</pre>
+    <p>The gateway then places this ACF message in an NTSCF AVTPDU and emits it as a VLAN-tagged Ethernet frame:</p>
+    <pre>
+Ethernet / VLAN / AVTP wrapping
+  Destination MAC  = configured stream destination, often multicast or central gateway unicast
+  Source MAC       = zonal gateway MAC
+  VLAN ID          = 100
+  PCP              = 5
+  EtherType        = 0x22F0
+  AVTP subtype     = NTSCF, 0x82
+  Sequence number  = previous + 1 modulo sequence range
+  Stream ID        = S_CAN_ZONE2_BODY
+  ACF payload      = the 20-byte ACF_CAN_BRIEF message above</pre>
+    <div class="callout blue">
+      <strong>Switch behavior in this example:</strong> a plain VLAN switch forwards this frame based on VLAN 100, destination MAC, PCP 5, and possibly the Stream ID. It does not need to know that the payload contains CAN ID 0x18DAF110. An ACF gateway at the destination parses the payload and retransmits a CAN FD frame on its configured CAN bus if policy allows it.
+    </div>
+  </section>
+
+  <section id="checks">
+    <h2>12. Engineering checks for a robust implementation</h2>
+    <div class="grid">
+      <div class="card"><h4>Length validation</h4><p>Verify AVTP payload length, ACF message length, CAN payload length, and padding. Reject frames where the message length steps beyond the payload boundary.</p></div>
+      <div class="card"><h4>Flag validation</h4><p>Reject impossible combinations, such as a classical CAN remote frame combined with CAN FD semantics where unsupported by the endpoint.</p></div>
+      <div class="card"><h4>Identifier whitelist</h4><p>Do not transmit arbitrary received CAN identifiers to a safety-critical CAN bus. Match against configured ranges and directions.</p></div>
+      <div class="card"><h4>Stream whitelist</h4><p>Accept only configured Stream IDs, VLAN IDs, source ports, and destination MACs for each tunnel.</p></div>
+      <div class="card"><h4>Rate limits</h4><p>Use PSFP, flow metering, or gateway-level token buckets to prevent a faulty source from flooding the backbone or a CAN bus.</p></div>
+      <div class="card"><h4>Timestamp sanity</h4><p>For TSCF and timestamped ACF_CAN, check whether time synchronization is valid and decide what to do when timestamps are late or too far in the future.</p></div>
+      <div class="card"><h4>Sequence monitoring</h4><p>Track AVTP sequence numbers to detect loss, duplication, or reordering where this matters for the application.</p></div>
+      <div class="card"><h4>VLAN hardening</h4><p>Drop unexpected double-tagged frames, untrusted VLAN tags, and traffic arriving on ports not permitted for the tunnel VLAN.</p></div>
+    </div>
+  </section>
+
+  <section id="misconceptions">
+    <h2>13. Common misconceptions</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Misconception</th><th>Correction</th></tr></thead>
+        <tbody>
+          <tr><td>“The VLAN ID is the CAN bus number.”</td><td>No. VLAN ID is an Ethernet switching and isolation field. The logical CAN bus number is <code>can_bus_id</code> inside the ACF_CAN or ACF_CAN_BRIEF message.</td></tr>
+          <tr><td>“Every switch must parse CAN identifiers.”</td><td>No. Ordinary VLAN bridges can forward ACF streams using MAC, VLAN, PCP, EtherType, and Stream ID. CAN parsing is needed only where the tunnel is terminated, originated, or deeply inspected.</td></tr>
+          <tr><td>“CAN arbitration is preserved across Ethernet.”</td><td>No. CAN arbitration happens only on the local CAN bus. Across Ethernet, priority comes from VLAN PCP, traffic class, shaping, gating, and stream configuration.</td></tr>
+          <tr><td>“Tunnelling and translation are the same.”</td><td>No. Tunnelling preserves the original bus frame inside an Ethernet transport. Translation changes the communication model or signal representation.</td></tr>
+          <tr><td>“TSCF is always better than NTSCF.”</td><td>No. TSCF is useful when presentation time matters. NTSCF is smaller and often sufficient for immediate forwarding.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="references">
+    <h2>14. References used for this note</h2>
+    <p>This note is based on the public AUTOSAR IEEE1722 Transport Layer specification, AUTOSAR Ethernet Switch Driver specification, AUTOSAR Requirements on IEEE1722, and the COVESA Open1722 project headers/examples. IEEE 1722 itself remains the normative standard for AVTP and ACF. AUTOSAR and Open1722 are used here because they expose implementer-oriented field names and automotive integration behavior in public documents and code.</p>
+    <ul>
+      <li>AUTOSAR Classic Platform, Specification of IEEE1722 Transport Layer, R23-11.</li>
+      <li>AUTOSAR Classic Platform, Specification of Ethernet Switch Driver, R23-11.</li>
+      <li>AUTOSAR Foundation, Requirements on IEEE1722, R23-11.</li>
+      <li>COVESA Open1722, AVTP/ACF headers and automotive fieldbus serialization examples.</li>
+    </ul>
+  </section>
+
+  <div class="footer">Prepared as first-principles automotive Ethernet training material. Theme: Databricks-inspired dark layout.</div>
+</main>
+</div>
+</body>
+</html>

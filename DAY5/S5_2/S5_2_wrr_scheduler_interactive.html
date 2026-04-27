@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weighted Round Robin Scheduler</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    font-size: 13px;
+    background: #ffffff;
+    color: #1a1a1a;
+    padding: 24px;
+    max-width: 860px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 18px; font-weight: 600; margin-bottom: 4px; color: #1a1a1a; }
+  .subtitle { font-size: 12px; color: #666; margin-bottom: 20px; }
+  .section-label { font-size: 12px; color: #666; margin: 12px 0 5px; }
+
+  .controls { display: flex; gap: 8px; margin-bottom: 16px; }
+  button {
+    font-size: 12px; padding: 6px 16px; border-radius: 6px;
+    border: 1px solid #ccc; background: #f5f5f5; color: #1a1a1a;
+    cursor: pointer; font-family: inherit;
+  }
+  button:hover { background: #e8e8e8; }
+  button.primary { background: #1F3864; color: #fff; border-color: #1F3864; }
+  button.primary:hover { background: #2E5EA8; }
+
+  .tx-row {
+    display: flex; gap: 4px; flex-wrap: wrap;
+    min-height: 38px; padding: 6px 8px;
+    background: #f8f8f8; border-radius: 6px;
+    border: 1px solid #e0e0e0; margin-bottom: 16px;
+  }
+
+  .qrow { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .ql { width: 130px; font-weight: 600; font-size: 12px; flex-shrink: 0; }
+  .qframes { display: flex; gap: 4px; flex-wrap: wrap; flex: 1; min-height: 34px; }
+
+  .fr {
+    min-width: 36px; height: 30px; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 600; padding: 0 5px;
+    flex-shrink: 0; transition: opacity 0.2s;
+    border-width: 1px; border-style: solid;
+  }
+  .fr.sent { opacity: 0.18; }
+  .fr.next { box-shadow: 0 0 0 2.5px #c0392b; }
+
+  .cbar { width: 150px; height: 10px; border-radius: 4px; background: #e0e0e0; overflow: hidden; flex-shrink: 0; }
+  .cfill { height: 100%; border-radius: 4px; transition: width 0.3s ease; }
+  .active-tag { font-size: 11px; color: #c0392b; font-weight: 600; margin-left: 6px; }
+
+  .log {
+    font-size: 12px; color: #555; background: #f8f8f8;
+    padding: 10px 12px; border-radius: 6px; border: 1px solid #e0e0e0;
+    line-height: 2; min-height: 52px; font-family: monospace;
+  }
+  .log .hi { color: #1a1a1a; font-weight: 700; }
+
+  .stats { display: flex; gap: 24px; font-size: 12px; color: #666; margin: 12px 0; }
+  .stats span { color: #1a1a1a; font-weight: 600; }
+
+  .algo-note {
+    background: #EEF3FA; border-left: 4px solid #2E5EA8;
+    padding: 10px 14px; border-radius: 0 6px 6px 0;
+    font-size: 12px; color: #1F3864; line-height: 1.7;
+    margin-bottom: 20px;
+  }
+
+  .weight-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 20px; }
+  .weight-table th { background: #1F3864; color: #fff; padding: 7px 12px; text-align: left; }
+  .weight-table td { padding: 7px 12px; border-bottom: 1px solid #e0e0e0; }
+  .weight-table tr:nth-child(even) td { background: #f8f8f8; }
+
+  hr { border: none; border-top: 1px solid #e0e0e0; margin: 16px 0; }
+</style>
+</head>
+<body>
+
+<h1>Weighted Round Robin (WRR) Scheduler</h1>
+<p class="subtitle">Each queue is served a fixed number of frames per round, proportional to its weight</p>
+
+<div class="algo-note">
+  <strong>WRR rule:</strong> At the start of each round, every queue is loaded with credit equal to its weight. The scheduler visits each queue in order and serves one frame per credit unit. When a queue's credit reaches zero it waits until the next round. Assumes all frames are the same size — see DRR for byte-fair scheduling with variable frame sizes.
+</div>
+
+<table class="weight-table">
+  <thead>
+    <tr><th>Queue</th><th>Traffic type</th><th>Weight</th><th>Frames per round</th><th>Bandwidth share</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>A</td><td>Video stream</td><td>6</td><td>6</td><td>60%</td></tr>
+    <tr><td>B</td><td>Control messages</td><td>3</td><td>3</td><td>30%</td></tr>
+    <tr><td>C</td><td>Bulk file transfer</td><td>1</td><td>1</td><td>10%</td></tr>
+  </tbody>
+</table>
+
+<div class="controls">
+  <button class="primary" onclick="step()">Transmit next frame →</button>
+  <button onclick="run()">Run 10 steps</button>
+  <button onclick="reset()">Reset</button>
+</div>
+
+<div class="section-label">Transmitted output (in order):</div>
+<div class="tx-row" id="tx-output"></div>
+
+<div class="section-label">Queue contents — faded = sent, red outline = next to transmit:</div>
+<div id="queues"></div>
+
+<hr>
+
+<div class="section-label">Credit remaining this round (reloads at start of each new round):</div>
+<div id="credits"></div>
+
+<div class="stats" id="stats"></div>
+
+<div class="section-label">Step log:</div>
+<div class="log" id="log"></div>
+
+<script>
+const WEIGHTS = [6, 3, 1];
+const COLORS = [
+  { bg: '#E1F5EE', bd: '#0F6E56', tx: '#085041', fill: '#1D9E75' },
+  { bg: '#FAEEDA', bd: '#BA7517', tx: '#633806', fill: '#BA7517' },
+  { bg: '#F1EFE8', bd: '#888780', tx: '#444441', fill: '#888780' }
+];
+const LABELS = ['A  (video)', 'B  (control)', 'C  (bulk)'];
+const QSIZE  = 12;
+const NAME   = ['A', 'B', 'C'];
+
+let S;
+
+function init() {
+  S = {
+    queues:    WEIGHTS.map(() => Array.from({ length: QSIZE }, (_, i) => ({ i, sent: false }))),
+    credits:   [...WEIGHTS],
+    cur:       0,
+    round:     1,
+    txLog:     [],
+    log:       [],
+    totalSent: 0,
+    sentPerQ:  [0, 0, 0]
+  };
+  // advance to first non-empty / non-zero-credit queue
+  findQ();
+}
+
+function hasFrames(q) { return S.queues[q].some(f => !f.sent); }
+function nextFrame(q)  { return S.queues[q].find(f => !f.sent) || null; }
+function allEmpty()    { return [0,1,2].every(q => !hasFrames(q)); }
+
+function newRound() {
+  S.credits = [...WEIGHTS];
+  S.round++;
+  S.log.push(`── Round ${S.round} begins — credits reset to [${WEIGHTS.join(', ')}] ──`);
+}
+
+function findQ() {
+  // Move cur forward until we find a queue with credit > 0 and frames,
+  // starting a new round if all credits are zero.
+  let checked = 0;
+  while (checked < 3) {
+    if (S.credits[S.cur] > 0 && hasFrames(S.cur)) return;
+    S.cur = (S.cur + 1) % 3;
+    checked++;
+  }
+  // All credits exhausted — new round
+  newRound();
+  S.cur = 0;
+  // Find first non-empty queue in new round
+  for (let i = 0; i < 3; i++) {
+    if (hasFrames(i)) { S.cur = i; return; }
+  }
+}
+
+function step() {
+  if (allEmpty()) {
+    S.log.push('All queues empty — done.');
+    render();
+    return;
+  }
+
+  findQ();
+
+  const f = nextFrame(S.cur);
+  if (!f) { render(); return; }
+
+  // Serve one frame
+  f.sent = true;
+  S.credits[S.cur]--;
+  S.txLog.push({ q: S.cur });
+  S.sentPerQ[S.cur]++;
+  S.totalSent++;
+  S.log.push(`Queue ${NAME[S.cur]}: serve frame ${f.i + 1} → credit ${S.credits[S.cur] + 1} → ${S.credits[S.cur]}`);
+
+  // Move to next queue (WRR serves one frame per credit unit then moves on)
+  // — or stay if this queue still has credit AND frames
+  // Classic WRR: serve one frame then rotate to next queue (strict interleaving)
+  // Here we implement the common variant: serve all credits for a queue before moving
+  // to clearly show the weight effect. Toggle comment below for strict interleaving.
+
+  // Stay on same queue while credit remains (common WRR implementation):
+  if (S.credits[S.cur] === 0 || !hasFrames(S.cur)) {
+    S.cur = (S.cur + 1) % 3;
+  }
+
+  render();
+}
+
+function run()   { for (let i = 0; i < 10; i++) step(); }
+function reset() { init(); render(); }
+
+function render() {
+  // TX strip
+  const txDiv = document.getElementById('tx-output');
+  txDiv.innerHTML = S.txLog.length
+    ? S.txLog.map(t => {
+        const c = COLORS[t.q];
+        return `<div class="fr" style="background:${c.bg};border-color:${c.bd};color:${c.tx}">${NAME[t.q]}</div>`;
+      }).join('')
+    : '<span style="color:#999;font-size:12px;padding:4px 0">nothing sent yet</span>';
+
+  // Queue rows
+  document.getElementById('queues').innerHTML = LABELS.map((label, qi) => {
+    const c = COLORS[qi];
+    const fhtml = S.queues[qi].map(f => {
+      const isNext = qi === S.cur && !f.sent && nextFrame(qi) === f;
+      return `<div class="fr ${f.sent ? 'sent' : ''} ${isNext ? 'next' : ''}"
+        style="background:${c.bg};border-color:${c.bd};color:${c.tx}">${NAME[qi]}${f.i + 1}</div>`;
+    }).join('');
+    return `<div class="qrow">
+      <div class="ql" style="color:${c.tx}">${label}</div>
+      <div class="qframes">${fhtml}</div>
+    </div>`;
+  }).join('');
+
+  // Credit bars
+  document.getElementById('credits').innerHTML = WEIGHTS.map((w, qi) => {
+    const c = COLORS[qi];
+    const cr = S.credits[qi];
+    const pct = Math.round(cr / w * 100);
+    const active = qi === S.cur;
+    return `<div class="qrow">
+      <div class="ql" style="color:${c.tx};${active ? 'font-size:13px' : ''}">${NAME[qi]}</div>
+      <div class="cbar"><div class="cfill" style="width:${pct}%;background:${c.fill}"></div></div>
+      <div style="width:110px;font-size:12px;color:#555">${cr} / ${w} credits</div>
+      ${active ? '<span class="active-tag">← serving now</span>' : ''}
+    </div>`;
+  }).join('');
+
+  // Stats
+  document.getElementById('stats').innerHTML =
+    `Round: <span>${S.round}</span>` +
+    `&nbsp;&nbsp; Frames sent: <span>${S.totalSent}</span>` +
+    `&nbsp;&nbsp; A: <span>${S.sentPerQ[0]}</span>` +
+    `&nbsp; B: <span>${S.sentPerQ[1]}</span>` +
+    `&nbsp; C: <span>${S.sentPerQ[2]}</span>`;
+
+  // Log
+  document.getElementById('log').innerHTML =
+    S.log.slice(-6).map((line, i, arr) =>
+      i === arr.length - 1 ? `<span class="hi">${line}</span>` : line
+    ).join('<br>') || 'Press Step to begin.';
+}
+
+init();
+render();
+</script>
+</body>
+</html>

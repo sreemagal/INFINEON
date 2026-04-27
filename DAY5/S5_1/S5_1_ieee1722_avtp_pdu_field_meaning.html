@@ -1,0 +1,1267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Training material on IEEE 1722 AVTP implementation with PDU and Field Meaning</title>
+  <style>
+    :root {
+      --bg: #0b0f14;
+      --bg2: #101620;
+      --panel: #151b23;
+      --panel2: #1b2430;
+      --panel3: #0f1722;
+      --border: #2d3a4a;
+      --border2: #405064;
+      --text: #f8fafc;
+      --muted: #cbd5e1;
+      --soft: #94a3b8;
+      --orange: #ff3621;
+      --orange2: #ff7a45;
+      --blue: #60a5fa;
+      --green: #34d399;
+      --yellow: #fbbf24;
+      --purple: #a78bfa;
+      --red: #fb7185;
+      --code: #070b10;
+      --shadow: 0 24px 70px rgba(0,0,0,0.45);
+      --radius: 18px;
+      --w: 1220px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 4% 0%, rgba(255,54,33,0.18), transparent 38rem),
+        radial-gradient(circle at 98% 5%, rgba(96,165,250,0.15), transparent 36rem),
+        linear-gradient(180deg, #0b0f14 0%, #0b0f14 38%, #080c12 100%);
+      line-height: 1.62;
+    }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .context-bar {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      border-bottom: 1px solid rgba(255,255,255,0.10);
+      background: rgba(9, 13, 19, 0.94);
+      backdrop-filter: blur(18px);
+      box-shadow: 0 14px 45px rgba(0,0,0,0.42);
+    }
+    .context-inner {
+      max-width: var(--w);
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.76rem 1.25rem;
+    }
+    .brand { display: flex; gap: 0.8rem; align-items: center; min-width: 0; }
+    .mark {
+      width: 38px; height: 38px; flex: 0 0 auto;
+      border-radius: 11px;
+      display: grid; place-items: center;
+      font-weight: 900;
+      letter-spacing: -0.07em;
+      color: white;
+      background: linear-gradient(135deg, var(--orange), #9d1c13);
+      box-shadow: 0 12px 30px rgba(255,54,33,0.34);
+    }
+    .ctx-label { min-width: 0; }
+    .ctx-label small {
+      display: block;
+      color: var(--soft);
+      text-transform: uppercase;
+      letter-spacing: 0.13em;
+      font-size: 0.72rem;
+      line-height: 1.15;
+    }
+    #currentContext {
+      display: block;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-weight: 800;
+      color: var(--text);
+      max-width: 58vw;
+    }
+    .pills { display: flex; gap: 0.42rem; flex-wrap: wrap; justify-content: flex-end; }
+    .pills a {
+      color: var(--muted);
+      font-size: 0.78rem;
+      padding: 0.36rem 0.62rem;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.10);
+      background: rgba(255,255,255,0.04);
+      transition: all 0.16s ease;
+    }
+    .pills a.active, .pills a:hover {
+      color: #fff;
+      background: rgba(255,54,33,0.18);
+      border-color: rgba(255,54,33,0.45);
+      text-decoration: none;
+    }
+
+    .hero {
+      max-width: var(--w);
+      margin: 0 auto;
+      padding: 4.6rem 1.25rem 2.2rem;
+    }
+    .eyebrow {
+      color: var(--orange2);
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      font-size: 0.78rem;
+      font-weight: 800;
+      margin-bottom: 1rem;
+    }
+    h1 {
+      font-size: clamp(2.25rem, 5vw, 4.8rem);
+      line-height: 0.96;
+      letter-spacing: -0.065em;
+      margin: 0 0 1.3rem;
+      max-width: 1000px;
+    }
+    .hero p {
+      max-width: 920px;
+      color: var(--muted);
+      font-size: 1.14rem;
+      margin: 0.5rem 0;
+    }
+    .badges { display: flex; flex-wrap: wrap; gap: 0.55rem; margin-top: 1.4rem; }
+    .badge {
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.05);
+      border-radius: 999px;
+      padding: 0.48rem 0.78rem;
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+
+    .layout {
+      max-width: var(--w);
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr);
+      gap: 1.4rem;
+      padding: 0 1.25rem 4rem;
+    }
+    .toc {
+      position: sticky;
+      top: 78px;
+      align-self: start;
+      max-height: calc(100vh - 100px);
+      overflow: auto;
+      border: 1px solid rgba(255,255,255,0.10);
+      background: rgba(21,27,35,0.72);
+      border-radius: var(--radius);
+      padding: 1rem;
+      box-shadow: var(--shadow);
+    }
+    .toc h3 {
+      margin: 0 0 0.7rem;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--soft);
+    }
+    .toc a {
+      display: block;
+      color: var(--muted);
+      padding: 0.48rem 0.55rem;
+      border-radius: 10px;
+      font-size: 0.88rem;
+      line-height: 1.25;
+      border-left: 3px solid transparent;
+    }
+    .toc a:hover, .toc a.active {
+      background: rgba(255,54,33,0.12);
+      color: #fff;
+      border-left-color: var(--orange);
+      text-decoration: none;
+    }
+
+    main { min-width: 0; }
+    section {
+      scroll-margin-top: 92px;
+      margin-bottom: 1.35rem;
+      border: 1px solid rgba(255,255,255,0.10);
+      background: linear-gradient(180deg, rgba(21,27,35,0.96), rgba(15,23,34,0.96));
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    section > .sec-head {
+      padding: 1.35rem 1.55rem 0.4rem;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    section > .sec-body { padding: 1.2rem 1.55rem 1.55rem; }
+    h2 {
+      margin: 0 0 0.4rem;
+      font-size: clamp(1.5rem, 2.5vw, 2.1rem);
+      letter-spacing: -0.035em;
+      line-height: 1.12;
+    }
+    h3 {
+      margin: 1.35rem 0 0.55rem;
+      color: #fff;
+      font-size: 1.18rem;
+      letter-spacing: -0.025em;
+    }
+    h4 { margin: 1rem 0 0.45rem; color: var(--yellow); }
+    p { color: var(--muted); margin: 0.75rem 0; }
+    strong { color: #fff; }
+    .note {
+      border-left: 4px solid var(--orange);
+      background: rgba(255,54,33,0.09);
+      border-radius: 12px;
+      padding: 0.85rem 1rem;
+      color: var(--muted);
+      margin: 1rem 0;
+    }
+    .ok {
+      border-left-color: var(--green);
+      background: rgba(52,211,153,0.08);
+    }
+    .warn {
+      border-left-color: var(--yellow);
+      background: rgba(251,191,36,0.08);
+    }
+
+    pre {
+      margin: 1rem 0;
+      padding: 1.05rem 1.15rem;
+      background: var(--code);
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 14px;
+      color: #e5e7eb;
+      overflow-x: auto;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 0.86rem;
+      line-height: 1.45;
+    }
+    code {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      background: rgba(255,255,255,0.08);
+      padding: 0.12rem 0.28rem;
+      border-radius: 6px;
+      color: #e5e7eb;
+    }
+    pre code { background: transparent; padding: 0; }
+
+    .table-wrap { overflow-x: auto; margin: 1rem 0 1.25rem; border-radius: 14px; border: 1px solid rgba(255,255,255,0.09); }
+    table { width: 100%; border-collapse: collapse; min-width: 780px; background: rgba(7,11,16,0.35); }
+    th, td { text-align: left; padding: 0.78rem 0.82rem; border-bottom: 1px solid rgba(255,255,255,0.08); vertical-align: top; }
+    th { color: #fff; background: rgba(255,255,255,0.06); font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.08em; }
+    td { color: var(--muted); }
+    tr:last-child td { border-bottom: none; }
+    .field { color: #fff; font-weight: 800; white-space: nowrap; }
+    .bits { color: var(--yellow); white-space: nowrap; font-weight: 700; }
+    .rx { color: var(--green); }
+    .chip {
+      display: inline-flex; align-items: center;
+      padding: 0.18rem 0.48rem;
+      border-radius: 999px;
+      background: rgba(96,165,250,0.13);
+      color: #bfdbfe;
+      border: 1px solid rgba(96,165,250,0.22);
+      font-size: 0.78rem;
+      margin: 0.12rem 0.15rem 0.12rem 0;
+    }
+
+    .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+    .card {
+      background: rgba(255,255,255,0.045);
+      border: 1px solid rgba(255,255,255,0.09);
+      border-radius: 16px;
+      padding: 1rem;
+    }
+    .card h4 { margin-top: 0; }
+    ul, ol { color: var(--muted); }
+    li { margin: 0.38rem 0; }
+
+    .footer {
+      max-width: var(--w);
+      margin: 0 auto;
+      padding: 1rem 1.25rem 3rem;
+      color: var(--soft);
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 980px) {
+      .layout { grid-template-columns: 1fr; }
+      .toc { position: relative; top: auto; max-height: none; }
+      .context-inner { grid-template-columns: 1fr; }
+      .pills { justify-content: flex-start; }
+      #currentContext { max-width: 88vw; }
+      .grid2 { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="context-bar">
+    <div class="context-inner">
+      <div class="brand">
+        <div class="mark">db</div>
+        <div class="ctx-label">
+          <small>Current context</small>
+          <span id="currentContext">IEEE 1722 AVTP field-by-field implementation training</span>
+        </div>
+      </div>
+      <nav class="pills" aria-label="Top context navigation">
+        <a href="#ethernet" data-target="ethernet">Frame</a>
+        <a href="#common" data-target="common">Common</a>
+        <a href="#aaf" data-target="aaf">AAF</a>
+        <a href="#cvf" data-target="cvf">CVF</a>
+        <a href="#crf" data-target="crf">CRF</a>
+        <a href="#acf" data-target="acf">ACF</a>
+        <a href="#flows" data-target="flows">Flows</a>
+      </nav>
+    </div>
+  </div>
+
+  <header class="hero">
+    <div class="eyebrow">Databricks dark theme · corrected full-PDU edition</div>
+    <h1>Training material on IEEE 1722 AVTP implementation with PDU and Field Meaning</h1>
+    <p>The material is intended for automotive Ethernet training, especially for implementers working with AAF audio, CVF video, CRF clock-reference streams, and ACF CAN/LIN tunneling over TSCF or NTSCF.</p>
+    <div class="badges">
+      <span class="badge">EtherType 0x22F0</span>
+      <span class="badge">AAF PCM</span>
+      <span class="badge">CVF H.264 / MJPEG</span>
+      <span class="badge">CRF media clock recovery</span>
+      <span class="badge">TSCF / NTSCF</span>
+      <span class="badge">ACF CAN / CAN_BRIEF / LIN</span>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="toc">
+      <h3>Sections</h3>
+      <a href="#ethernet" data-target="ethernet">1. Ethernet placement</a>
+      <a href="#common" data-target="common">2. Common AVTP stream fields</a>
+      <a href="#aaf" data-target="aaf">3. AAF PCM header fields</a>
+      <a href="#cvf" data-target="cvf">4. CVF header fields</a>
+      <a href="#crf" data-target="crf">5. CRF header fields</a>
+      <a href="#acf" data-target="acf">6. ACF carrier headers</a>
+      <a href="#can" data-target="can">7. ACF CAN fields</a>
+      <a href="#lin" data-target="lin">8. ACF LIN fields</a>
+      <a href="#flows" data-target="flows">9. Message sequences</a>
+      <a href="#implementation" data-target="implementation">10. Implementation checklist</a>
+      <a href="#references" data-target="references">11. Source basis</a>
+    </aside>
+
+    <main>
+
+      <section id="ethernet" data-title="Ethernet placement of IEEE 1722 AVTP">
+        <div class="sec-head"><h2>1. Where IEEE 1722 sits in the Ethernet frame</h2></div>
+        <div class="sec-body">
+          <p>IEEE 1722 Audio Video Transport Protocol (AVTP) is normally carried directly over Ethernet as a Layer 2 payload. The Ethernet type is <code>0x22F0</code>. This means that a normal AVB/TSN endpoint does not first parse Internet Protocol, User Datagram Protocol, or Transmission Control Protocol for the ordinary AVTP stream case.</p>
+<pre><code>Ethernet frame carrying IEEE 1722 AVTP
+
++----------------------+  6 bytes
+| Destination MAC      |
++----------------------+  6 bytes
+| Source MAC           |
++----------------------+
+| Optional 802.1Q tag  |  4 bytes if VLAN-tagged
+|  TPID = 0x8100       |
+|  PCP / DEI / VLAN ID |
++----------------------+
+| EtherType = 0x22F0   |  2 bytes
++----------------------+
+| AVTPDU               |  IEEE 1722 payload
++----------------------+
+| FCS                  |  4 bytes, generated by Ethernet MAC
++----------------------+</code></pre>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Ethernet field</th><th>Implementation meaning</th><th>Receiver action</th></tr></thead>
+              <tbody>
+                <tr><td class="field">Destination MAC</td><td>Often a stream multicast address or an address selected by the stream-control plane.</td><td>MAC filtering decides whether the endpoint or bridge accepts the frame.</td></tr>
+                <tr><td class="field">Source MAC</td><td>Identifies the transmitting Ethernet station. It may also contribute to stream identifier construction.</td><td>Useful for diagnostics and stream origin validation.</td></tr>
+                <tr><td class="field">802.1Q tag</td><td>Carries Priority Code Point (PCP), Drop Eligible Indicator (DEI), and VLAN Identifier (VID). The PCP typically selects the AVB/TSN traffic class.</td><td>Bridge and endpoint ingress logic classify the frame into VLAN and traffic-class context.</td></tr>
+                <tr><td class="field">EtherType 0x22F0</td><td>Identifies the payload as an AVTPDU.</td><td>Dispatch to IEEE 1722 parser.</td></tr>
+                <tr><td class="field">AVTPDU</td><td>Contains the subtype-specific AVTP header and payload.</td><td>Parse the first byte as <code>subtype</code>, then continue according to AAF, CVF, CRF, TSCF, NTSCF, or another subtype.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="common" data-title="Common AVTP stream-data fields">
+        <div class="sec-head"><h2>2. Common AVTP stream-data fields</h2></div>
+        <div class="sec-body">
+          <p>Many timed AVTP formats share a common stream-data header structure. The exact subtype-specific words differ, but the core parser logic starts with the same idea: identify the AVTP subtype, bind the frame to a stream, check sequence continuity, and interpret the timestamp flags.</p>
+<pre><code>Corrected full timed AVTP stream-data PDU skeleton
+The payload does not stop at avtp_timestamp. The timestamp is still header.
+The real media/control data begins after the subtype-specific header fields.
+
++----------------------+  Ethernet header
+| Destination MAC      |  6 bytes
++----------------------+
+| Source MAC           |  6 bytes
++----------------------+
+| Optional 802.1Q tag  |  4 bytes if present
+|  PCP / DEI / VLAN ID |
++----------------------+
+| EtherType = 0x22F0   |  IEEE 1722 AVTP
++----------------------+
+| AVTP Word 0          |
+|  subtype, SV,        |
+|  version, mr/gv/tv,  |
+|  sequence_num, tu    |
++----------------------+
+| AVTP Word 1-2        |
+|  stream_id           |  64 bits
++----------------------+
+| AVTP Word 3          |
+|  avtp_timestamp      |  32 bits, valid only when tv allows it
++----------------------+
+| Subtype-specific     |
+| header words         |  AAF, CVF, CRF, TSCF, etc.
+|  format fields       |
+|  length fields       |
+|  event/control bits  |
++----------------------+
+| Stream data payload  |  audio samples, compressed video fragments,
+|                      |  CRF timestamps, or ACF message list
++----------------------+
+| Optional padding     |  if required by the subtype/alignment rule
++----------------------+
+| Ethernet FCS         |  4 bytes, generated/checked by Ethernet MAC
++----------------------+</code></pre>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Field</th><th>Size</th><th>Meaning</th><th>Implementation / receiver interpretation</th></tr></thead>
+              <tbody>
+                <tr><td class="field">subtype</td><td class="bits">8 bits</td><td>Identifies the AVTPDU format.</td><td>Dispatch field. For example <code>0x02</code> means AAF, <code>0x03</code> means CVF, <code>0x04</code> means CRF, <code>0x05</code> means TSCF, and <code>0x82</code> means NTSCF in common implementation headers.</td></tr>
+                <tr><td class="field">SV</td><td class="bits">1 bit</td><td>Stream ID Valid.</td><td>If set, <code>stream_id</code> is meaningful and the receiver can bind the packet to a configured stream context. If clear, the packet cannot be matched using the normal stream identifier path.</td></tr>
+                <tr><td class="field">version</td><td class="bits">3 bits</td><td>AVTP version field.</td><td>Used for compatibility checks. An implementation should reject or separately handle unsupported versions.</td></tr>
+                <tr><td class="field">mr</td><td class="bits">1 bit</td><td>Media clock restart.</td><td>Signals a media clock discontinuity or restart. A listener may reset clock-recovery state, flush media timing history, or mark a discontinuity.</td></tr>
+                <tr><td class="field">gv</td><td class="bits">1 bit</td><td>Gateway information valid, for formats that use gateway information.</td><td>When present and valid, gateway-specific information is meaningful. Not every subtype uses this bit in the same way.</td></tr>
+                <tr><td class="field">tv</td><td class="bits">1 bit</td><td>AVTP timestamp valid.</td><td>If <code>tv = 1</code>, <code>avtp_timestamp</code> carries a valid presentation timestamp. If <code>tv = 0</code>, the receiver must not use the timestamp field as a valid presentation time.</td></tr>
+                <tr><td class="field">sequence_num</td><td class="bits">8 bits</td><td>Per-stream AVTP sequence number.</td><td>Incremented by the talker per AVTPDU. The listener uses it to detect loss, duplication, or reordering. It wraps modulo 256.</td></tr>
+                <tr><td class="field">tu</td><td class="bits">1 bit</td><td>Timestamp uncertain.</td><td>If set, timing is uncertain even if a timestamp field is present. A listener should treat the timing as degraded and may report diagnostics, conceal media, or avoid precise presentation.</td></tr>
+                <tr><td class="field">stream_id</td><td class="bits">64 bits</td><td>Unique stream identifier.</td><td>Used to bind the AVTPDU to a configured stream. A common construction is source MAC address plus a 16-bit unique identifier.</td></tr>
+                <tr><td class="field">avtp_timestamp</td><td class="bits">32 bits</td><td>Presentation time, not transmit time.</td><td>The listener consumes, renders, or applies the payload at this synchronized time. It is not simply the time at which the packet left the talker.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="note ok"><strong>Implementation rule:</strong> timestamp handling is conditional. A parser must inspect <code>tv</code> and <code>tu</code> before treating <code>avtp_timestamp</code> as a reliable presentation time.</div>
+        </div>
+      </section>
+
+      <section id="aaf" data-title="AAF PCM header fields and meanings">
+        <div class="sec-head"><h2>3. AAF PCM header fields and meanings</h2></div>
+        <div class="sec-body">
+          <p>AAF means AVTP Audio Format. In the PCM case, the header tells the listener what audio sample representation is present, what nominal sampling rate is used, how many channels are packed per audio frame, how many valid bits exist per sample, how much payload is present, and whether sparse timestamp behavior is used.</p>
+<pre><code>Corrected full AAF PCM Ethernet PDU
+
++----------------------+  Ethernet header
+| Destination MAC      |
++----------------------+
+| Source MAC           |
++----------------------+
+| Optional 802.1Q tag  |  PCP selects AVB/TSN traffic class, VID selects VLAN
++----------------------+
+| EtherType = 0x22F0   |  IEEE 1722 AVTP
++----------------------+
+| AVTP Word 0          |
+|  subtype = 0x02 AAF  |
+|  SV, version, mr,    |
+|  tv, sequence_num,   |
+|  tu                  |
++----------------------+
+| AVTP Word 1-2        |
+|  stream_id           |  64 bits
++----------------------+
+| AVTP Word 3          |
+|  avtp_timestamp      |  32 bits, presentation time when tv = 1
++----------------------+
+| AAF-specific header  |
+|  format              |  PCM sample representation
+|  nsr                 |  nominal sample rate
+|  channels_per_frame  |  channel count per sample instant
+|  bit_depth           |  valid bits per sample
+|  stream_data_length  |  byte count of PCM payload below
+|  sp / evt            |  sparse timestamp and event fields
++----------------------+
+| AAF stream data      |
+|  PCM audio samples   |  length = stream_data_length
++----------------------+
+| Optional padding     |
++----------------------+
+| Ethernet FCS         |
++----------------------+</code></pre>
+
+          <h3>3.1 AAF field meaning table</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Field</th><th>Size</th><th>Meaning</th><th>Implementation interpretation</th></tr></thead>
+              <tbody>
+                <tr><td class="field">subtype</td><td class="bits">8 bits</td><td>AAF subtype value.</td><td>Receiver dispatches to the AAF parser. Common implementation value is <code>0x02</code>.</td></tr>
+                <tr><td class="field">SV</td><td class="bits">1 bit</td><td>Stream ID valid.</td><td>Set for normal AAF streams. Listener uses <code>stream_id</code> to identify which audio stream this packet belongs to.</td></tr>
+                <tr><td class="field">mr</td><td class="bits">1 bit</td><td>Media clock restart.</td><td>Signals that the media clock relationship has restarted or changed. A listener should reset/interrogate media clock recovery state rather than blindly continuing interpolation.</td></tr>
+                <tr><td class="field">tv</td><td class="bits">1 bit</td><td>AVTP timestamp valid.</td><td>When set, <code>avtp_timestamp</code> is the presentation time for the designated audio sample or sample group. If clear, the listener must derive timing from previous timestamps, stream rate, and profile rules.</td></tr>
+                <tr><td class="field">sequence_num</td><td class="bits">8 bits</td><td>Packet sequence counter for this stream.</td><td>Used to detect dropped or duplicated audio packets. Loss handling may insert silence, conceal, or report diagnostics.</td></tr>
+                <tr><td class="field">tu</td><td class="bits">1 bit</td><td>Timestamp uncertain.</td><td>If set, the listener should not assume precise synchronized presentation even when <code>tv</code> is set.</td></tr>
+                <tr><td class="field">stream_id</td><td class="bits">64 bits</td><td>Audio stream identifier.</td><td>Maps the packet to a configured audio sink, channel map, presentation buffer, and reservation context.</td></tr>
+                <tr><td class="field">avtp_timestamp</td><td class="bits">32 bits</td><td>Audio presentation timestamp.</td><td>Listener buffers the packet until this time before presenting the designated sample. It is not the send time.</td></tr>
+                <tr><td class="field">format</td><td class="bits">8 bits</td><td>PCM sample representation or audio encapsulation type.</td><td>Tells the listener how to interpret each sample word. Examples include user-defined, 32-bit float, 32-bit integer, 24-bit integer, 16-bit integer, and AES3 32-bit encapsulation.</td></tr>
+                <tr><td class="field">nsr</td><td class="bits">4 bits</td><td>Nominal Sample Rate.</td><td>Tells the listener the nominal audio sample frequency. The listener uses this with timestamp spacing and media clock recovery. It is not a measurement of packet arrival rate.</td></tr>
+                <tr><td class="field">channels_per_frame</td><td class="bits">10 bits</td><td>Number of audio channels in one audio frame.</td><td>An audio frame here means one sample instant across all channels. For stereo PCM, this is 2. Payload parsing uses this to group samples correctly.</td></tr>
+                <tr><td class="field">bit_depth</td><td class="bits">8 bits</td><td>Number of valid bits per audio sample.</td><td>Must be consistent with <code>format</code>. For 16-bit PCM, this is normally 16; for 24-bit PCM, 24; for 32-bit integer or float, 32.</td></tr>
+                <tr><td class="field">stream_data_length</td><td class="bits">16 bits</td><td>Length of AAF audio payload in octets.</td><td>Bounds the payload parser. It allows the receiver to know how many bytes after the header are audio sample data.</td></tr>
+                <tr><td class="field">sp</td><td class="bits">1 bit</td><td>Sparse timestamp indication.</td><td><code>0</code> means normal timestamp mode. <code>1</code> indicates sparse timestamp mode, where valid timestamps may be carried less frequently and the receiver must interpolate based on stream timing rules.</td></tr>
+                <tr><td class="field">evt</td><td class="bits">4 bits</td><td>Event field.</td><td>Used to indicate stream events when defined by the format/profile. For ordinary PCM streams, implementations commonly set it to zero unless a profile defines specific event semantics. A receiver should not invent behavior for undefined event values.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>3.2 Useful AAF PCM value mappings</h3>
+          <div class="grid2">
+            <div class="card">
+              <h4><code>format</code> examples</h4>
+              <p><span class="chip">0x00 user</span><span class="chip">0x01 32-bit float</span><span class="chip">0x02 32-bit int</span><span class="chip">0x03 24-bit int</span><span class="chip">0x04 16-bit int</span><span class="chip">0x05 AES3 32-bit</span></p>
+              <p>The value controls sample decoding. A mismatch between <code>format</code>, <code>bit_depth</code>, and actual payload layout leads to wrong audio reconstruction even if the Ethernet transport is perfect.</p>
+            </div>
+            <div class="card">
+              <h4><code>nsr</code> examples</h4>
+              <p><span class="chip">0x00 user</span><span class="chip">0x01 8 kHz</span><span class="chip">0x02 16 kHz</span><span class="chip">0x03 32 kHz</span><span class="chip">0x04 44.1 kHz</span><span class="chip">0x05 48 kHz</span><span class="chip">0x06 88.2 kHz</span><span class="chip">0x07 96 kHz</span><span class="chip">0x08 176.4 kHz</span><span class="chip">0x09 192 kHz</span><span class="chip">0x0A 24 kHz</span></p>
+              <p>The receiver should treat this as the nominal media rate used for timing and buffer scheduling, not as a replacement for actual clock recovery.</p>
+            </div>
+          </div>
+
+          <h3>3.3 AAF talker and listener behavior</h3>
+<pre><code>AAF talker packetization
+
+1. Take samples from the audio engine or ADC side.
+2. Choose the number of audio frames per AVTPDU.
+3. Fill stream identity and sequencing fields.
+4. Fill format, nominal sample rate, channel count, bit depth, and payload length.
+5. Compute avtp_timestamp as presentation time, not transmit time.
+6. Append PCM payload.
+7. Send with EtherType 0x22F0 and AVB/TSN traffic class.
+
+AAF listener behavior
+
+1. Match stream_id against configured stream.
+2. Check sequence_num continuity.
+3. Check tv and tu before trusting avtp_timestamp.
+4. Use format/nsr/channels_per_frame/bit_depth to parse samples.
+5. Buffer until presentation time.
+6. Deliver samples to the audio renderer at the recovered media clock rate.</code></pre>
+        </div>
+      </section>
+
+      <section id="cvf" data-title="CVF header fields and meanings">
+        <div class="sec-head"><h2>4. CVF header fields and meanings</h2></div>
+        <div class="sec-body">
+          <p>CVF means Compressed Video Format. CVF carries a compressed video payload while still providing AVTP stream identity, sequence tracking, and presentation-time behavior. The codec-specific interpretation depends on <code>format</code> and <code>format_subtype</code>.</p>
+<pre><code>Corrected full CVF H.264 Ethernet PDU
+
++----------------------+  Ethernet header
+| Destination MAC      |
++----------------------+
+| Source MAC           |
++----------------------+
+| Optional 802.1Q tag  |  PCP / DEI / VID
++----------------------+
+| EtherType = 0x22F0   |  IEEE 1722 AVTP
++----------------------+
+| AVTP Word 0          |
+|  subtype = 0x03 CVF  |
+|  SV, version, mr,    |
+|  tv, sequence_num,   |
+|  tu                  |
++----------------------+
+| AVTP Word 1-2        |
+|  stream_id           |  64 bits
++----------------------+
+| AVTP Word 3          |
+|  avtp_timestamp      |  AVTP presentation time when tv = 1
++----------------------+
+| CVF-specific header  |
+|  format              |  compressed-video family
+|  format_subtype      |  H.264, MJPEG, JPEG 2000, etc.
+|  stream_data_length  |  byte count of compressed payload below
+|  ptv                 |  payload timestamp valid
+|  M                   |  codec marker bit
+|  evt                 |  event field
+|  h264_timestamp      |  codec payload timestamp when ptv = 1
++----------------------+
+| CVF stream data      |
+|  H.264 payload       |  fragment, NAL-related payload, or access-unit part
+|  bytes               |  length = stream_data_length
++----------------------+
+| Optional padding     |
++----------------------+
+| Ethernet FCS         |
++----------------------+</code></pre>
+
+          <h3>4.1 CVF field meaning table</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Field</th><th>Size</th><th>Meaning</th><th>Implementation interpretation</th></tr></thead>
+              <tbody>
+                <tr><td class="field">subtype</td><td class="bits">8 bits</td><td>CVF subtype value.</td><td>Receiver dispatches to the compressed-video parser. Common implementation value is <code>0x03</code>.</td></tr>
+                <tr><td class="field">SV</td><td class="bits">1 bit</td><td>Stream ID valid.</td><td>Allows binding to the configured camera/video stream.</td></tr>
+                <tr><td class="field">mr</td><td class="bits">1 bit</td><td>Media clock restart.</td><td>Signals a timing discontinuity. Video receiver may reset synchronization state.</td></tr>
+                <tr><td class="field">tv</td><td class="bits">1 bit</td><td>AVTP timestamp valid.</td><td>If set, <code>avtp_timestamp</code> is valid. For fragmented video, profiles may make only selected fragments carry a valid AVTP presentation timestamp.</td></tr>
+                <tr><td class="field">sequence_num</td><td class="bits">8 bits</td><td>AVTPDU sequence number.</td><td>Used to detect missing video fragments. One missing AVTPDU may make a whole video access unit unusable.</td></tr>
+                <tr><td class="field">tu</td><td class="bits">1 bit</td><td>Timestamp uncertain.</td><td>If set, video presentation timing is not reliable.</td></tr>
+                <tr><td class="field">stream_id</td><td class="bits">64 bits</td><td>Video stream identifier.</td><td>Maps the packet to a camera, encoder, display, or perception input stream.</td></tr>
+                <tr><td class="field">avtp_timestamp</td><td class="bits">32 bits</td><td>AVTP presentation time.</td><td>Specifies when the video data is intended to be presented or consumed by the time-sensitive application. This is separate from codec-internal timestamps.</td></tr>
+                <tr><td class="field">format</td><td class="bits">8 bits</td><td>Compressed-video format family.</td><td>Common implementation value <code>0x02</code> means RFC-based compressed video carriage.</td></tr>
+                <tr><td class="field">format_subtype</td><td class="bits">8 bits</td><td>Specific compressed-video codec mapping.</td><td>Examples: <code>0x00</code> MJPEG, <code>0x01</code> H.264, <code>0x02</code> JPEG 2000.</td></tr>
+                <tr><td class="field">stream_data_length</td><td class="bits">16 bits</td><td>Length of the compressed video payload area.</td><td>Bounds H.264/MJPEG/JPEG2000 payload parsing. It is the byte count the parser should consume for the compressed-video payload portion.</td></tr>
+                <tr><td class="field">ptv</td><td class="bits">1 bit</td><td>Payload timestamp valid.</td><td>For H.264-like mappings, this indicates whether the codec payload timestamp field, such as <code>h264_timestamp</code>, contains a valid value. This is not the same field as AVTP <code>tv</code>.</td></tr>
+                <tr><td class="field">M</td><td class="bits">1 bit</td><td>Codec-mapping marker bit.</td><td>Format-subtype-specific marker. For RTP-derived mappings, this typically follows the relevant RFC marker-bit semantics, for example marking the end of an access unit or significant payload boundary.</td></tr>
+                <tr><td class="field">evt</td><td class="bits">4 bits</td><td>Event field.</td><td>Reserved or profile-defined event indication for stream events. If no profile defines values, set to zero and ignore non-zero values according to product policy.</td></tr>
+                <tr><td class="field">h264_timestamp</td><td class="bits">32 bits</td><td>Codec payload timestamp.</td><td>Used by the H.264 decode process to synchronize, decode, and present video frames. It is valid only when <code>ptv = 1</code>. It is distinct from <code>avtp_timestamp</code>.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>4.2 CVF value mappings</h3>
+          <div class="grid2">
+            <div class="card"><h4><code>format</code></h4><p><span class="chip">0x02 RFC format</span></p><p>The format tells the receiver which family of compressed-video packetization rules applies.</p></div>
+            <div class="card"><h4><code>format_subtype</code></h4><p><span class="chip">0x00 MJPEG</span><span class="chip">0x01 H.264</span><span class="chip">0x02 JPEG 2000</span></p><p>The subtype selects the codec-specific parser and determines how fields such as <code>M</code>, payload timestamp, and fragmentation are interpreted.</p></div>
+          </div>
+
+          <h3>4.3 MJPEG-specific fields</h3>
+          <p>For Motion JPEG (MJPEG), the CVF payload header contains JPEG-specific information rather than an H.264 timestamp field.</p>
+<pre><code>Corrected full CVF MJPEG Ethernet PDU
+
++----------------------+
+| Destination MAC      |
++----------------------+
+| Source MAC           |
++----------------------+
+| Optional 802.1Q tag  |
++----------------------+
+| EtherType = 0x22F0   |
++----------------------+
+| AVTP CVF common      |
+| stream header        |
+|  subtype = CVF       |
+|  stream_id           |
+|  avtp_timestamp      |
+|  sequence_num        |
++----------------------+
+| CVF-specific header  |
+|  format = RFC        |
+|  format_subtype      |
+|    = MJPEG           |
+|  stream_data_length  |
+|  M / evt             |
++----------------------+
+| MJPEG payload header |
+|  type_specific_      |
+|    fragment_offset   |
+|  type                |
+|  Q                   |
+|  width               |
+|  height              |
++----------------------+
+| CVF stream data      |
+|  JPEG payload bytes  |
++----------------------+
+| Optional padding     |
++----------------------+
+| Ethernet FCS         |
++----------------------+</code></pre>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>MJPEG field</th><th>Meaning</th><th>Receiver interpretation</th></tr></thead>
+              <tbody>
+                <tr><td class="field">type_specific_fragment_offset</td><td>Fragment offset inside the JPEG frame or payload structure.</td><td>Used to reassemble MJPEG fragments in the correct order.</td></tr>
+                <tr><td class="field">type</td><td>JPEG payload type, inherited from the RFC-style MJPEG mapping.</td><td>Controls JPEG payload interpretation.</td></tr>
+                <tr><td class="field">Q</td><td>Quantization information selector.</td><td>Indicates quantization-table handling for the JPEG decoder.</td></tr>
+                <tr><td class="field">width</td><td>Encoded image width indicator.</td><td>Helps the decoder/frame assembler understand the image dimensions.</td></tr>
+                <tr><td class="field">height</td><td>Encoded image height indicator.</td><td>Helps the decoder/frame assembler understand the image dimensions.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="note"><strong>Key distinction:</strong> <code>avtp_timestamp</code> belongs to AVTP presentation timing. <code>h264_timestamp</code> belongs to the codec payload timing/decoding model. A receiver must not treat them as the same timestamp.</div>
+        </div>
+      </section>
+
+      <section id="crf" data-title="CRF header fields and meanings">
+        <div class="sec-head"><h2>5. CRF header fields and meanings</h2></div>
+        <div class="sec-body">
+          <p>CRF means Clock Reference Format. CRF does not carry audio or video samples. It carries timing information that lets a listener reconstruct a media clock or align a local media clock to a provider.</p>
+<pre><code>Corrected full CRF Ethernet PDU
+
++----------------------+  Ethernet header
+| Destination MAC      |
++----------------------+
+| Source MAC           |
++----------------------+
+| Optional 802.1Q tag  |
++----------------------+
+| EtherType = 0x22F0   |  IEEE 1722 AVTP
++----------------------+
+| AVTP Word 0          |
+|  subtype = CRF       |
+|  SV, version, mr,    |
+|  fs, tu, sequence,   |
+|  type                |
++----------------------+
+| AVTP Word 1-2        |
+|  stream_id           |  64 bits
++----------------------+
+| CRF Word 3           |
+|  pull                |  3 bits
+|  base_frequency      |  29 bits
++----------------------+
+| CRF Word 4           |
+|  crf_data_length     |  16 bits, byte count of timestamp payload
+|  timestamp_interval  |  16 bits
++----------------------+
+| CRF stream data      |
+|  timestamp values    |  length = crf_data_length
++----------------------+
+| Optional padding     |
++----------------------+
+| Ethernet FCS         |
++----------------------+</code></pre>
+
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Field</th><th>Size</th><th>Meaning</th><th>Implementation interpretation</th></tr></thead>
+              <tbody>
+                <tr><td class="field">subtype</td><td class="bits">8 bits</td><td>CRF subtype value.</td><td>Dispatch to the clock-reference parser. Common implementation value is <code>0x04</code>.</td></tr>
+                <tr><td class="field">SV</td><td class="bits">1 bit</td><td>Stream ID valid.</td><td>CRF stream can be independently identified and subscribed to.</td></tr>
+                <tr><td class="field">mr</td><td class="bits">1 bit</td><td>Media clock restart.</td><td>Signals that clock recovery should treat this as a restart/discontinuity.</td></tr>
+                <tr><td class="field">fs</td><td class="bits">1 bit</td><td>Field used by CRF for synchronization/status indication.</td><td>Implementation should preserve the semantics defined by the profile or standard version being used. Do not reuse this bit as an application flag.</td></tr>
+                <tr><td class="field">tu</td><td class="bits">1 bit</td><td>Timestamp uncertain.</td><td>If set, timestamp information is not precise enough for confident clock recovery.</td></tr>
+                <tr><td class="field">sequence_num</td><td class="bits">8 bits</td><td>CRF packet sequence number.</td><td>Used to detect missing CRF packets. Missing CRF information can disturb media clock recovery.</td></tr>
+                <tr><td class="field">type</td><td class="bits">8 bits</td><td>Type of clock reference event.</td><td>Examples include user, audio sample, video frame, video line, and machine cycle.</td></tr>
+                <tr><td class="field">stream_id</td><td class="bits">64 bits</td><td>CRF stream identifier.</td><td>Allows the receiver to associate this CRF stream with one or more media streams.</td></tr>
+                <tr><td class="field">pull</td><td class="bits">3 bits</td><td>Frequency pull multiplier.</td><td>Describes media-rate adjustment such as multiply by 1, 1/1.001, 1.001, 24/25, 25/24, or 1/8.</td></tr>
+                <tr><td class="field">base_frequency</td><td class="bits">29 bits</td><td>Nominal base frequency.</td><td>Clock-recovery logic uses it with <code>pull</code> and timestamp interval to derive the media clock relationship.</td></tr>
+                <tr><td class="field">crf_data_length</td><td class="bits">16 bits</td><td>Length of CRF timestamp payload.</td><td>Bounds how many timestamp bytes the receiver reads.</td></tr>
+                <tr><td class="field">timestamp_interval</td><td class="bits">16 bits</td><td>Interval between successive timestamp events.</td><td>Describes the spacing of timestamps in terms of media events. Used by the phase-locked loop or clock-recovery algorithm.</td></tr>
+                <tr><td class="field">timestamp payload</td><td class="bits">variable</td><td>List of timestamp values.</td><td>The listener uses the sequence of timestamps to reconstruct or discipline the local media clock.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>5.1 CRF value mappings</h3>
+          <div class="grid2">
+            <div class="card"><h4><code>type</code> examples</h4><p><span class="chip">0x00 user</span><span class="chip">0x01 audio sample</span><span class="chip">0x02 video frame</span><span class="chip">0x03 video line</span><span class="chip">0x04 machine cycle</span></p></div>
+            <div class="card"><h4><code>pull</code> examples</h4><p><span class="chip">0x00 ×1</span><span class="chip">0x01 ×1/1.001</span><span class="chip">0x02 ×1.001</span><span class="chip">0x03 ×24/25</span><span class="chip">0x04 ×25/24</span><span class="chip">0x05 ×1/8</span></p></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="acf" data-title="ACF carrier headers: TSCF and NTSCF">
+        <div class="sec-head"><h2>6. ACF carrier headers: TSCF and NTSCF</h2></div>
+        <div class="sec-body">
+          <p>ACF means AVTP Control Format. ACF messages such as CAN and LIN are carried inside either TSCF or NTSCF. TSCF gives the ACF message list a presentation-time contract. NTSCF does not.</p>
+
+          <h3>6.1 TSCF header</h3>
+<pre><code>Corrected full TSCF Ethernet PDU carrying ACF messages
+TSCF header length = 24 bytes. The ACF payload begins after Word 5.
+
++----------------------+  Ethernet header
+| Destination MAC      |
++----------------------+
+| Source MAC           |
++----------------------+
+| Optional 802.1Q tag  |  PCP / DEI / VID
++----------------------+
+| EtherType = 0x22F0   |  IEEE 1722 AVTP
++----------------------+
+| TSCF Word 0          |
+|  subtype = 0x05      |
+|  SV, version, mr,    |
+|  tv, sequence_num,   |
+|  tu                  |
++----------------------+
+| TSCF Word 1-2        |
+|  stream_id           |  64 bits
++----------------------+
+| TSCF Word 3          |
+|  avtp_timestamp      |  AVTP presentation time when tv = 1
++----------------------+
+| TSCF Word 4          |
+|  reserved / profile- |
+|  specific area       |
++----------------------+
+| TSCF Word 5          |
+|  stream_data_length  |  16 bits, byte count of ACF payload below
+|  reserved            |  16 bits
++----------------------+
+| ACF payload          |
+|  ACF message 1       |  ACF_CAN, ACF_CAN_BRIEF, ACF_LIN, etc.
+|  ACF message 2       |  optional
+|  ...                 |
++----------------------+
+| Optional padding     |
++----------------------+
+| Ethernet FCS         |
++----------------------+</code></pre>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>TSCF field</th><th>Meaning</th><th>Receiver interpretation</th></tr></thead>
+              <tbody>
+                <tr><td class="field">subtype</td><td>TSCF subtype. Common implementation value <code>0x05</code>.</td><td>Dispatch to TSCF parser, then parse payload as an ACF message list.</td></tr>
+                <tr><td class="field">SV</td><td>Stream ID valid.</td><td>Use <code>stream_id</code> to bind this control stream to configured routing and scheduling behavior.</td></tr>
+                <tr><td class="field">mr</td><td>Media/control timing restart indicator.</td><td>Signals a restart or discontinuity in the timed stream context.</td></tr>
+                <tr><td class="field">tv</td><td>AVTP timestamp valid.</td><td>If set, <code>avtp_timestamp</code> is the presentation/application time for the ACF payload group.</td></tr>
+                <tr><td class="field">sequence_num</td><td>TSCF stream sequence number.</td><td>Detect loss, duplication, or reordering of control AVTPDUs.</td></tr>
+                <tr><td class="field">tu</td><td>Timestamp uncertain.</td><td>If set, time-synchronous control application should treat timing as degraded.</td></tr>
+                <tr><td class="field">stream_id</td><td>Identifier of this control stream.</td><td>Maps to a configured tunnel, gateway route, or application consumer.</td></tr>
+                <tr><td class="field">avtp_timestamp</td><td>Presentation time for the ACF message list.</td><td>If the frame arrives early, queue until this time. If it arrives late, the implementation may drop or report the late control event according to its requirements.</td></tr>
+                <tr><td class="field">stream_data_length</td><td>Length of the ACF payload area.</td><td>Bounds the loop that parses ACF messages inside the TSCF AVTPDU.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>6.2 NTSCF header</h3>
+<pre><code>Corrected full NTSCF Ethernet PDU carrying ACF messages
+NTSCF header length = 12 bytes. There is no AVTP presentation timestamp.
+The ACF payload begins immediately after stream_id.
+
++----------------------+  Ethernet header
+| Destination MAC      |
++----------------------+
+| Source MAC           |
++----------------------+
+| Optional 802.1Q tag  |  PCP / DEI / VID
++----------------------+
+| EtherType = 0x22F0   |  IEEE 1722 AVTP
++----------------------+
+| NTSCF Word 0         |
+|  subtype = 0x82      |
+|  SV, version,        |
+|  ntscf_data_length,  |  11 bits, byte count of ACF payload below
+|  sequence_num        |
++----------------------+
+| NTSCF Word 1-2       |
+|  stream_id           |  64 bits
++----------------------+
+| ACF payload          |
+|  ACF message 1       |  ACF_CAN, ACF_CAN_BRIEF, ACF_LIN, etc.
+|  ACF message 2       |  optional
+|  ...                 |
++----------------------+
+| Optional padding     |
++----------------------+
+| Ethernet FCS         |
++----------------------+</code></pre>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>NTSCF field</th><th>Meaning</th><th>Receiver interpretation</th></tr></thead>
+              <tbody>
+                <tr><td class="field">subtype</td><td>NTSCF subtype. Common implementation value <code>0x82</code>.</td><td>Dispatch to NTSCF parser, then parse payload as an ACF message list.</td></tr>
+                <tr><td class="field">SV</td><td>Stream ID valid.</td><td>Use <code>stream_id</code> to map to a tunnel or application context.</td></tr>
+                <tr><td class="field">version</td><td>AVTP version.</td><td>Compatibility check.</td></tr>
+                <tr><td class="field">ntscf_data_length</td><td>Length of the NTSCF ACF payload area.</td><td>Bounds ACF parsing. Because NTSCF has no AVTP presentation timestamp, this length is especially important for safe payload traversal.</td></tr>
+                <tr><td class="field">sequence_num</td><td>NTSCF stream sequence number.</td><td>Detect loss, duplication, and reordering.</td></tr>
+                <tr><td class="field">stream_id</td><td>Identifier of this non-time-synchronous control stream.</td><td>Maps to configured tunnel, bus, or application consumer.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="note warn"><strong>Practical distinction:</strong> TSCF says “apply this control payload at a synchronized time.” NTSCF says “transport this control payload as a sequenced stream without AVTP presentation-time scheduling.”</div>
+        </div>
+      </section>
+
+      <section id="can" data-title="ACF CAN message fields and meanings">
+        <div class="sec-head"><h2>7. ACF CAN message fields and meanings</h2></div>
+        <div class="sec-body">
+          <p>An ACF CAN message is not a textual encoding of a CAN frame. It is a binary ACF message with a typed ACF common header, CAN-specific control bits, a bus identifier, an optional message timestamp, a CAN identifier, and a padded payload.</p>
+<pre><code>Corrected full ACF_CAN tunnelling PDU
+The ACF_CAN message is the payload item inside either a TSCF or NTSCF AVTPDU.
+The complete on-wire Ethernet frame therefore includes the Ethernet header,
+the AVTP carrier header, the ACF_CAN message, and then the Ethernet FCS.
+
++----------------------+
+| Destination MAC      |
++----------------------+
+| Source MAC           |
++----------------------+
+| Optional 802.1Q tag  |
++----------------------+
+| EtherType = 0x22F0   |
++----------------------+
+| TSCF or NTSCF header |
+|  stream_id           |
+|  sequence_num        |
+|  length of ACF area  |
+|  avtp_timestamp only |
+|    if carrier = TSCF |
++----------------------+
+| ACF_CAN Word 0       |
+|  acf_msg_type        |  7 bits
+|  acf_msg_length      |  9 bits
+|  pad                 |  2 bits
+|  mtv                 |  1 bit
+|  rtr / eff / brs     |
+|  fdf / esi           |
+|  can_bus_id          |  5 bits
++----------------------+
+| ACF_CAN Word 1-2     |
+|  message_timestamp   |  64 bits, valid only when mtv = 1
++----------------------+
+| ACF_CAN Word 3       |
+|  reserved            |  3 bits
+|  can_identifier      |  29 bits
++----------------------+
+| ACF_CAN payload      |
+|  CAN or CAN FD data  |  padded as indicated by pad and acf_msg_length
+|  bytes               |
++----------------------+
+| Next ACF message     |  optional, if carrier length has remaining bytes
++----------------------+
+| Optional padding     |
++----------------------+
+| Ethernet FCS         |
++----------------------+</code></pre>
+
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>CAN ACF field</th><th>Size</th><th>Meaning</th><th>Implementation interpretation</th></tr></thead>
+              <tbody>
+                <tr><td class="field">acf_msg_type</td><td class="bits">7 bits</td><td>ACF message type.</td><td>Tells the ACF parser that this message is a CAN/CAN FD message rather than LIN, FlexRay, or another ACF message type.</td></tr>
+                <tr><td class="field">acf_msg_length</td><td class="bits">9 bits</td><td>Total length of this ACF message.</td><td>Used to advance to the next ACF message in the TSCF/NTSCF payload. A malformed value can desynchronize the parser.</td></tr>
+                <tr><td class="field">pad</td><td class="bits">2 bits</td><td>Padding byte count.</td><td>Tells how many trailing payload bytes are padding rather than original CAN data.</td></tr>
+                <tr><td class="field">mtv</td><td class="bits">1 bit</td><td>Message Timestamp Valid.</td><td>If set, <code>message_timestamp</code> is valid. If clear, the receiver must not use the message timestamp as a valid original event timestamp.</td></tr>
+                <tr><td class="field">rtr</td><td class="bits">1 bit</td><td>Remote Transmission Request.</td><td>Represents the classic CAN remote-frame semantic. For CAN FD data frames this is normally not used.</td></tr>
+                <tr><td class="field">eff</td><td class="bits">1 bit</td><td>Extended Frame Format.</td><td><code>0</code> means base 11-bit identifier. <code>1</code> means extended 29-bit identifier. The 29-bit field can carry either form with interpretation controlled by this bit.</td></tr>
+                <tr><td class="field">brs</td><td class="bits">1 bit</td><td>Bit Rate Switch.</td><td>CAN FD field indicating that the data phase uses the higher bit rate.</td></tr>
+                <tr><td class="field">fdf</td><td class="bits">1 bit</td><td>Flexible Data-rate Format.</td><td><code>0</code> indicates classic CAN framing. <code>1</code> indicates CAN FD framing.</td></tr>
+                <tr><td class="field">esi</td><td class="bits">1 bit</td><td>Error State Indicator.</td><td>CAN FD field indicating the error state of the transmitting CAN node.</td></tr>
+                <tr><td class="field">can_bus_id</td><td class="bits">5 bits</td><td>Logical CAN bus/interface identifier.</td><td>Allows a gateway to distinguish which CAN network the tunneled frame belongs to. In a zonal controller this maps to a local CAN controller/channel.</td></tr>
+                <tr><td class="field">message_timestamp</td><td class="bits">64 bits</td><td>Timestamp associated with the original CAN message/event.</td><td>Valid only when <code>mtv = 1</code>. This is different from TSCF <code>avtp_timestamp</code>. It may describe when the CAN frame was observed or generated.</td></tr>
+                <tr><td class="field">can_identifier</td><td class="bits">29 bits</td><td>CAN identifier field.</td><td>For base CAN, the 11-bit identifier is represented within this field with <code>eff = 0</code>. For extended CAN, the full 29-bit identifier is used with <code>eff = 1</code>.</td></tr>
+                <tr><td class="field">payload</td><td class="bits">variable</td><td>CAN or CAN FD payload bytes.</td><td>The receiver reconstructs the CAN frame and removes padding according to <code>pad</code> and message length.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="note"><strong>Timestamp distinction:</strong> In TSCF carrying CAN, <code>avtp_timestamp</code> is the synchronized application/presentation time for the tunneled control payload. <code>message_timestamp</code> is the timestamp of the original CAN message/event, valid only if <code>mtv = 1</code>.</div>
+
+          <h3>7.2 ACF_CAN_BRIEF full PDU diagram</h3>
+          <p><code>ACF_CAN_BRIEF</code> is the abbreviated CAN ACF message. It is not a separate AVTP subtype. It is an ACF message type carried inside the ACF payload of either TSCF or NTSCF. Compared with <code>ACF_CAN</code>, it uses a shorter 8-byte ACF CAN Brief header and omits the 64-bit <code>message_timestamp</code> word pair from the message body. The <code>mtv</code> bit still exists as a field, but there is no per-message timestamp field in this brief message layout.</p>
+<pre><code>Corrected full ACF_CAN_BRIEF tunnelling PDU
+
++----------------------+
+| Destination MAC      |
++----------------------+
+| Source MAC           |
++----------------------+
+| Optional 802.1Q tag  |
++----------------------+
+| EtherType = 0x22F0   |
++----------------------+
+| TSCF or NTSCF header |
+|  stream_id           |
+|  sequence_num        |
+|  length of ACF area  |
+|  avtp_timestamp only |
+|    if carrier = TSCF |
++----------------------+
+| ACF_CAN_BRIEF Word 0 |
+|  acf_msg_type        |  7 bits
+|  acf_msg_length      |  9 bits
+|  pad                 |  2 bits
+|  mtv                 |  1 bit
+|  rtr / eff / brs     |
+|  fdf / esi           |
+|  can_bus_id          |  5 bits
++----------------------+
+| ACF_CAN_BRIEF Word 1 |
+|  reserved            |  3 bits
+|  can_identifier      |  29 bits
++----------------------+
+| ACF_CAN_BRIEF data   |
+|  CAN or CAN FD data  |  padded as indicated by pad and acf_msg_length
+|  bytes               |
++----------------------+
+| Next ACF message     |  optional
++----------------------+
+| Optional padding     |
++----------------------+
+| Ethernet FCS         |
++----------------------+ </code></pre>
+
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Choice</th><th>Header size inside ACF payload</th><th>Timestamp field inside ACF message?</th><th>Typical use</th></tr></thead>
+              <tbody>
+                <tr><td class="field">ACF_CAN</td><td class="bits">16 bytes</td><td>Yes, a 64-bit <code>message_timestamp</code> field exists and is valid when <code>mtv = 1</code>.</td><td>Use when the original CAN event timestamp must travel with each CAN message.</td></tr>
+                <tr><td class="field">ACF_CAN_BRIEF</td><td class="bits">8 bytes</td><td>No separate 64-bit message timestamp field in the brief layout.</td><td>Use for compact CAN/CAN FD tunnelling when the per-message timestamp is not needed, or when timing is handled by the AVTP carrier context.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="lin" data-title="ACF LIN message fields and meanings">
+        <div class="sec-head"><h2>8. ACF LIN message fields and meanings</h2></div>
+        <div class="sec-body">
+          <p>The ACF LIN message is shorter than the ACF CAN message. It identifies the ACF message type, length, padding, timestamp validity, logical LIN bus, LIN identifier, and optional message timestamp.</p>
+<pre><code>Corrected full ACF_LIN tunnelling PDU
+The ACF_LIN message is also carried inside either TSCF or NTSCF.
+
++----------------------+
+| Destination MAC      |
++----------------------+
+| Source MAC           |
++----------------------+
+| Optional 802.1Q tag  |
++----------------------+
+| EtherType = 0x22F0   |
++----------------------+
+| TSCF or NTSCF header |
+|  stream_id           |
+|  sequence_num        |
+|  length of ACF area  |
+|  avtp_timestamp only |
+|    if carrier = TSCF |
++----------------------+
+| ACF_LIN Word 0       |
+|  acf_msg_type        |  7 bits
+|  acf_msg_length      |  9 bits
+|  pad                 |  2 bits
+|  mtv                 |  1 bit
+|  lin_bus_id          |  5 bits
+|  lin_identifier      |  8 bits
++----------------------+
+| ACF_LIN Word 1-2     |
+|  message_timestamp   |  64 bits, valid only when mtv = 1
++----------------------+
+| ACF_LIN payload      |
+|  LIN response/data   |  padded as indicated by pad and acf_msg_length
+|  bytes               |
++----------------------+
+| Next ACF message     |  optional
++----------------------+
+| Optional padding     |
++----------------------+
+| Ethernet FCS         |
++----------------------+</code></pre>
+
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>LIN ACF field</th><th>Size</th><th>Meaning</th><th>Implementation interpretation</th></tr></thead>
+              <tbody>
+                <tr><td class="field">acf_msg_type</td><td class="bits">7 bits</td><td>ACF message type.</td><td>Tells the parser that this ACF message is LIN.</td></tr>
+                <tr><td class="field">acf_msg_length</td><td class="bits">9 bits</td><td>Total length of this ACF message.</td><td>Used to bound this LIN message and step to the next ACF message if several are packed in the same AVTPDU.</td></tr>
+                <tr><td class="field">pad</td><td class="bits">2 bits</td><td>Padding byte count.</td><td>Receiver removes padding from the LIN payload reconstruction.</td></tr>
+                <tr><td class="field">mtv</td><td class="bits">1 bit</td><td>Message Timestamp Valid.</td><td>If set, <code>message_timestamp</code> is meaningful.</td></tr>
+                <tr><td class="field">lin_bus_id</td><td class="bits">5 bits</td><td>Logical LIN bus/interface identifier.</td><td>Maps the tunneled frame to a specific LIN channel on the gateway.</td></tr>
+                <tr><td class="field">lin_identifier</td><td class="bits">8 bits</td><td>LIN protected identifier or identifier field as represented by the implementation profile.</td><td>Used to reconstruct the LIN frame or route the received LIN payload toward the correct LIN schedule context.</td></tr>
+                <tr><td class="field">message_timestamp</td><td class="bits">64 bits</td><td>Timestamp of the original LIN message/event.</td><td>Valid only if <code>mtv = 1</code>. It is not the same thing as TSCF presentation time.</td></tr>
+                <tr><td class="field">payload</td><td class="bits">variable</td><td>LIN response/data payload.</td><td>Forwarded to the local LIN controller or application according to gateway policy.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="flows" data-title="Message sequences and packet processing flows">
+        <div class="sec-head"><h2>9. Message sequences and packet processing flows</h2></div>
+        <div class="sec-body">
+          <h3>9.1 AAF audio stream sequence</h3>
+<pre><code>Talker                                            Listener
+------                                            --------
+1. Audio clock/source produces PCM samples
+2. Packetizer groups samples into AVTPDU payloads
+3. Fill AAF fields:
+       format, nsr, channels_per_frame, bit_depth
+       stream_data_length
+       sp and evt according to profile
+       sequence_num++
+       avtp_timestamp if tv = 1
+4. Send EtherType 0x22F0 AVTP frame  --------->  5. Match stream_id
+                                                  6. Check sequence_num continuity
+                                                  7. Parse format/nsr/channel/bit_depth
+                                                  8. Use tv/tu before trusting timestamp
+                                                  9. Buffer samples until presentation time
+                                                 10. Render at recovered media clock rate</code></pre>
+
+          <h3>9.2 CVF H.264 stream sequence</h3>
+<pre><code>Camera/encoder talker                            Listener/decoder
+---------------------                            ----------------
+1. Capture video frame or NAL unit
+2. Encode as H.264
+3. Split large units into AVTPDUs if needed
+4. Fill CVF fields:
+       format = RFC
+       format_subtype = H.264
+       stream_data_length
+       ptv and h264_timestamp if codec timestamp valid
+       M according to H.264/RFC mapping
+       sequence_num++
+       avtp_timestamp according to AVTP timing rules
+5. Send AVTP frame --------------------------->  6. Match stream_id
+                                                  7. Detect missing fragments using sequence_num
+                                                  8. Use ptv before trusting h264_timestamp
+                                                  9. Reassemble compressed unit
+                                                 10. Decode and present according to AVTP timing</code></pre>
+
+          <h3>9.3 CRF media clock recovery sequence</h3>
+<pre><code>Media clock provider                             Media clock consumer
+--------------------                             --------------------
+1. Has source media clock
+2. Generates timestamp events
+3. Fill CRF fields:
+       type = audio sample / video frame / line / machine cycle
+       pull and base_frequency
+       timestamp_interval
+       crf_data_length
+       timestamp payload
+       sequence_num++
+4. Send CRF AVTPDU --------------------------->  5. Match CRF stream_id
+                                                  6. Check sequence_num
+                                                  7. Extract timestamps
+                                                  8. Feed PLL / clock recovery
+                                                  9. Discipline local media clock</code></pre>
+
+          <h3>9.4 CAN over TSCF sequence</h3>
+<pre><code>CAN side              Gateway talker             Ethernet network       Gateway listener            CAN side
+--------              --------------             ----------------       ----------------            --------
+1. CAN frame arrives
+   ID = 0x123
+   data = 11 22 33 44
+                      2. Build TSCF header
+                         subtype = TSCF
+                         stream_id = tunnel stream
+                         sequence_num++
+                         tv = 1
+                         avtp_timestamp = apply time
+                         stream_data_length = ACF length
+                      3. Build ACF CAN message
+                         acf_msg_type = CAN
+                         eff/rtr/brs/fdf/esi as needed
+                         can_bus_id = source/dest CAN channel
+                         can_identifier = 0x123
+                         payload = 11 22 33 44
+                      4. Send AVTP frame ------> 5. Bridges forward ----> 6. Parse TSCF
+                                                                         7. Check stream_id
+                                                                         8. Check sequence_num
+                                                                         9. If early, wait until avtp_timestamp
+                                                                        10. Parse ACF CAN
+                                                                        11. Recreate CAN frame ------> 12. CAN transmit</code></pre>
+
+          <h3>9.5 Multiple ACF messages inside one AVTPDU</h3>
+<pre><code>TSCF or NTSCF payload
+
++-----------------------------+
+| ACF CAN message             |
++-----------------------------+
+| ACF LIN message             |
++-----------------------------+
+| ACF CAN message             |
++-----------------------------+
+
+Parser loop
+
+offset = start_of_acf_payload
+while offset &lt; carrier_payload_length:
+    read acf_msg_type
+    read acf_msg_length
+    dispatch to CAN/LIN/FlexRay/etc. parser
+    consume acf_msg_length bytes, including padding
+    offset += aligned_message_length</code></pre>
+        </div>
+      </section>
+
+      <section id="implementation" data-title="Implementation checklist and mistakes to avoid">
+        <div class="sec-head"><h2>10. Implementation checklist and mistakes to avoid</h2></div>
+        <div class="sec-body">
+          <h3>10.1 Receiver checklist</h3>
+          <ol>
+            <li>Accept the Ethernet frame only if MAC filtering, VLAN membership, and EtherType conditions match.</li>
+            <li>Check <code>EtherType == 0x22F0</code> before dispatching to the AVTP parser.</li>
+            <li>Read <code>subtype</code> first and dispatch to the correct parser.</li>
+            <li>Check <code>version</code> against what the implementation supports.</li>
+            <li>Check <code>SV</code> before trusting <code>stream_id</code>.</li>
+            <li>Use <code>sequence_num</code> per stream, not globally across all AVTP packets.</li>
+            <li>Use <code>tv</code> and <code>tu</code> before trusting <code>avtp_timestamp</code>.</li>
+            <li>For AAF, validate <code>format</code>, <code>nsr</code>, <code>channels_per_frame</code>, <code>bit_depth</code>, and <code>stream_data_length</code> before handing samples to the audio engine.</li>
+            <li>For CVF, validate <code>format</code>, <code>format_subtype</code>, codec payload fields, marker behavior, and payload length before decode.</li>
+            <li>For CRF, validate <code>type</code>, <code>pull</code>, <code>base_frequency</code>, <code>timestamp_interval</code>, and timestamp payload length before clock recovery.</li>
+            <li>For TSCF/NTSCF, bound the ACF parsing loop using <code>stream_data_length</code> or <code>ntscf_data_length</code>.</li>
+            <li>For CAN/LIN ACF messages, use <code>acf_msg_length</code> and <code>pad</code> to move safely through packed message lists.</li>
+          </ol>
+
+          <h3>10.2 Common mistakes</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Mistake</th><th>Why it is wrong</th><th>Correct handling</th></tr></thead>
+              <tbody>
+                <tr><td class="field">Treating AVTP timestamp as send time</td><td>The AVTP timestamp is a presentation/application time.</td><td>Use it for receiver-side scheduling, not for measuring talker transmit time.</td></tr>
+                <tr><td class="field">Ignoring <code>tu</code></td><td>A timestamp can be present but uncertain.</td><td>Use both <code>tv</code> and <code>tu</code>.</td></tr>
+                <tr><td class="field">Confusing CVF <code>ptv</code> with AVTP <code>tv</code></td><td><code>tv</code> validates <code>avtp_timestamp</code>; <code>ptv</code> validates codec payload timestamp.</td><td>Check both in their proper domains.</td></tr>
+                <tr><td class="field">Parsing ACF without length bounds</td><td>Malformed length can corrupt the message-list walk.</td><td>Use carrier length plus each <code>acf_msg_length</code> and validate alignment/padding.</td></tr>
+                <tr><td class="field">Using NTSCF for time-synchronous control</td><td>NTSCF has no AVTP presentation timestamp.</td><td>Use TSCF when synchronized application time matters.</td></tr>
+                <tr><td class="field">Treating <code>message_timestamp</code> as TSCF presentation time</td><td>ACF message timestamp and TSCF AVTP timestamp have different meanings.</td><td>Use <code>message_timestamp</code> for original bus-event timing, and <code>avtp_timestamp</code> for synchronized application/forwarding time.</td></tr>
+                <tr><td class="field">Drawing only the AVTP header and forgetting the payload</td><td>This makes it look as if <code>avtp_timestamp</code>, <code>stream_id</code>, or the carrier header is the whole PDU.</td><td>Always draw the full PDU: Ethernet envelope, AVTP carrier header, subtype-specific header, payload, optional padding, and FCS.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="references" data-title="Source basis and conformance note">
+        <div class="sec-head"><h2>11. Source basis and conformance note</h2></div>
+        <div class="sec-body">
+          <p>This training page is based on field names, header lengths, and value mappings exposed by public AVTP reference implementations and public automotive/AVTP material. It is suitable for training and implementation orientation.</p>
+          <div class="note warn"><strong>Conformance note:</strong> for product conformance, final bit-level behavior must be checked against the purchased IEEE 1722 standard version and the exact AVnu, AUTOSAR, or OEM profile used by the program. Public reference code is useful for teaching and implementation orientation, but it is not a substitute for the normative standard.</div>
+          <ul>
+            <li>AAF format and NSR mappings are reflected in the public libavtp AAF header.</li>
+            <li>CVF format and format-subtype mappings are reflected in the public libavtp CVF header.</li>
+            <li>CRF type and pull mappings are reflected in public libavtp/Open1722 CRF headers.</li>
+            <li>TSCF, NTSCF, CAN, and LIN field layouts are reflected in public Open1722 ACF headers.</li>
+            <li>Automotive interpretation is aligned with the AUTOSAR IEEE 1722 transport viewpoint and COVESA Open1722 project purpose.</li>
+          </ul>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <footer class="footer">
+    Generated as a standalone HTML training page. Use the top context bar or left navigation to jump across protocol contexts.
+  </footer>
+
+  <script>
+    const sections = [...document.querySelectorAll('section[id]')];
+    const navLinks = [...document.querySelectorAll('a[data-target]')];
+    const currentContext = document.getElementById('currentContext');
+
+    function setActive(id) {
+      const sec = document.getElementById(id);
+      if (!sec) return;
+      currentContext.textContent = sec.dataset.title || sec.querySelector('h2')?.textContent || id;
+      navLinks.forEach(a => a.classList.toggle('active', a.dataset.target === id));
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      const visible = entries
+        .filter(e => e.isIntersecting)
+        .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+      if (visible) setActive(visible.target.id);
+    }, { rootMargin: '-18% 0px -68% 0px', threshold: [0.05, 0.12, 0.2, 0.35] });
+
+    sections.forEach(s => observer.observe(s));
+
+    window.addEventListener('hashchange', () => {
+      const id = location.hash.replace('#', '');
+      if (id) setActive(id);
+    });
+  </script>
+</body>
+</html>

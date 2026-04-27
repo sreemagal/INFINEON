@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deficit Round Robin Scheduler — Corrected</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    font-size: 13px;
+    background: #ffffff;
+    color: #1a1a1a;
+    padding: 24px;
+    max-width: 860px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 18px; font-weight: 600; margin-bottom: 4px; color: #1a1a1a; }
+  .subtitle { font-size: 12px; color: #666; margin-bottom: 20px; }
+  .section-label { font-size: 12px; color: #666; margin: 12px 0 5px; }
+
+  /* Buttons */
+  .controls { display: flex; gap: 8px; margin-bottom: 16px; }
+  button {
+    font-size: 12px; padding: 6px 16px; border-radius: 6px;
+    border: 1px solid #ccc; background: #f5f5f5; color: #1a1a1a;
+    cursor: pointer; font-family: inherit;
+  }
+  button:hover { background: #e8e8e8; }
+  button.primary { background: #1F3864; color: #fff; border-color: #1F3864; }
+  button.primary:hover { background: #2E5EA8; }
+
+  /* TX output strip */
+  .tx-row {
+    display: flex; gap: 4px; flex-wrap: wrap;
+    min-height: 38px; padding: 6px 8px;
+    background: #f8f8f8; border-radius: 6px;
+    border: 1px solid #e0e0e0; margin-bottom: 16px;
+  }
+
+  /* Queue rows */
+  .qrow { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .ql { width: 120px; font-weight: 600; font-size: 12px; flex-shrink: 0; }
+  .qframes { display: flex; gap: 4px; flex-wrap: wrap; flex: 1; min-height: 34px; }
+
+  /* Frame tiles */
+  .fr {
+    min-width: 38px; height: 30px; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 600; padding: 0 5px;
+    flex-shrink: 0; transition: opacity 0.2s;
+    border-width: 1px; border-style: solid;
+  }
+  .fr.sent { opacity: 0.18; }
+  .fr.next { box-shadow: 0 0 0 2.5px #c0392b; }
+
+  /* Deficit bars */
+  .cbar { width: 150px; height: 10px; border-radius: 4px; background: #e0e0e0; overflow: hidden; flex-shrink: 0; }
+  .cfill { height: 100%; border-radius: 4px; transition: width 0.3s ease; }
+  .def-num { width: 110px; font-size: 12px; color: #555; flex-shrink: 0; }
+  .q-label { width: 80px; font-size: 12px; font-weight: 600; flex-shrink: 0; }
+  .active-tag { font-size: 11px; color: #c0392b; font-weight: 600; margin-left: 4px; }
+
+  /* Log */
+  .log {
+    font-size: 12px; color: #555; background: #f8f8f8;
+    padding: 10px 12px; border-radius: 6px; border: 1px solid #e0e0e0;
+    line-height: 2; min-height: 52px; font-family: monospace;
+  }
+  .log .hi { color: #1a1a1a; font-weight: 700; }
+
+  /* Stats row */
+  .stats { display: flex; gap: 24px; font-size: 12px; color: #666; margin: 12px 0; }
+  .stats span { color: #1a1a1a; font-weight: 600; }
+
+  /* Algorithm note */
+  .algo-note {
+    background: #EEF3FA; border-left: 4px solid #2E5EA8;
+    padding: 10px 14px; border-radius: 0 6px 6px 0;
+    font-size: 12px; color: #1F3864; line-height: 1.7;
+    margin-bottom: 20px;
+  }
+
+  hr { border: none; border-top: 1px solid #e0e0e0; margin: 16px 0; }
+</style>
+</head>
+<body>
+
+<h1>Deficit Round Robin (DRR) Scheduler</h1>
+<p class="subtitle">Corrected implementation — quantum added on every fresh queue visit</p>
+
+<div class="algo-note">
+  <strong>Correct DRR rule:</strong> On every fresh arrival at a queue, add the full quantum to the deficit counter first. Then send frames one by one while deficit ≥ next frame size. When deficit is insufficient (or queue empties), rotate to the next queue carrying the remaining deficit forward. An empty queue has its deficit reset to zero.
+</div>
+
+<div class="controls">
+  <button class="primary" onclick="dstep()">Transmit next frame →</button>
+  <button onclick="drun()">Run 10 steps</button>
+  <button onclick="dreset()">Reset</button>
+</div>
+
+<div class="section-label">Transmitted output (queue label + frame size):</div>
+<div class="tx-row" id="dtx"></div>
+
+<div class="section-label">Queue contents — faded tiles are already sent, red outline = next to send:</div>
+<div id="dqueues"></div>
+
+<hr>
+
+<div class="section-label">Deficit counters:</div>
+<div id="dcredits"></div>
+
+<div class="stats" id="stats"></div>
+
+<div class="section-label">Step log (most recent at bottom):</div>
+<div class="log" id="dlog"></div>
+
+<script>
+const DQ = [
+  {
+    label: 'A  (video)',
+    quantum: 3000,
+    frames: [1400, 1400, 1400, 1400, 1400, 1400],
+    c: { bg: '#E1F5EE', bd: '#0F6E56', tx: '#085041', fill: '#1D9E75' }
+  },
+  {
+    label: 'B  (control)',
+    quantum: 1500,
+    frames: [64, 64, 64, 128, 64, 64, 128, 64],
+    c: { bg: '#FAEEDA', bd: '#BA7517', tx: '#633806', fill: '#BA7517' }
+  },
+  {
+    label: 'C  (bulk)',
+    quantum: 500,
+    frames: [500, 500, 500, 500, 500, 500],
+    c: { bg: '#F1EFE8', bd: '#888780', tx: '#444441', fill: '#888780' }
+  }
+];
+
+const MAXDEF = 6000;
+const NAME = ['A', 'B', 'C'];
+
+let S;
+
+function init() {
+  S = {
+    frames:       DQ.map(dq => dq.frames.map((sz, i) => ({ sz, sent: false, i }))),
+    deficit:      [0, 0, 0],
+    cur:          0,
+    quantumAdded: false,
+    txLog:        [],
+    log:          [],
+    totalSent:    0,
+    bytesSent:    [0, 0, 0]
+  };
+}
+
+function hasFrames(q) { return S.frames[q].some(f => !f.sent); }
+function nextFrame(q) { return S.frames[q].find(f => !f.sent) || null; }
+function allEmpty()   { return [0,1,2].every(q => !hasFrames(q)); }
+
+function dstep() {
+  if (allEmpty()) {
+    S.log.push('All queues empty — scheduling complete.');
+    drender();
+    return;
+  }
+
+  if (!S.quantumAdded) {
+    // Fresh arrival at this queue
+    if (!hasFrames(S.cur)) {
+      // Empty queue: reset deficit, move on immediately
+      const old = S.deficit[S.cur];
+      S.deficit[S.cur] = 0;
+      S.log.push(`Queue ${NAME[S.cur]}: empty on arrival — deficit reset ${old} → 0, rotate`);
+      S.cur = (S.cur + 1) % 3;
+      S.quantumAdded = false;
+      drender();
+      return;
+    }
+    // Add quantum
+    const before = S.deficit[S.cur];
+    S.deficit[S.cur] += DQ[S.cur].quantum;
+    S.log.push(`Queue ${NAME[S.cur]}: add quantum ${DQ[S.cur].quantum}  (${before} + ${DQ[S.cur].quantum} = ${S.deficit[S.cur]})`);
+    S.quantumAdded = true;
+    drender();
+    return;
+  }
+
+  // Quantum already added this stop — try to send
+  const f = nextFrame(S.cur);
+
+  if (f && S.deficit[S.cur] >= f.sz) {
+    // Send the frame
+    const before = S.deficit[S.cur];
+    S.deficit[S.cur] -= f.sz;
+    f.sent = true;
+    S.txLog.push({ q: S.cur, sz: f.sz });
+    S.bytesSent[S.cur] += f.sz;
+    S.totalSent++;
+    S.log.push(`  → send ${f.sz}B  (deficit ${before} − ${f.sz} = ${S.deficit[S.cur]})`);
+    // Stay on this queue — quantumAdded remains true
+  } else {
+    // Cannot send: rotate
+    if (!f) {
+      // Became empty after sending previous frames
+      S.log.push(`  Queue ${NAME[S.cur]}: now empty — deficit reset to 0, rotate`);
+      S.deficit[S.cur] = 0;
+    } else {
+      S.log.push(`  Queue ${NAME[S.cur]}: next frame ${f.sz}B > deficit ${S.deficit[S.cur]} — carry deficit, rotate`);
+    }
+    S.cur = (S.cur + 1) % 3;
+    S.quantumAdded = false;
+  }
+
+  drender();
+}
+
+function drun()   { for (let i = 0; i < 10; i++) dstep(); }
+function dreset() { init(); drender(); }
+
+function drender() {
+  // TX strip
+  const txDiv = document.getElementById('dtx');
+  txDiv.innerHTML = S.txLog.length
+    ? S.txLog.map(t => {
+        const c = DQ[t.q].c;
+        return `<div class="fr" style="background:${c.bg};border-color:${c.bd};color:${c.tx}">${NAME[t.q]} ${t.sz}</div>`;
+      }).join('')
+    : '<span style="color:#999;font-size:12px;padding:4px 0">nothing sent yet — press Step to begin</span>';
+
+  // Queue rows
+  document.getElementById('dqueues').innerHTML = DQ.map((dq, qi) => {
+    const c = dq.c;
+    const fhtml = S.frames[qi].map(f => {
+      const isNext = qi === S.cur && !f.sent && nextFrame(qi) === f;
+      return `<div class="fr ${f.sent ? 'sent' : ''} ${isNext ? 'next' : ''}"
+        style="background:${c.bg};border-color:${c.bd};color:${c.tx}">${f.sz}B</div>`;
+    }).join('');
+    return `<div class="qrow">
+      <div class="ql" style="color:${c.tx}">${dq.label}</div>
+      <div class="qframes">${fhtml}</div>
+    </div>`;
+  }).join('');
+
+  // Deficit counters
+  document.getElementById('dcredits').innerHTML = DQ.map((dq, qi) => {
+    const c = dq.c;
+    const def = S.deficit[qi];
+    const pct = Math.min(100, Math.round(def / MAXDEF * 100));
+    const active = qi === S.cur;
+    return `<div class="qrow">
+      <div class="q-label" style="color:${c.tx};${active ? 'font-size:13px' : ''}">${NAME[qi]}</div>
+      <div class="cbar"><div class="cfill" style="width:${pct}%;background:${c.fill}"></div></div>
+      <div class="def-num">${def} bytes &nbsp;<span style="color:#999">quantum=${dq.quantum}</span></div>
+      ${active ? `<span class="active-tag">← serving now</span>` : ''}
+    </div>`;
+  }).join('');
+
+  // Stats
+  document.getElementById('stats').innerHTML =
+    `Frames sent: <span>${S.totalSent}</span>` +
+    `&nbsp;&nbsp; Bytes — A: <span>${S.bytesSent[0]}</span>` +
+    `&nbsp; B: <span>${S.bytesSent[1]}</span>` +
+    `&nbsp; C: <span>${S.bytesSent[2]}</span>`;
+
+  // Log
+  const logDiv = document.getElementById('dlog');
+  logDiv.innerHTML = S.log.slice(-6).map((line, i, arr) =>
+    i === arr.length - 1
+      ? `<span class="hi">${line}</span>`
+      : line
+  ).join('<br>') || 'Press step to begin.';
+}
+
+init();
+drender();
+</script>
+</body>
+</html>

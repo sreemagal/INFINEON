@@ -1,0 +1,892 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Corrected ATS Interactive Simulator — Improved Layout</title>
+<style>
+:root{
+  --bg:#0b1416; --panel:#0f2026; --panel2:#132f38; --panel3:#173b46;
+  --line:#27505c; --line2:#1e3c45; --text:#f1f0eb; --muted:#a9b8ba; --dim:#6e8589;
+  --accent:#ff3621; --ok:#00a972; --warn:#ffab00; --blue:#1b98e0; --purple:#9c27b0;
+  --a:#1b98e0; --b:#ffab00; --c:#9c27b0; --drop:#ff4f64;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  --sans: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);overflow:hidden;font-size:13px}
+button,select{font:inherit;color:inherit}
+.app{height:100vh;display:grid;grid-template-rows:56px 1fr;background:linear-gradient(180deg,#0b1416,#0a1113)}
+.top{display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid var(--line);background:#0e1b20;min-width:0}
+.brand{min-width:310px;line-height:1.12}.brand .title{font-weight:800;letter-spacing:.015em}.brand .sub{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-top:3px}
+.sep{width:1px;height:30px;background:var(--line)}.spacer{flex:1}
+.btn{border:1px solid var(--line);background:#1a333b;border-radius:6px;padding:7px 11px;cursor:pointer;white-space:nowrap}.btn:hover{background:#20424d}.btn.primary{background:var(--accent);border-color:var(--accent);font-weight:700}.btn.active{background:var(--accent);border-color:var(--accent)}.btn.small{font-size:11px;padding:5px 8px}.btn:disabled{opacity:.45;cursor:not-allowed}.seg{display:flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}.seg .btn{border:0;border-radius:0}.seg .btn+.btn{border-left:1px solid var(--line)}
+.lbl{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}.select{background:#1a333b;border:1px solid var(--line);border-radius:6px;padding:7px 9px;min-width:280px}
+.workspace{display:grid;grid-template-columns:minmax(0,1fr) 370px;gap:12px;padding:12px;min-height:0}
+.mainCol{min-height:0;display:grid;grid-template-rows:minmax(0,1fr) 224px;gap:12px}
+.sideCol{min-height:0;height:calc(100vh - 80px);overflow:hidden;display:flex;flex-direction:column;gap:12px;padding-right:4px;align-items:stretch}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 34px #0007;min-width:0;overflow:visible;flex:0 0 auto}
+.cardHead{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--line2);background:#102128}
+.cardTitle{font-size:10.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--text)}
+.cardSub{font-size:10px;color:var(--dim);font-family:var(--mono)}
+.cardBody{padding:11px 12px;min-height:0;overflow:visible}
+.stageCard{position:relative;min-height:0}
+.stage{position:relative;height:100%;background:#0e1b20;overflow:hidden}.canvasWrap{position:absolute;inset:0;padding:8px}.toast{position:absolute;left:50%;top:14px;transform:translateX(-50%);background:#143840;border:1px solid var(--blue);border-radius:8px;padding:9px 14px;box-shadow:0 12px 36px #0009;font-size:12px;color:var(--text);opacity:0;pointer-events:none;transition:.2s;max-width:72%;z-index:3}.toast.show{opacity:1}.toast.warn{border-color:var(--warn)}.toast.bad{border-color:var(--drop)}
+#canvas{position:absolute;inset:8px;width:calc(100% - 16px);height:calc(100% - 16px);display:block}
+.timeline h3{margin:0 0 6px 0;font-size:10px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;display:flex;align-items:center;gap:12px}.legend{font-family:var(--mono);font-size:10px;color:var(--dim);text-transform:none;letter-spacing:0}.dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+#timelineSvg{width:100%;height:172px;display:block}
+.inspTitle{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--text);font-weight:800;margin-bottom:7px}.kv{display:grid;grid-template-columns:150px 1fr;gap:0 8px;margin:3px 0}.k{color:var(--dim)}.v{color:var(--text)}.divider{height:1px;background:var(--line2);margin:8px 0}.code{white-space:pre-wrap;line-height:1.45;font-size:10px;color:#c9d6d8;font-family:var(--mono)}.pill{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:2px 7px;margin:2px 5px 2px 0;background:#132f38}.ok{color:var(--ok)}.warn{color:var(--warn)}.bad{color:var(--drop)}
+#coach{display:grid;gap:8px}.coachTitle{font-weight:800;color:#fff}.coachBubble{background:linear-gradient(180deg,#173541,#11272e);border:1px solid #2a5562;border-radius:12px;padding:10px 11px;box-shadow:0 10px 28px #0008}.coachBubble ul{margin:8px 0 0 16px;padding:0}.coachBubble li{margin:3px 0;color:var(--muted);line-height:1.45}.mini{font-size:11px;color:var(--dim);font-family:var(--mono)}
+#acronyms{display:grid;grid-template-columns:1fr;gap:6px}.acroRow{display:grid;grid-template-columns:58px 1fr;gap:9px}.acroKey{font-family:var(--mono);color:#fff;font-weight:800}.acroVal{color:var(--muted);line-height:1.45}
+.validationGrid{display:grid;gap:6px}.validationFoot{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}.statBox{border:1px solid var(--line);background:#10262d;border-radius:10px;padding:8px 9px}.statLabel{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}.statValue{font-family:var(--mono);font-size:13px;color:var(--text);margin-top:4px}.tinyList{display:grid;gap:5px;margin-top:6px}.recentTx{font-family:var(--mono);font-size:10px;color:var(--muted);line-height:1.45}
+
+.speakerNotes{display:grid;gap:9px}
+#speakerNotes{min-height:360px}.stepNoteHero{border:1px solid #315f6b;background:linear-gradient(180deg,#183945,#10272f);border-radius:12px;padding:10px 11px;box-shadow:0 10px 28px #0007}.stepNoteHero .big{font-size:13px;font-weight:900;color:#fff;margin-bottom:3px}.stepNoteHero .small{font-family:var(--mono);font-size:10px;color:var(--dim)}.calcGrid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}.calcBox{border:1px solid var(--line);background:#0d1b20;border-radius:9px;padding:7px 8px}.calcBox .lab{font-size:9.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.07em}.calcBox .val{font-family:var(--mono);font-size:11px;color:#fff;margin-top:3px}.pathTag{display:inline-block;border:1px solid var(--line);border-radius:999px;background:#132f38;padding:3px 8px;margin:2px 4px 2px 0;font-family:var(--mono);font-size:10px}.pathTag.drop{border-color:#ff4f64;color:#ff8090;background:#24151a}.pathTag.ok{border-color:#00a972;color:#00d391;background:#0b2b24}.pathTag.wait{border-color:#ffab00;color:#ffc65a;background:#2b220e}
+.noteBlock{border:1px solid var(--line);background:#10262d;border-radius:10px;padding:9px 10px}
+.noteBlock h4{margin:0 0 5px 0;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:#fff}
+.noteBlock ul{margin:6px 0 0 16px;padding:0}
+.noteBlock li{margin:4px 0;color:var(--muted);line-height:1.45}
+.noteScript{font-size:11px;line-height:1.55;color:#d6e0e2;background:#0d1b20;border:1px solid var(--line2);border-radius:9px;padding:8px 9px}
+
+.inspectorBody{overflow:visible;max-height:none}
+.rightTabs{display:flex;flex-wrap:wrap;gap:8px}
+.rightTabBtn{border:1px solid var(--line);background:#1a333b;border-radius:8px;padding:7px 10px;cursor:pointer}
+.rightTabBtn.active{background:var(--accent);border-color:var(--accent);font-weight:800}
+.fillCard{display:flex;flex-direction:column;flex:1 1 auto;min-height:0;overflow:hidden}
+.fillCard .cardBody{flex:1 1 auto;min-height:0;overflow:hidden;padding:0}
+.tabPane{display:none;height:100%;overflow-y:auto;overflow-x:hidden;padding:11px 12px}
+.tabPane.active{display:block}
+
+@media (max-width: 1280px){
+  .workspace{grid-template-columns:minmax(0,1fr) 340px}
+  .brand{min-width:260px}
+  .select{min-width:220px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top">
+    <div class="brand"><div class="title">ATS corrected simulator</div><div class="sub">Eligibility-time assignment · single traffic class · group ordered FIFO · virtual token bucket</div></div>
+    <div class="sep"></div>
+    <button id="playBtn" class="btn primary">▶ Play</button>
+    <button id="stepBtn" class="btn">⏭ Step</button>
+    <button id="resetBtn" class="btn">⟲ Reset</button>
+    <div class="sep"></div>
+    <span class="lbl">Speed</span>
+    <div class="seg" id="speedSeg"><button class="btn small" data-speed="0.55">Slow</button><button class="btn small active" data-speed="1">Medium</button><button class="btn small" data-speed="2.2">Fast</button></div>
+    <div class="sep"></div>
+    <span class="lbl">Scenario</span>
+    <select id="scenario" class="select">
+      <option value="MIXED" selected>Corrected default — 3 streams in one ATS group</option>
+      <option value="HOL">Head-of-line FIFO shaping demo</option>
+      <option value="QUIET">Quiet period and bucket recovery</option>
+      <option value="DROP">Max residence time drop demo</option>
+      <option value="CONFORM">Mostly conforming multi-stream traffic</option>
+    </select>
+    <div class="spacer"></div>
+    <button id="validateBtn" class="btn">Validate</button>
+    <button id="algoBtn" class="btn">Algorithm</button>
+    <button id="notesBtn" class="btn">Speaker Notes</button>
+  </div>
+
+  <div class="workspace">
+    <div class="mainCol">
+      <div class="card stageCard">
+        <div class="stage">
+          <svg id="canvas" viewBox="0 0 1280 700" preserveAspectRatio="xMidYMid meet">
+            <defs>
+              <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#3e6875"/></marker>
+              <filter id="glow" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="2.4" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+              <linearGradient id="bucketShell" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#1b3e48"/><stop offset="1" stop-color="#10252c"/></linearGradient>
+            </defs>
+            <g id="staticLayer"></g>
+            <g id="arrivalLayer"></g>
+            <g id="bucketLayer"></g>
+            <g id="queueLayer"></g>
+            <g id="flightLayer"></g>
+            <g id="stateLayer"></g>
+          </svg>
+          <div class="toast" id="toast"></div>
+        </div>
+      </div>
+
+      <div class="card timeline">
+        <div class="cardHead">
+          <div>
+            <div class="cardTitle">Event timeline and eligibility ordering</div>
+            <div class="legend"><span class="dot" style="background:var(--a)"></span>A <span class="dot" style="background:var(--b)"></span>B <span class="dot" style="background:var(--c)"></span>C · white diagonal means e<sub>t</sub> = arrival</div>
+          </div>
+        </div>
+        <div class="cardBody" style="padding-top:8px">
+          <svg id="timelineSvg" viewBox="0 0 1100 178" preserveAspectRatio="none"></svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="sideCol">
+      <div class="card">
+        <div class="cardHead"><div class="cardTitle">Right panel selector</div><div class="cardSub">choose one card to expand into the full right column</div></div>
+        <div class="cardBody">
+          <div class="rightTabs" id="rightTabs">
+            <button class="rightTabBtn" data-tab="coach">Step guide</button>
+            <button class="rightTabBtn" data-tab="acronyms">Acronyms</button>
+            <button class="rightTabBtn" data-tab="validation">Validation</button>
+            <button class="rightTabBtn active" data-tab="speaker">Step speaker notes</button>
+            <button class="rightTabBtn" data-tab="inspector">Inspector</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card fillCard" id="rightMainCard">
+        <div class="cardHead">
+          <div class="cardTitle" id="rightCardTitle">Step speaker notes</div>
+          <div class="cardSub" id="rightCardSub">updates after every step</div>
+        </div>
+        <div class="cardBody">
+          <div class="tabPane" data-tab="coach"><div id="coach"></div></div>
+          <div class="tabPane" data-tab="acronyms"><div id="acronyms"></div></div>
+          <div class="tabPane" data-tab="validation"><div id="validation"></div></div>
+          <div class="tabPane active" data-tab="speaker"><div id="speakerNotes"></div></div>
+          <div class="tabPane" data-tab="inspector"><div id="inspector"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+'use strict';
+const EPS = 1e-9;
+const C = {A:'#1b98e0', B:'#ffab00', C:'#9c27b0'};
+const SVG = 'http://www.w3.org/2000/svg';
+function E(tag, attrs={}, text){ const e=document.createElementNS(SVG,tag); for(const k in attrs)e.setAttribute(k,attrs[k]); if(text!==undefined)e.textContent=text; return e; }
+function clamp(x,a,b){return Math.max(a,Math.min(b,x));}
+function fmt(x){return Number.isFinite(x)?x.toFixed(2):'∞';}
+function delay(ms){return new Promise(r=>setTimeout(r,ms));}
+function html(s){return String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
+
+class AtsSchedulerGroup{
+  constructor(maxResidenceTime){ this.eligibilityTime = 0; this.maxResidenceTime = maxResidenceTime; }
+}
+class AtsScheduler{
+  constructor(id, CIR, CBS, group){
+    this.id=id; this.CIR=CIR; this.CBS=CBS; this.group=group; this.seq=0; this.accepted=0; this.dropped=0;
+    this.bucketEmptyTime = -(CBS/CIR);
+  }
+  emptyToFullDuration(){ return this.CBS / this.CIR; }
+  tokensAt(t){ return clamp((t - this.bucketEmptyTime) * this.CIR, 0, this.CBS); }
+  processFrame(length, arrivalTime){
+    const lengthRecoveryDuration = length / this.CIR;
+    const emptyToFullDuration = this.CBS / this.CIR;
+    const schedulerEligibilityTime = this.bucketEmptyTime + lengthRecoveryDuration;
+    const bucketFullTime = this.bucketEmptyTime + emptyToFullDuration;
+    const oldBucketEmptyTime = this.bucketEmptyTime;
+    const oldGroupEligibilityTime = this.group.eligibilityTime;
+    const eligibilityTime = Math.max(arrivalTime, oldGroupEligibilityTime, schedulerEligibilityTime);
+    const deadline = arrivalTime + this.group.maxResidenceTime;
+    const oversized = length > this.CBS + EPS;
+    const valid = !oversized && eligibilityTime <= deadline + EPS;
+    let newBucketEmptyTime = oldBucketEmptyTime;
+    let reason = '';
+    if(valid){
+      this.group.eligibilityTime = eligibilityTime;
+      newBucketEmptyTime = (eligibilityTime < bucketFullTime - EPS)
+        ? schedulerEligibilityTime
+        : schedulerEligibilityTime + eligibilityTime - bucketFullTime;
+      this.bucketEmptyTime = newBucketEmptyTime;
+      this.accepted++;
+    } else {
+      this.dropped++;
+      reason = oversized ? `frame length ${length} b exceeds CBS ${this.CBS} b` : `e_t ${fmt(eligibilityTime)} exceeds arrival + MaxResidenceTime ${fmt(deadline)}`;
+    }
+    return {valid, reason, lengthRecoveryDuration, emptyToFullDuration, schedulerEligibilityTime, bucketFullTime, eligibilityTime, deadline, oldBucketEmptyTime, oldGroupEligibilityTime, newBucketEmptyTime};
+  }
+}
+class World{
+  constructor(arrivals, note, maxResidenceTime=16, portRate=18){
+    this.t=0; this.group = new AtsSchedulerGroup(maxResidenceTime);
+    this.schedulers={A:new AtsScheduler('A',10,30,this.group), B:new AtsScheduler('B',8,24,this.group), C:new AtsScheduler('C',6,18,this.group)};
+    this.PORT_RATE=portRate; this.arrivals=arrivals.map((a,i)=>({...a, order:i+1})).sort((a,b)=>a.at-b.at || a.order-b.order);
+    this.queue=[]; this.transmitted=[]; this.dropped=[]; this.accepted=[]; this.inFlight=null; this.nextId=1; this.note=note;
+    this.log=[]; this.errors=[]; this.lastIssuedET=-Infinity; this.timeHistory=[0];
+    this.lastStep={
+      title:'Ready for step-level explanation',
+      subtitle:'Press Step or Play',
+      tags:[{text:'scenario loaded',kind:'ok'}],
+      bullets:[
+        'This card now explains the actual event that occurs on each step.',
+        'When a frame arrives, the note shows the eligibility-time calculation and whether the frame is accepted or dropped.',
+        'When the port transmits, the note explains why the FIFO head is selected.',
+        'When nothing can happen immediately, the note explains why simulated time jumps forward.'
+      ],
+      say:'Start by selecting a scenario and pressing Step. Use this card as the live speaker script while the animation runs.',
+      next:'Press Step once to advance to the first event boundary.'
+    };
+  }
+  pushTime(t){ if(t + EPS < this.t){ this.errors.push(`time moved backwards: ${fmt(this.t)} → ${fmt(t)}`); } this.t=Math.max(this.t,t); this.timeHistory.push(this.t); }
+  isDone(){ return this.arrivals.length===0 && this.queue.length===0 && !this.inFlight; }
+}
+function arr(s, at, len){ return {stream:s, at, length:len}; }
+const SCENARIOS = {
+  MIXED(){ return new World([
+    arr('A',2.0,24), arr('B',2.2,16), arr('C',2.4,12),
+    arr('A',3.0,24), arr('B',3.1,16), arr('C',3.2,12),
+    arr('A',4.0,24), arr('B',4.1,16), arr('C',4.2,12),
+    arr('A',10.5,20), arr('B',10.6,16), arr('C',10.7,12)
+  ], 'Corrected default: three streams enter one ATS scheduler group belonging to one upstream traffic class. Watch group eligibility time force non-decreasing e_t, allowing a FIFO queue.', 18, 20); },
+  HOL(){ return new World([
+    arr('A',1.0,24), arr('A',1.2,24), arr('A',1.4,24), arr('B',1.6,16), arr('C',1.8,12), arr('B',2.0,16), arr('C',2.2,12), arr('A',7.5,24), arr('B',7.7,16)
+  ], 'Head-of-line demo: A becomes delayed by its per-stream bucket, and later B/C frames are held behind the non-decreasing group eligibility order.', 20, 14); },
+  QUIET(){ return new World([
+    arr('A',1,24), arr('A',1.2,24), arr('B',1.4,16), arr('C',1.6,12), arr('A',20,24), arr('B',20.2,16), arr('C',20.4,12), arr('A',20.6,24)
+  ], 'Quiet-period recovery: after a long gap the token buckets become full again because BucketEmptyTime is far enough in the past.', 22, 20); },
+  DROP(){ return new World([
+    arr('A',1.0,24), arr('A',1.1,24), arr('A',1.2,24), arr('A',1.3,24), arr('A',1.4,24), arr('B',1.5,16), arr('C',1.6,12)
+  ], 'Drop demo: MaximumResidenceTime is intentionally tight, so badly delayed frames are discarded instead of being allowed to reside too long.', 4.2, 16); },
+  CONFORM(){ return new World([
+    arr('A',2,18), arr('B',2.7,12), arr('C',3.5,9), arr('A',5.5,18), arr('B',6.7,12), arr('C',8.0,9), arr('A',9.0,18), arr('B',10.1,12), arr('C',11.6,9)
+  ], 'Mostly conforming multi-stream traffic: most eligibility times equal arrival times or sit very close to them.', 18, 20); }
+
+};
+
+const SPEAKER_NOTES = {
+  MIXED: {
+    title: 'Corrected default — three streams in one ATS scheduler group',
+    purpose: [
+      'Establish the central ATS picture: multiple streams share one upstream traffic class but retain per-stream token bucket state.',
+      'Show that Stream A, Stream B, and Stream C all arrive, are processed by their own ATS scheduler, and then feed one common FIFO.',
+      'Make the audience notice that GroupEligibilityTime is the mechanism that keeps accepted eligibility times non-decreasing.'
+    ],
+    talk: [
+      'Start by pointing to the three arrival lanes. These are not three traffic classes. They are three streams mapped into one ATS scheduler group.',
+      'Click Step until the first A, B, and C frames are processed. For each accepted frame, read the Step Guide: eligibilityTime is the maximum of arrivalTime, old GroupEligibilityTime, and schedulerEligibilityTime.',
+      'Point to the queue after a few frames. The tail is on the left, the head is on the right. Frames enter at the left and leave from the right.',
+      'Now point to the timeline. Frames above the white diagonal have been shaped because eligibilityTime is later than arrivalTime.'
+    ],
+    pause: [
+      'Pause after the first three different stream colors are visible. Ask: why are there three buckets but only one FIFO?',
+      'Pause when GroupEligibilityTime rises. Ask: what would go wrong if a later stream got an earlier eligibility time?'
+    ],
+    takeaway: 'ATS is not just a per-stream token bucket. The per-stream token bucket assigns shaping pressure, while the group eligibility state preserves FIFO-safe non-decreasing eligibility order.'
+  },
+  HOL: {
+    title: 'Head-of-line FIFO shaping demo',
+    purpose: [
+      'Show that ATS intentionally preserves FIFO order inside the scheduler group.',
+      'Show that later frames can wait behind an earlier frame even if their own stream might otherwise be able to proceed.',
+      'Explain why non-decreasing eligibility time is essential for a FIFO queue.'
+    ],
+    talk: [
+      'Start with the burst from Stream A. A consumes its virtual token budget quickly, so its schedulerEligibilityTime moves forward.',
+      'When B and C frames arrive, they are not judged only by their own buckets. They also see the current GroupEligibilityTime.',
+      'Point to the right-side head of the FIFO. The simulator transmits only the head if head.e_t is less than or equal to current time.',
+      'Explain that this is not a bug. It is the price paid to preserve a simple FIFO and avoid reordering inside the ATS group.'
+    ],
+    pause: [
+      'Pause when a B or C frame receives a later eligibilityTime because of GroupEligibilityTime.',
+      'Ask the audience to identify which constraint dominated the max calculation: arrivalTime, schedulerEligibilityTime, or GroupEligibilityTime.'
+    ],
+    takeaway: 'Head-of-line waiting is visible because ATS is preserving group order. The group order is what makes the common queue FIFO-safe.'
+  },
+  QUIET: {
+    title: 'Quiet period and bucket recovery',
+    purpose: [
+      'Show that a long quiet period refills the virtual token bucket.',
+      'Explain why BucketEmptyTime can sit in the past and still represent a full bucket.',
+      'Show that after recovery, new frames may again become eligible near their arrival time.'
+    ],
+    talk: [
+      'First run the initial burst and point out that BucketEmptyTime moves forward as the streams consume token budget.',
+      'Then step into the long quiet gap. During the quiet interval, the simulator jumps forward because no event occurs.',
+      'After the gap, click a stream bucket. The token display shows a full or nearly full bucket because tokens(t) is reconstructed from BucketEmptyTime.',
+      'Explain that ATS does not need a continuously ticking token counter. BucketEmptyTime is enough to compute the same state.'
+    ],
+    pause: [
+      'Pause just before the post-quiet burst. Ask: do we expect the new frames to be heavily delayed or mostly conforming?',
+      'Pause after the first post-quiet frame. Compare arrivalTime and eligibilityTime.'
+    ],
+    takeaway: 'Virtual time replaces continuously updated credit tokens. A quiet period naturally recovers the bucket because current time moves beyond BucketEmptyTime.'
+  },
+  DROP: {
+    title: 'Maximum residence time drop demo',
+    purpose: [
+      'Show that a frame is dropped before entering the FIFO when it cannot become eligible within its residence-time budget.',
+      'Make the red drop path visible and measurable.',
+      'Show the exact criterion: eligibilityTime greater than arrivalTime plus MaximumResidenceTime.'
+    ],
+    talk: [
+      'Begin by stating that drops happen during ProcessFrame, before the FIFO. A dropped frame is never appended to the tail.',
+      'Step until a red frame moves to the DROP BEFORE FIFO sink. Pause immediately.',
+      'Read the Step Guide: it shows arrivalTime, MaximumResidenceTime, computed eligibilityTime, and deadline.',
+      'Click the dropped frame or observe the validation card. The criterion is eligibilityTime > deadline, where deadline = arrivalTime + MaximumResidenceTime.',
+      'Emphasize that the frame is not corrupt. It is rejected because ATS cannot admit it without violating the residence-time bound.'
+    ],
+    pause: [
+      'Pause on the first red drop animation. Ask: did this packet enter the FIFO? The answer is no.',
+      'Ask the audience to calculate the deadline from arrivalTime plus MaximumResidenceTime and compare it with e_t.'
+    ],
+    takeaway: 'MaximumResidenceTime is an admission bound. If ATS computes that the frame would become eligible too late, the correct behaviour is to drop it before FIFO admission.'
+  },
+  CONFORM: {
+    title: 'Mostly conforming multi-stream traffic',
+    purpose: [
+      'Show the contrast with bursty traffic.',
+      'Demonstrate that when streams are spaced well enough, eligibilityTime often equals or stays close to arrivalTime.',
+      'Reinforce that ATS does not delay traffic unnecessarily.'
+    ],
+    talk: [
+      'Run the scenario slowly and observe the timeline. Most points are close to the white diagonal.',
+      'Point out that a frame on the diagonal means e_t equals arrivalTime. The frame is not shaped by additional delay.',
+      'Click a few frames and compare arrivalTime, schedulerEligibilityTime, and GroupEligibilityTime.',
+      'Explain that ATS still performs the same calculation, but the max result is often arrivalTime because the traffic is conforming.'
+    ],
+    pause: [
+      'Pause after several frames and ask why the timeline is close to the diagonal.',
+      'Ask what would change if the same frame sizes arrived in a tighter burst.'
+    ],
+    takeaway: 'ATS is not a constant-delay mechanism. It adds delay only when the token bucket or group ordering constraints require it.'
+  }
+};
+
+const L = {
+  lane:{A:{x:36,y:165},B:{x:36,y:335},C:{x:36,y:505}},
+  bucket:{A:{x:165,y:98,w:122,h:124},B:{x:165,y:268,w:122,h:124},C:{x:165,y:438,w:122,h:124}},
+  queue:{x:410,y:282,w:540,h:132},
+  drop:{x:670,y:468,w:240,h:92},
+  out:{x:1020,y:312,w:196,h:74}
+};
+let WORLD=null, SIM=null;
+
+function drawStatic(){
+  const g=document.getElementById('staticLayer'); g.innerHTML='';
+  function label(x,y,t,s){ g.appendChild(E('text',{x,y,'font-size':11,'font-weight':800,fill:'#a9b8ba','letter-spacing':'.08em'},t)); if(s)g.appendChild(E('text',{x,y:y+14,'font-family':'var(--mono)','font-size':9,fill:'#6e8589'},s)); }
+  label(36,34,'ARRIVALS: ONE UPSTREAM TRAFFIC CLASS','A, B and C are different streams mapped into the same ATS scheduler group');
+  label(165,72,'PER-STREAM ATS SCHEDULERS','each stream has its own CIR/CBS token bucket state');
+  label(410,72,'COMMON ATS QUEUE: FIFO BY GROUP ORDER','tail on left for enqueue · head on right for transmit');
+  label(1020,72,'EGRESS TRANSMISSION SELECTION','only FIFO head can leave when head.e_t ≤ current time');
+  for(const s of ['A','B','C']){
+    const lane=L.lane[s], b=L.bucket[s], col=C[s];
+    g.appendChild(E('text',{x:lane.x,y:lane.y-24,'font-size':14,'font-weight':800,fill:col},`Stream ${s}`));
+    g.appendChild(E('line',{x1:lane.x+16,y1:lane.y,x2:b.x,y2:b.y+b.h/2,stroke:'#3e6875','stroke-width':1.6,'marker-end':'url(#arrow)'}));
+    g.appendChild(E('line',{x1:b.x+b.w,y1:b.y+b.h/2,x2:L.queue.x,y2:L.queue.y+L.queue.h/2,stroke:'#3e6875','stroke-width':1.5,'stroke-dasharray':'5 4','marker-end':'url(#arrow)'}));
+  }
+  const q=L.queue; g.appendChild(E('rect',{x:q.x,y:q.y,width:q.w,height:q.h,rx:9,fill:'#0d181c',stroke:'#27505c','stroke-width':1.5}));
+  g.appendChild(E('text',{x:q.x+10,y:q.y+q.h+18,'font-family':'var(--mono)','font-size':9,fill:'#6e8589'},'TAIL ← enqueue here on the left'));
+  g.appendChild(E('text',{x:q.x+q.w-10,y:q.y+q.h+18,'font-family':'var(--mono)','font-size':9,fill:'#6e8589','text-anchor':'end'},'HEAD → only this card can be selected'));
+
+  const d=L.drop;
+  g.appendChild(E('rect',{x:d.x,y:d.y,width:d.w,height:d.h,rx:10,fill:'#24151a',stroke:'#ff4f64','stroke-width':1.5,'stroke-dasharray':'6 4'}));
+  g.appendChild(E('text',{x:d.x+d.w/2,y:d.y+23,'font-size':13,'font-weight':900,fill:'#ff8090','text-anchor':'middle'},'DROP BEFORE FIFO'));
+  g.appendChild(E('text',{x:d.x+d.w/2,y:d.y+43,'font-family':'var(--mono)','font-size':9.5,fill:'#ffd0d6','text-anchor':'middle'},'ProcessFrame rejection path'));
+  g.appendChild(E('text',{x:d.x+d.w/2,y:d.y+61,'font-family':'var(--mono)','font-size':9.5,fill:'#a9b8ba','text-anchor':'middle'},'if eligibilityTime > arrival + MRT'));
+  g.appendChild(E('text',{x:d.x+d.w/2,y:d.y+78,'font-family':'var(--mono)','font-size':9.5,fill:'#a9b8ba','text-anchor':'middle'},'or frame length > CBS'));
+
+  const o=L.out; g.appendChild(E('rect',{x:o.x,y:o.y,width:o.w,height:o.h,rx:9,fill:'#143840',stroke:'#27505c','stroke-width':1.5}));
+  g.appendChild(E('text',{x:o.x+o.w/2,y:o.y+30,'font-size':14,'font-weight':800,fill:'#f1f0eb','text-anchor':'middle'},'EGRESS PORT'));
+  g.appendChild(E('text',{x:o.x+o.w/2,y:o.y+49,'font-family':'var(--mono)','font-size':10,fill:'#a9b8ba','text-anchor':'middle'},'non-preemptive TX'));
+  g.appendChild(E('line',{x1:q.x+q.w,y1:q.y+q.h/2,x2:o.x,y2:o.y+o.h/2,stroke:'#3e6875','stroke-width':2,'marker-end':'url(#arrow)'}));
+  g.appendChild(E('rect',{x:401,y:124,width:555,height:42,rx:8,fill:'#11262d',stroke:'#234550'}));
+  g.appendChild(E('text',{x:418,y:142,'font-size':10.5,'font-weight':800,fill:'#f1f0eb'},'Key idea'));
+  g.appendChild(E('text',{x:418,y:157,'font-family':'var(--mono)','font-size':9.5,fill:'#a9b8ba'},'ProcessFrame assigns a non-decreasing eligibilityTime across the ATS scheduler group, so the common queue can remain a FIFO.'));
+}
+
+function drawArrivals(w){
+  const g=document.getElementById('arrivalLayer'); g.innerHTML='';
+  const look=8;
+  for(const s of ['A','B','C']){
+    const lane=L.lane[s];
+    const upcoming=w.arrivals.filter(a=>a.stream===s && a.at>=w.t-EPS).slice(0,5);
+    for(let i=0;i<upcoming.length;i++){
+      const a=upcoming[i], dt=a.at-w.t;
+      const progress=clamp(1-dt/look,0,1);
+      const x=lane.x+progress*105+i*7; const y=lane.y+i*17;
+      const op=dt<0.2?1:0.35+0.45*progress;
+      g.appendChild(E('rect',{x,y:y-13,width:38,height:20,rx:4,fill:C[s],opacity:op,stroke:'#fff','stroke-width':dt<0.2?1.4:0}));
+      g.appendChild(E('text',{x:x+19,y:y+1,'font-family':'var(--mono)','font-size':9,'font-weight':800,fill:'#071114','text-anchor':'middle'},`${s}${a.order}`));
+      g.appendChild(E('text',{x:x+45,y:y+1,'font-family':'var(--mono)','font-size':9,fill:'#a9b8ba'},`t=${fmt(a.at)}`));
+    }
+  }
+}
+function drawBuckets(w){
+  const g=document.getElementById('bucketLayer'); g.innerHTML='';
+  for(const s of ['A','B','C']){
+    const sch=w.schedulers[s], b=L.bucket[s], tok=sch.tokensAt(w.t), ratio=tok/sch.CBS;
+    g.appendChild(E('rect',{x:b.x,y:b.y,width:b.w,height:b.h,rx:10,fill:'url(#bucketShell)',stroke:'#2d5864','stroke-width':1.5}));
+    const fillH=(b.h-10)*ratio;
+    g.appendChild(E('rect',{x:b.x+5,y:b.y+b.h-5-fillH,width:b.w-10,height:fillH,rx:7,fill:C[s],opacity:.82}));
+    for(let i=0;i<=4;i++){ const yy=b.y+b.h-5-i*(b.h-10)/4; g.appendChild(E('line',{x1:b.x-5,y1:yy,x2:b.x,y2:yy,stroke:'#3e6875'})); }
+    g.appendChild(E('text',{x:b.x+b.w/2,y:b.y+20,'font-family':'var(--mono)','font-size':12,'font-weight':900,fill:'#fff','text-anchor':'middle'},`${fmt(tok)} / ${sch.CBS} b`));
+    g.appendChild(E('text',{x:b.x+b.w+10,y:b.y+17,'font-size':13,'font-weight':900,fill:C[s]},`Stream ${s}`));
+    g.appendChild(E('text',{x:b.x+b.w+10,y:b.y+35,'font-family':'var(--mono)','font-size':10,fill:'#a9b8ba'},`CIR=${sch.CIR} b/TU  CBS=${sch.CBS} b`));
+    g.appendChild(E('text',{x:b.x+b.w+10,y:b.y+54,'font-family':'var(--mono)','font-size':10,fill:'#6e8589'},`BucketEmptyTime`));
+    g.appendChild(E('text',{x:b.x+b.w+10,y:b.y+70,'font-family':'var(--mono)','font-size':12,'font-weight':900,fill:'#ff3621'},`${fmt(sch.bucketEmptyTime)} TU`));
+    g.appendChild(E('text',{x:b.x+b.w+10,y:b.y+90,'font-family':'var(--mono)','font-size':9.5,fill:'#6e8589'},`tokens(t)=clamp((t−BET)×CIR)`));
+    const hit=E('rect',{x:b.x,y:b.y,width:b.w+205,height:b.h,fill:'transparent',cursor:'pointer'}); hit.addEventListener('click',()=>showBucket(s)); g.appendChild(hit);
+  }
+}
+function drawQueue(w){
+  const g=document.getElementById('queueLayer'); g.innerHTML=''; const q=L.queue;
+  const cards=w.queue;
+  if(!cards.length){ g.appendChild(E('text',{x:q.x+q.w/2,y:q.y+q.h/2+4,'font-size':12,fill:'#6e8589','text-anchor':'middle','font-style':'italic'},'(FIFO empty)')); }
+  const cw=61,ch=78,gap=6, right=q.x+q.w-10, cy=q.y+q.h/2;
+  for(let i=0;i<cards.length;i++){
+    const f=cards[i], x=right-cw-i*(cw+gap); if(x<q.x+8) break;
+    const elig=f.eligibilityTime<=w.t+EPS, head=i===0, selectable=head&&elig;
+    const fill=elig?f.color:'#143840', stroke=selectable?'#fff':(head?'#ffab00':f.color);
+    g.appendChild(E('rect',{x,y:cy-ch/2,width:cw,height:ch,rx:6,fill,stroke,'stroke-width':selectable?2.7:1.4,opacity:elig?1:.9}));
+    g.appendChild(E('text',{x:x+cw/2,y:cy-ch/2+17,'font-size':15,'font-weight':900,fill:elig?'#071114':f.color,'text-anchor':'middle'},`${f.stream}#${f.seq}`));
+    g.appendChild(E('text',{x:x+cw/2,y:cy-ch/2+34,'font-family':'var(--mono)','font-size':9,fill:elig?'#071114':'#a9b8ba','text-anchor':'middle'},`${f.length} b`));
+    g.appendChild(E('text',{x:x+cw/2,y:cy+10,'font-family':'var(--mono)','font-size':9,fill:elig?'#071114':'#6e8589','text-anchor':'middle'},`e_t`));
+    g.appendChild(E('text',{x:x+cw/2,y:cy+27,'font-family':'var(--mono)','font-size':12,'font-weight':900,fill:elig?'#071114':'#ff3621','text-anchor':'middle'},fmt(f.eligibilityTime)));
+    if(head){ g.appendChild(E('text',{x:x+cw/2,y:cy+ch/2+15,'font-family':'var(--mono)','font-size':9,fill:selectable?'#00a972':'#ffab00','text-anchor':'middle'},selectable?'HEAD SELECTABLE':'HEAD WAITING')); }
+    if(i===cards.length-1){ g.appendChild(E('text',{x:x+cw/2,y:cy-ch/2-8,'font-family':'var(--mono)','font-size':8.5,fill:'#a9b8ba','text-anchor':'middle'},'TAIL')); }
+    const hit=E('rect',{x,y:cy-ch/2,width:cw,height:ch,fill:'transparent',cursor:'pointer'}); hit.addEventListener('click',()=>showFrame(f)); g.appendChild(hit);
+  }
+  const head=cards[0]; const note=head?`FIFO head ${head.stream}#${head.seq}: e_t=${fmt(head.eligibilityTime)}; ${head.eligibilityTime<=w.t+EPS?'eligible now':'waiting for eligibility'}`:'no head frame';
+  g.appendChild(E('text',{x:q.x+q.w/2,y:q.y-11,'font-family':'var(--mono)','font-size':10,fill:'#a9b8ba','text-anchor':'middle'},note));
+}
+function drawState(w){
+  const g=document.getElementById('stateLayer'); g.innerHTML='';
+  const o=L.out;
+  if(w.inFlight){
+    g.appendChild(E('text',{x:o.x+o.w/2,y:o.y-14,'font-family':'var(--mono)','font-size':10,fill:'#00a972','text-anchor':'middle'},`sending ${w.inFlight.stream}#${w.inFlight.seq}`));
+  }
+  g.appendChild(E('rect',{x:1014,y:408,width:206,height:106,rx:9,fill:'#10262d',stroke:'#27505c'}));
+  g.appendChild(E('text',{x:1026,y:429,'font-size':10.5,'font-weight':800,fill:'#f1f0eb'},'Current state'));
+  g.appendChild(E('text',{x:1026,y:449,'font-family':'var(--mono)','font-size':10,fill:'#a9b8ba'},`t = ${fmt(w.t)} TU`));
+  g.appendChild(E('text',{x:1026,y:466,'font-family':'var(--mono)','font-size':10,fill:'#a9b8ba'},`GroupEligibilityTime = ${fmt(w.group.eligibilityTime)}`));
+  g.appendChild(E('text',{x:1026,y:483,'font-family':'var(--mono)','font-size':10,fill:'#a9b8ba'},`queue depth = ${w.queue.length}`));
+  g.appendChild(E('text',{x:1026,y:500,'font-family':'var(--mono)','font-size':10,fill:'#a9b8ba'},`accepted = ${w.accepted.length}  dropped = ${w.dropped.length}`));
+
+  const drops=w.dropped.slice(-3);
+  const d=L.drop;
+  for(let i=0;i<drops.length;i++){
+    const f=drops[i], yy=d.y+d.h+20+i*22;
+    g.appendChild(E('rect',{x:d.x,y:yy-12,width:26,height:15,rx:3,fill:'#ff4f64',stroke:'#fff','stroke-width':0.8}));
+    g.appendChild(E('text',{x:d.x+13,y:yy-1,'font-family':'var(--mono)','font-size':8,'font-weight':900,fill:'#24080b','text-anchor':'middle'},`${f.stream}${f.seq}`));
+    g.appendChild(E('text',{x:d.x+33,y:yy,'font-family':'var(--mono)','font-size':9.5,fill:'#ffd0d6'},`e_t ${fmt(f.eligibilityTime)} > deadline ${fmt(f.deadline)}`));
+  }
+}
+function drawTimeline(w){
+  const svg=document.getElementById('timelineSvg'); svg.innerHTML='';
+  const all=[...w.accepted,...w.queue,...w.transmitted,...w.dropped];
+  let maxT=Math.max(12,w.t+3,...w.arrivals.map(a=>a.at),...all.map(f=>Math.max(f.arrivalTime||0,f.eligibilityTime||0,f.txDone||0)))+3;
+  maxT=Math.ceil(maxT);
+  const W=1100,H=178,PL=46,PR=18,PT=12,PB=26;
+  const xs=t=>PL+(t/maxT)*(W-PL-PR), ys=t=>PT+(1-t/maxT)*(H-PT-PB);
+  svg.appendChild(E('rect',{x:0,y:0,width:W,height:H,fill:'#0e1b20'}));
+  for(let i=0;i<=maxT;i+=2){ const x=xs(i), y=ys(i); svg.appendChild(E('line',{x1:x,y1:PT,x2:x,y2:H-PB,stroke:'#17333b','stroke-width':1})); svg.appendChild(E('line',{x1:PL,y1:y,x2:W-PR,y2:y,stroke:'#17333b','stroke-width':1})); if(i%4===0){svg.appendChild(E('text',{x,y:H-9,'font-family':'var(--mono)','font-size':8,fill:'#6e8589','text-anchor':'middle'},String(i))); svg.appendChild(E('text',{x:PL-6,y:y+3,'font-family':'var(--mono)','font-size':8,fill:'#6e8589','text-anchor':'end'},String(i)));}}
+  svg.appendChild(E('line',{x1:PL,y1:H-PB,x2:W-PR,y2:H-PB,stroke:'#27505c'}));
+  svg.appendChild(E('line',{x1:PL,y1:PT,x2:PL,y2:H-PB,stroke:'#27505c'}));
+  svg.appendChild(E('text',{x:W-PR,y:H-2,'font-family':'var(--mono)','font-size':9,fill:'#6e8589','text-anchor':'end'},'arrival / tx time'));
+  svg.appendChild(E('text',{x:6,y:10,'font-family':'var(--mono)','font-size':9,fill:'#6e8589'},'eligibility_t'));
+  svg.appendChild(E('line',{x1:xs(0),y1:ys(0),x2:xs(maxT),y2:ys(maxT),stroke:'#fff','stroke-width':1,'stroke-dasharray':'4 4',opacity:.45}));
+  svg.appendChild(E('line',{x1:xs(w.t),y1:PT,x2:xs(w.t),y2:H-PB,stroke:'#ff3621','stroke-width':1.6}));
+  svg.appendChild(E('text',{x:xs(w.t)+5,y:PT+11,'font-family':'var(--mono)','font-size':9,fill:'#ff3621'},`t=${fmt(w.t)}`));
+  const frames=[...w.accepted,...w.dropped];
+  for(const f of frames){
+    const x=xs(f.arrivalTime), y=ys(f.eligibilityTime), col=f.dropped?'#ff4f64':f.color;
+    if(f.eligibilityTime>f.arrivalTime+EPS){ svg.appendChild(E('line',{x1:x,y1:ys(f.arrivalTime),x2:x,y2:y,stroke:col,'stroke-width':1.2,opacity:.65})); }
+    if(f.txStart!==undefined){ svg.appendChild(E('line',{x1:xs(f.eligibilityTime),y1:y,x2:xs(f.txStart),y2:y,stroke:col,'stroke-width':2,opacity:.5})); }
+    const shape=f.dropped?'rect':'circle';
+    const node=shape==='circle'?E('circle',{cx:x,cy:y,r:5,fill:col,stroke:'#fff','stroke-width':f.dropped?0:1,cursor:'pointer'}):E('rect',{x:x-5,y:y-5,width:10,height:10,fill:col,stroke:'#fff','stroke-width':1,cursor:'pointer'});
+    node.addEventListener('click',()=>showFrame(f)); svg.appendChild(node);
+    svg.appendChild(E('text',{x:x+7,y:y-5,'font-family':'var(--mono)','font-size':8,fill:'#a9b8ba'},`${f.stream}${f.seq}`));
+  }
+}
+function redraw(){ if(!WORLD)return; drawArrivals(WORLD); drawBuckets(WORLD); drawQueue(WORLD); drawState(WORLD); drawTimeline(WORLD); renderValidation(); renderCoach(); renderSpeakerNotes(); }
+
+class Sim{
+  constructor(w){this.w=w;this.playing=false;this.speed=1;}
+  async processDueArrivals(){
+    const w=this.w; let processed=false; const summary=[]; let droppedInThisStep=0;
+    while(w.arrivals.length && w.arrivals[0].at <= w.t + EPS){
+      const a=w.arrivals.shift(), sch=w.schedulers[a.stream]; sch.seq++;
+      const r=sch.processFrame(a.length, a.at);
+      const frame={id:w.nextId++, stream:a.stream, seq:sch.seq, color:C[a.stream], length:a.length, arrivalTime:a.at, order:a.order, dropped:!r.valid, reason:r.reason, ...r};
+      if(r.valid){
+        if(frame.eligibilityTime + EPS < w.lastIssuedET) w.errors.push(`non-decreasing e_t violated at ${frame.stream}#${frame.seq}`);
+        w.lastIssuedET = Math.max(w.lastIssuedET, frame.eligibilityTime);
+        w.queue.push(frame); w.accepted.push(frame); w.log.unshift(`accepted ${frame.stream}#${frame.seq}: arrival=${fmt(frame.arrivalTime)}, e_t=${fmt(frame.eligibilityTime)}`);
+        summary.push(`${frame.stream}#${frame.seq} accepted · e_t=max(${fmt(frame.arrivalTime)}, ${fmt(frame.oldGroupEligibilityTime)}, ${fmt(frame.schedulerEligibilityTime)})=${fmt(frame.eligibilityTime)}`);
+        w.lastStep={
+          title:`Accepted frame ${frame.stream}#${frame.seq}`,
+          subtitle:`ProcessFrame(frame) at t = ${fmt(w.t)} TU`,
+          frame,
+          tags:[{text:'accepted before FIFO',kind:'ok'},{text:'enqueued at left tail',kind:'ok'}],
+          bullets:[
+            `The arriving frame is processed by Stream ${frame.stream}'s own ATS scheduler.`,
+            `The simulator computes eligibilityTime = max(arrivalTime, old GroupEligibilityTime, schedulerEligibilityTime).`,
+            `For this frame, that is max(${fmt(frame.arrivalTime)}, ${fmt(frame.oldGroupEligibilityTime)}, ${fmt(frame.schedulerEligibilityTime)}) = ${fmt(frame.eligibilityTime)} TU.`,
+            `Because ${fmt(frame.eligibilityTime)} ≤ deadline ${fmt(frame.deadline)}, the frame is accepted and appended at the FIFO tail on the left.`
+          ],
+          say:`Frame ${frame.stream}#${frame.seq} is admitted. The important observation is not only its own bucket result. The group value also participates in the max calculation, which preserves non-decreasing eligibility order for the shared FIFO.`,
+          next:'Watch the FIFO. Only the right-side head can transmit, even though new accepted frames enter at the left-side tail.'
+        };
+        redraw();
+      } else {
+        droppedInThisStep++;
+        w.dropped.push(frame); w.log.unshift(`dropped ${frame.stream}#${frame.seq}: ${frame.reason}`);
+        summary.push(`${frame.stream}#${frame.seq} DROPPED before FIFO · e_t ${fmt(frame.eligibilityTime)} > deadline ${fmt(frame.deadline)}`);
+        w.lastStep={
+          title:`Dropped frame ${frame.stream}#${frame.seq}`,
+          subtitle:`drop is decided before FIFO admission`,
+          frame,
+          tags:[{text:'dropped before FIFO',kind:'drop'},{text:'residence-time violation',kind:'drop'}],
+          bullets:[
+            `The frame is rejected during ProcessFrame(frame), before it is appended to the FIFO tail.`,
+            `Computed eligibilityTime = ${fmt(frame.eligibilityTime)} TU.`,
+            `Allowed deadline = arrivalTime + MaximumResidenceTime = ${fmt(frame.arrivalTime)} + ${fmt(w.group.maxResidenceTime)} = ${fmt(frame.deadline)} TU.`,
+            `Since ${fmt(frame.eligibilityTime)} > ${fmt(frame.deadline)}, admitting this frame would violate the maximum residence-time bound.`
+          ],
+          say:`This is an admission failure, not a later queue drop. The frame never enters the FIFO. The red animation shows the rejection path from the scheduler to the drop sink.`,
+          next:'Click the dropped frame entry or watch the validation card to verify eligibilityTime, deadline, and MaximumResidenceTime.'
+        };
+        redraw(); renderCoach();
+        await animateDrop(frame, 650/this.speed);
+      }
+      processed=true; redraw(); await delay(115/this.speed);
+    }
+    if(processed && summary.length>1){
+      w.lastStep.next = `Multiple arrivals were due at this event boundary. Summary: ${summary.slice(0,4).join(' | ')}`;
+    }
+    return processed;
+  }
+  async transmitHead(){
+    const w=this.w, f=w.queue[0]; if(!f || f.eligibilityTime > w.t + EPS) return false;
+    w.queue.shift(); f.txStart=w.t; f.txDone=w.t + f.length / w.PORT_RATE; w.inFlight=f; w.log.unshift(`TX start ${f.stream}#${f.seq} at ${fmt(f.txStart)}; FIFO head only`); redraw();
+    w.lastStep={
+      title:`Transmitting FIFO head ${f.stream}#${f.seq}`,
+      subtitle:`selected at t = ${fmt(w.t)} TU`,
+      frame:f,
+      tags:[{text:'FIFO head',kind:'ok'},{text:'eligible now',kind:'ok'},{text:'non-preemptive TX',kind:''}],
+      bullets:[
+        `The frame can leave because it is the FIFO head on the right and head.e_t = ${fmt(f.eligibilityTime)} ≤ current time ${fmt(w.t)}.`,
+        `Transmission is non-preemptive. Port busy time = length / portRate = ${f.length} / ${w.PORT_RATE} = ${fmt(f.length / w.PORT_RATE)} TU.`,
+        `The simulator removes the head from the FIFO and animates it toward the egress port.`,
+        `If new arrivals occur while the port is busy, they are processed at their event times without moving simulated time backward.`
+      ],
+      say:`This step demonstrates the transmission-selection side of ATS. The queue is not searched for any eligible frame. Only the FIFO head is considered. The non-decreasing group eligibility rule is what makes this safe.`,
+      next:'After the packet finishes transmitting, watch whether the next event is another transmission, a new arrival, or a time jump.'
+    };
+    renderCoach();
+    await animatePacket(f, 520/this.speed);
+    const done=f.txDone;
+    while(w.arrivals.length && w.arrivals[0].at <= done + EPS){
+      w.pushTime(w.arrivals[0].at);
+      await this.processDueArrivals();
+    }
+    w.inFlight=null; w.transmitted.push(f); w.pushTime(done); w.log.unshift(`TX done ${f.stream}#${f.seq} at ${fmt(f.txDone)}`); redraw();
+    return true;
+  }
+  async step(){
+    const w=this.w; if(w.isDone()) return false;
+    if(await this.processDueArrivals()) return true;
+    const head=w.queue[0];
+    if(head && head.eligibilityTime <= w.t + EPS) return await this.transmitHead();
+    const nextArrival=w.arrivals.length?w.arrivals[0].at:Infinity;
+    const nextElig=head?head.eligibilityTime:Infinity;
+    const nextT=Math.min(nextArrival,nextElig);
+    if(!Number.isFinite(nextT)) return false;
+    w.pushTime(nextT); w.log.unshift(`time advanced to ${fmt(w.t)}`);
+    w.lastStep={
+      title:'Time advanced to next event boundary',
+      subtitle:`moved to t = ${fmt(w.t)} TU`,
+      tags:[{text:'event-driven jump',kind:'wait'}],
+      bullets:[
+        `No arrival was immediately due and the FIFO head was not yet eligible.`,
+        `The simulator jumps to the next interesting event: min(next arrival time, head eligibility time).`,
+        `This does not skip ATS behaviour. It only avoids showing empty time where no state changes.`,
+        head ? `Current FIFO head eligibility is ${fmt(head.eligibilityTime)} TU.` : `There is no FIFO head yet, so the next event is an arrival.`
+      ],
+      say:`When nothing can be accepted or transmitted at the current instant, the event-driven simulator moves directly to the next meaningful time.`,
+      next:'After this jump, the next Step will process an arrival or transmit the now-eligible FIFO head.'
+    };
+    redraw(); await delay(80/this.speed);
+    return true;
+  }
+  async play(){ this.playing=true; updateButtons(); while(this.playing && !this.w.isDone()){ const ok=await this.step(); if(!ok)break; await delay(65/this.speed); } this.playing=false; updateButtons(); }
+  pause(){this.playing=false; updateButtons();}
+}
+async function animatePacket(f,dur){
+  const layer=document.getElementById('flightLayer'), q=L.queue, o=L.out;
+  const g=E('g'); const r=E('rect',{x:-14,y:-9,width:28,height:18,rx:3,fill:f.color,stroke:'#fff','stroke-width':1.2,filter:'url(#glow)'}); g.appendChild(r);
+  g.appendChild(E('text',{x:0,y:4,'font-family':'var(--mono)','font-size':9,'font-weight':900,fill:'#071114','text-anchor':'middle'},`${f.stream}${f.seq}`)); layer.appendChild(g);
+  const p=[{x:q.x+q.w-41,y:q.y+q.h/2},{x:o.x,y:o.y+o.h/2},{x:o.x+o.w+65,y:o.y+o.h/2}], start=performance.now();
+  return new Promise(res=>{function tick(now){const u=clamp((now-start)/dur,0,1), seg=u<.5?0:1, uu=u<.5?u*2:(u-.5)*2, a=p[seg], b=p[seg+1]; const x=a.x+(b.x-a.x)*uu, y=a.y+(b.y-a.y)*uu; g.setAttribute('transform',`translate(${x},${y})`); if(u<1)requestAnimationFrame(tick); else{g.remove();res();}} requestAnimationFrame(tick);});
+}
+
+async function animateDrop(f,dur){
+  const layer=document.getElementById('flightLayer'), b=L.bucket[f.stream], d=L.drop;
+  const g=E('g');
+  const r=E('rect',{x:-18,y:-11,width:36,height:22,rx:4,fill:'#ff4f64',stroke:'#fff','stroke-width':1.3,filter:'url(#glow)'}); g.appendChild(r);
+  g.appendChild(E('text',{x:0,y:4,'font-family':'var(--mono)','font-size':9,'font-weight':900,fill:'#26090c','text-anchor':'middle'},`${f.stream}${f.seq}`));
+  const x1=E('line',{x1:-9,y1:-6,x2:9,y2:6,stroke:'#26090c','stroke-width':2}); const x2=E('line',{x1:9,y1:-6,x2:-9,y2:6,stroke:'#26090c','stroke-width':2});
+  const cross=E('g',{transform:'translate(0,19)'}); cross.appendChild(x1); cross.appendChild(x2); g.appendChild(cross);
+  layer.appendChild(g);
+  const start={x:b.x+b.w+18,y:b.y+b.h/2}, end={x:d.x+d.w/2,y:d.y+d.h/2};
+  const startTime=performance.now();
+  return new Promise(res=>{
+    function tick(now){
+      const u=clamp((now-startTime)/dur,0,1);
+      const ease=1-Math.pow(1-u,3);
+      const x=start.x+(end.x-start.x)*ease, y=start.y+(end.y-start.y)*ease;
+      g.setAttribute('transform',`translate(${x},${y}) scale(${1+0.18*u})`);
+      g.setAttribute('opacity',String(1-0.15*u));
+      if(u<1) requestAnimationFrame(tick);
+      else { setTimeout(()=>{g.remove();res();},180); }
+    }
+    requestAnimationFrame(tick);
+  });
+}
+
+function checkInvariants(w){
+  const mono=w.timeHistory.every((v,i,a)=>i===0||v+EPS>=a[i-1]);
+  const acceptedOrder=w.accepted.every((f,i,a)=>i===0||f.eligibilityTime+EPS>=a[i-1].eligibilityTime);
+  const queueOrder=w.queue.every((f,i,a)=>i===0||f.eligibilityTime+EPS>=a[i-1].eligibilityTime);
+  const txOrder=w.transmitted.every((f,i)=>f===w.accepted[i]);
+  const counts={A:0,B:0,C:0}; for(const f of [...w.accepted,...w.dropped]) counts[f.stream]++;
+  return {ok:mono&&acceptedOrder&&queueOrder&&txOrder, items:[
+    {ok:mono,text:'time monotonic'},
+    {ok:acceptedOrder,text:'accepted e_t non-decreasing'},
+    {ok:queueOrder,text:'FIFO e_t order retained'},
+    {ok:txOrder,text:'TX preserves FIFO order'},
+    {ok:counts.A>0&&counts.B>0&&counts.C>0,text:`streams seen A:${counts.A} B:${counts.B} C:${counts.C}`}
+  ]};
+}
+function renderCoach(){
+  const c=document.getElementById('coach');
+  if(!WORLD)return;
+  const s=WORLD.lastStep || {title:'Ready', subtitle:'', bullets:['Press Step or Play.']};
+  c.innerHTML=`<div class="coachBubble"><div class="coachTitle">${html(s.title)}</div><div class="mini">${html(s.subtitle||'')}</div><ul>${(s.bullets||[]).map(b=>`<li>${html(b)}</li>`).join('')}</ul></div>`;
+}
+function renderAcronyms(){
+  const rows=[
+    ['ATS','Asynchronous Traffic Shaping'],
+    ['CIR','Committed Information Rate'],
+    ['CBS','Committed Burst Size'],
+    ['BET','BucketEmptyTime'],
+    ['e_t','Eligibility Time'],
+    ['FIFO','First In First Out'],
+    ['HOL','Head of Line'],
+    ['TX','Transmission'],
+    ['TU','Time Unit used by this simulator'],
+    ['MRT','Maximum Residence Time']
+  ];
+  document.getElementById('acronyms').innerHTML = rows.map(r=>`<div class="acroRow"><div class="acroKey">${html(r[0])}</div><div class="acroVal">${html(r[1])}</div></div>`).join('');
+}
+function renderValidation(){
+  if(!WORLD) return;
+  const w=WORLD, inv=checkInvariants(w), recent=[...w.transmitted].slice(-4).reverse();
+  document.getElementById('validation').innerHTML=`<div class="validationGrid">${inv.items.map(i=>`<div class="pill ${i.ok?'ok':'bad'}">${i.ok?'✓':'✗'} ${html(i.text)}</div>`).join('')}</div>
+  <div class="validationFoot">
+    <div class="statBox"><div class="statLabel">Current time</div><div class="statValue">${fmt(w.t)} TU</div></div>
+    <div class="statBox"><div class="statLabel">Group e_t</div><div class="statValue">${fmt(w.group.eligibilityTime)}</div></div>
+    <div class="statBox"><div class="statLabel">Queue depth</div><div class="statValue">${w.queue.length}</div></div>
+    <div class="statBox"><div class="statLabel">Accepted / dropped</div><div class="statValue">${w.accepted.length} / ${w.dropped.length}</div></div>
+  </div>
+  <div class="divider"></div>
+  <div class="cardTitle" style="font-size:10px">Recent transmissions</div>
+  <div class="tinyList">${recent.length?recent.map(f=>`<div class="recentTx">${f.stream}#${f.seq} · start ${fmt(f.txStart)} · done ${fmt(f.txDone)}</div>`).join(''):'<div class="recentTx">none yet</div>'}</div>
+  <div class="divider"></div>
+  <div class="cardTitle" style="font-size:10px">Recent drops before FIFO</div>
+  <div class="tinyList">${w.dropped.length?w.dropped.slice(-4).reverse().map(f=>`<div class="recentTx bad">${f.stream}#${f.seq} · e_t ${fmt(f.eligibilityTime)} · deadline ${fmt(f.deadline)} · MRT ${fmt(w.group.maxResidenceTime)}</div>`).join(''):'<div class="recentTx">none yet</div>'}</div>`;
+}
+
+
+function frameCalcHtml(f){
+  if(!f) return '';
+  return `<div class="calcGrid">
+    <div class="calcBox"><div class="lab">arrivalTime</div><div class="val">${fmt(f.arrivalTime)} TU</div></div>
+    <div class="calcBox"><div class="lab">length</div><div class="val">${f.length} bits</div></div>
+    <div class="calcBox"><div class="lab">schedulerEligibilityTime</div><div class="val">${fmt(f.schedulerEligibilityTime)}</div></div>
+    <div class="calcBox"><div class="lab">old GroupEligibilityTime</div><div class="val">${fmt(f.oldGroupEligibilityTime)}</div></div>
+    <div class="calcBox"><div class="lab">eligibilityTime</div><div class="val">${fmt(f.eligibilityTime)}</div></div>
+    <div class="calcBox"><div class="lab">deadline</div><div class="val">${fmt(f.deadline)}</div></div>
+  </div>`;
+}
+function renderSpeakerNotes(){
+  if(!WORLD) return;
+  const s=WORLD.lastStep || {title:'Ready', subtitle:'Press Step or Play', bullets:['The notes in this card now describe the actual current step, not only the scenario.']};
+  const extra=s.frame ? frameCalcHtml(s.frame) : '';
+  const tags=(s.tags||[]).map(t=>`<span class="pathTag ${t.kind||''}">${html(t.text)}</span>`).join('');
+  document.getElementById('speakerNotes').innerHTML=`<div class="speakerNotes">
+    <div class="stepNoteHero">
+      <div class="big">${html(s.title)}</div>
+      <div class="small">${html(s.subtitle||'')}</div>
+      <div style="margin-top:7px">${tags}</div>
+    </div>
+    <div class="noteBlock"><h4>What just happened in this step</h4><ul>${(s.bullets||[]).map(x=>`<li>${html(x)}</li>`).join('')}</ul></div>
+    ${extra}
+    ${s.say?`<div class="noteBlock"><h4>Suggested speaker narration</h4><div class="noteScript">${html(s.say)}</div></div>`:''}
+    ${s.next?`<div class="noteBlock"><h4>What to watch next</h4><div class="noteScript">${html(s.next)}</div></div>`:''}
+  </div>`;
+}
+
+function showSpeakerNotes(){
+  setRightTab('speaker');
+  const s=WORLD.lastStep || {};
+  const extra=s.frame ? frameCalcHtml(s.frame) : '';
+  document.getElementById('inspector').innerHTML=`<div class="inspTitle">Step speaker notes</div>
+  <div class="stepNoteHero"><div class="big">${html(s.title||'Ready')}</div><div class="small">${html(s.subtitle||'')}</div></div>
+  <div class="noteBlock"><h4>What just happened</h4><ul>${(s.bullets||[]).map(x=>`<li>${html(x)}</li>`).join('')}</ul></div>
+  ${extra}
+  ${s.say?`<div class="noteBlock"><h4>Suggested narration</h4><div class="noteScript">${html(s.say)}</div></div>`:''}
+  ${s.next?`<div class="noteBlock"><h4>What to watch next</h4><div class="noteScript">${html(s.next)}</div></div>`:''}`;
+}
+
+function showBucket(s){
+  setRightTab('inspector');
+  const sch=WORLD.schedulers[s], tok=sch.tokensAt(WORLD.t), full=sch.bucketEmptyTime+sch.emptyToFullDuration();
+  document.getElementById('inspector').innerHTML=`<div class="inspTitle">Stream ${s} token bucket</div>
+  <div class="kv"><div class="k">CIR</div><div class="v" style="color:${C[s]}">${sch.CIR} bits/TU</div></div>
+  <div class="kv"><div class="k">CBS</div><div class="v" style="color:${C[s]}">${sch.CBS} bits</div></div>
+  <div class="kv"><div class="k">BucketEmptyTime</div><div class="v bad">${fmt(sch.bucketEmptyTime)} TU</div></div>
+  <div class="kv"><div class="k">BucketFullTime</div><div class="v">${fmt(full)} TU</div></div>
+  <div class="kv"><div class="k">current tokens</div><div class="v">${fmt(tok)} bits</div></div>
+  <div class="divider"></div><div class="code">tokens(t) = clamp((t − BucketEmptyTime) × CIR, 0, CBS)
+
+The simulator does not use a continuously updated token counter. The single time value BucketEmptyTime is enough to reconstruct the same token-bucket state.</div>`;
+}
+function showFrame(f){
+  setRightTab('inspector');
+  document.getElementById('inspector').innerHTML=`<div class="inspTitle">Frame ${f.stream}#${f.seq} ${f.dropped?'<span class="bad">DROPPED</span>':''}</div>
+  <div class="kv"><div class="k">stream</div><div class="v" style="color:${f.color}">${f.stream}</div></div>
+  <div class="kv"><div class="k">arrivalTime</div><div class="v">${fmt(f.arrivalTime)} TU</div></div>
+  <div class="kv"><div class="k">length</div><div class="v">${f.length} bits</div></div>
+  <div class="kv"><div class="k">schedulerEligibilityTime</div><div class="v">${fmt(f.schedulerEligibilityTime)}</div></div>
+  <div class="kv"><div class="k">old GroupEligibilityTime</div><div class="v">${fmt(f.oldGroupEligibilityTime)}</div></div>
+  <div class="kv"><div class="k">eligibilityTime = max(...)</div><div class="v bad">${fmt(f.eligibilityTime)}</div></div>
+  <div class="kv"><div class="k">delay added</div><div class="v">${fmt(f.eligibilityTime-f.arrivalTime)} TU</div></div>
+  <div class="kv"><div class="k">MaximumResidenceTime</div><div class="v">${fmt(WORLD.group.maxResidenceTime)} TU</div></div>
+  <div class="kv"><div class="k">deadline</div><div class="v">arrival + MRT = ${fmt(f.deadline)} TU</div></div>
+  ${f.dropped?`<div class="kv"><div class="k">drop test</div><div class="v bad">${fmt(f.eligibilityTime)} > ${fmt(f.deadline)}</div></div>`:''}
+  ${f.txStart!==undefined?`<div class="kv"><div class="k">TX start / done</div><div class="v ok">${fmt(f.txStart)} / ${fmt(f.txDone)}</div></div>`:''}
+  ${f.dropped?`<div class="kv"><div class="k">reason</div><div class="v bad">${html(f.reason)}</div></div>`:''}
+  <div class="divider"></div><div class="inspTitle">State update</div>
+  <div class="kv"><div class="k">old BucketEmptyTime</div><div class="v">${fmt(f.oldBucketEmptyTime)}</div></div>
+  <div class="kv"><div class="k">lengthRecoveryDuration</div><div class="v">${fmt(f.lengthRecoveryDuration)}</div></div>
+  <div class="kv"><div class="k">bucketFullTime</div><div class="v">${fmt(f.bucketFullTime)}</div></div>
+  <div class="kv"><div class="k">new BucketEmptyTime</div><div class="v bad">${fmt(f.newBucketEmptyTime)}</div></div>`;
+}
+function showHome(){
+  setRightTab('inspector');
+  const w=WORLD, inv=checkInvariants(w);
+  document.getElementById('inspector').innerHTML=`<div class="inspTitle">Scenario</div><div style="line-height:1.55;color:var(--muted)">${html(w.note)}</div>
+  <div class="divider"></div><div class="inspTitle">Current validation</div>
+  ${inv.items.map(i=>`<div class="pill ${i.ok?'ok':'bad'}">${i.ok?'✓':'✗'} ${html(i.text)}</div>`).join('')}
+  <div class="divider"></div><div class="inspTitle">Recent events</div><div class="code">${html(w.log.slice(0,11).join('\n')||'Press Step or Play.')}</div>`;
+}
+function showAlgorithm(){
+  setRightTab('inspector');
+  document.getElementById('inspector').innerHTML=`<div class="inspTitle">Corrected ATS ProcessFrame(frame)</div><div class="code">lengthRecoveryDuration = length(frame) / CIR
+emptyToFullDuration = CBS / CIR
+
+schedulerEligibilityTime = BucketEmptyTime + lengthRecoveryDuration
+bucketFullTime = BucketEmptyTime + emptyToFullDuration
+
+eligibilityTime = max(arrivalTime(frame),
+                      GroupEligibilityTime,
+                      schedulerEligibilityTime)
+
+if eligibilityTime <= arrivalTime(frame) + MaxResidenceTime:
+    GroupEligibilityTime = eligibilityTime
+    if eligibilityTime < bucketFullTime:
+        BucketEmptyTime = schedulerEligibilityTime
+    else:
+        BucketEmptyTime = schedulerEligibilityTime + eligibilityTime - bucketFullTime
+    enqueue frame
+else:
+    discard frame
+
+Transmission selection used here:
+    only the FIFO head on the right is transmitted,
+    and only when head.eligibilityTime <= current time.</div><div class="divider"></div><div style="line-height:1.55;color:var(--muted)">The important correction is that the frame length is included before calculating schedulerEligibilityTime. This is what makes the burst visibly shape correctly. GroupEligibilityTime then prevents later streams in the same traffic class from receiving an earlier eligibility time than the preceding frame.</div>`;
+}
+function toast(t,kind=''){const b=document.getElementById('toast'); b.textContent=t; b.className='toast show '+kind; setTimeout(()=>b.classList.remove('show'),5200);}
+const RIGHT_TAB_META = {
+  coach:{title:'Step guide', sub:'floating behavioural box'},
+  acronyms:{title:'Acronym expansions', sub:'separate reference card'},
+  validation:{title:'Current validation', sub:'live simulator checks'},
+  speaker:{title:'Step speaker notes', sub:'updates after every step'},
+  inspector:{title:'Inspector', sub:'click a bucket, frame, or button'}
+};
+let selectedRightTab = 'speaker';
+function setRightTab(tab){
+  selectedRightTab = tab;
+  document.querySelectorAll('.rightTabBtn').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
+  document.querySelectorAll('.tabPane').forEach(p=>p.classList.toggle('active', p.dataset.tab===tab));
+  const meta = RIGHT_TAB_META[tab] || RIGHT_TAB_META.speaker;
+  const t = document.getElementById('rightCardTitle');
+  const s = document.getElementById('rightCardSub');
+  if(t) t.textContent = meta.title;
+  if(s) s.textContent = meta.sub;
+}
+function load(name){ WORLD=SCENARIOS[name](); SIM=new Sim(WORLD); SIM.speed=currentSpeed(); document.getElementById('flightLayer').innerHTML=''; drawStatic(); redraw(); showHome(); updateButtons(); toast(WORLD.note); }
+function currentSpeed(){const a=document.querySelector('#speedSeg .active'); return a?parseFloat(a.dataset.speed):1;}
+function updateButtons(){document.getElementById('playBtn').textContent=SIM&&SIM.playing?'⏸ Pause':'▶ Play'; document.getElementById('stepBtn').disabled=!!(SIM&&SIM.playing);}
+function pureProcessDue(w){
+  let processed=false;
+  while(w.arrivals.length && w.arrivals[0].at <= w.t + EPS){
+    const a=w.arrivals.shift(), sch=w.schedulers[a.stream]; sch.seq++;
+    const r=sch.processFrame(a.length, a.at);
+    const frame={id:w.nextId++, stream:a.stream, seq:sch.seq, color:C[a.stream], length:a.length, arrivalTime:a.at, order:a.order, dropped:!r.valid, reason:r.reason, ...r};
+    if(r.valid){
+      if(frame.eligibilityTime + EPS < w.lastIssuedET) w.errors.push(`non-decreasing e_t violated at ${frame.stream}#${frame.seq}`);
+      w.lastIssuedET = Math.max(w.lastIssuedET, frame.eligibilityTime);
+      w.queue.push(frame); w.accepted.push(frame);
+    } else {
+      w.dropped.push(frame);
+    }
+    processed=true;
+  }
+  return processed;
+}
+function runPureScenario(name){
+  const w=SCENARIOS[name](); let guard=0;
+  while(!w.isDone() && guard++<2000){
+    if(pureProcessDue(w)) continue;
+    const head=w.queue[0];
+    if(head && head.eligibilityTime <= w.t + EPS){
+      w.queue.shift(); head.txStart=w.t; head.txDone=w.t + head.length / w.PORT_RATE;
+      const done=head.txDone;
+      while(w.arrivals.length && w.arrivals[0].at <= done + EPS){
+        w.pushTime(w.arrivals[0].at); pureProcessDue(w);
+      }
+      w.transmitted.push(head); w.pushTime(done); continue;
+    }
+    const nextArrival=w.arrivals.length?w.arrivals[0].at:Infinity;
+    const nextElig=head?head.eligibilityTime:Infinity;
+    const nextT=Math.min(nextArrival,nextElig);
+    if(!Number.isFinite(nextT)) break;
+    w.pushTime(nextT);
+  }
+  if(guard>=2000) w.errors.push('pure validation guard limit reached');
+  return w;
+}
+function validateCurrent(){
+  setRightTab('validation');
+  const name=document.getElementById('scenario').value;
+  const w=runPureScenario(name);
+  const inv=checkInvariants(w);
+  document.getElementById('validation').innerHTML=`<div class="inspTitle">Full non-animated validation</div>${inv.items.map(i=>`<div class="pill ${i.ok?'ok':'bad'}">${i.ok?'✓':'✗'} ${html(i.text)}</div>`).join('')}<div class="divider"></div><div class="kv"><div class="k">accepted</div><div class="v">${w.accepted.length}</div></div><div class="kv"><div class="k">transmitted</div><div class="v">${w.transmitted.length}</div></div><div class="kv"><div class="k">dropped</div><div class="v">${w.dropped.length}</div></div><div class="kv"><div class="k">errors</div><div class="v ${w.errors.length?'bad':'ok'}">${w.errors.length?html(w.errors.join('; ')):'none'}</div></div>`;
+  toast(inv.ok?'Validation passed for this scenario':'Validation found a problem',inv.ok?'':'bad');
+}
+
+window.addEventListener('DOMContentLoaded',()=>{
+  renderAcronyms();
+  document.querySelectorAll('.rightTabBtn').forEach(b=>b.addEventListener('click',()=>setRightTab(b.dataset.tab)));
+  setRightTab('speaker');
+  document.getElementById('playBtn').addEventListener('click',()=>{ if(!SIM)return; if(SIM.playing)SIM.pause(); else SIM.play(); });
+  document.getElementById('stepBtn').addEventListener('click',async()=>{ if(SIM&&!SIM.playing){ await SIM.step(); }});
+  document.getElementById('resetBtn').addEventListener('click',()=>load(document.getElementById('scenario').value));
+  document.getElementById('scenario').addEventListener('change',e=>load(e.target.value));
+  document.querySelectorAll('#speedSeg .btn').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('#speedSeg .btn').forEach(x=>x.classList.remove('active')); b.classList.add('active'); if(SIM)SIM.speed=parseFloat(b.dataset.speed);}));
+  document.getElementById('algoBtn').addEventListener('click',()=>{ setRightTab('inspector'); showAlgorithm(); });
+  document.getElementById('notesBtn').addEventListener('click',()=>{ setRightTab('speaker'); showSpeakerNotes(); });
+  document.getElementById('validateBtn').addEventListener('click',validateCurrent);
+  load('MIXED');
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>FRER Flow Classification, Stream Identification, R-TAG, and Sequence Recovery</title>
+<style>
+:root{
+  --bg:#0b0f19;
+  --bg2:#111827;
+  --panel:#151b2d;
+  --panel2:#1b2236;
+  --panel3:#101624;
+  --text:#e9edf7;
+  --muted:#aeb8cc;
+  --faint:#738099;
+  --line:#2a344d;
+  --orange:#ff5f1f;
+  --orange2:#ff8a3d;
+  --blue:#4db8ff;
+  --cyan:#50e3c2;
+  --green:#7ee787;
+  --yellow:#ffd166;
+  --red:#ff6b6b;
+  --purple:#c084fc;
+  --shadow:0 18px 44px rgba(0,0,0,.45);
+  --radius:18px;
+  --mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+  --sans:Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:radial-gradient(circle at top left,rgba(255,95,31,.18),transparent 38%),radial-gradient(circle at top right,rgba(77,184,255,.14),transparent 34%),var(--bg);color:var(--text);font-family:var(--sans);line-height:1.55}
+a{color:var(--blue);text-decoration:none}
+a:hover{text-decoration:underline}
+.topbar{position:sticky;top:0;z-index:1000;background:rgba(11,15,25,.92);backdrop-filter:blur(16px);border-bottom:1px solid var(--line)}
+.top-inner{max-width:1420px;margin:auto;padding:12px 22px;display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center}
+.brand{display:flex;gap:12px;align-items:center;min-width:0}
+.logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--orange),#d3266e);box-shadow:0 0 24px rgba(255,95,31,.35)}
+.brand h1{font-size:15px;margin:0;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brand .sub{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.context{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.context a{font-size:12px;color:var(--muted);padding:7px 9px;border:1px solid var(--line);border-radius:999px;background:rgba(21,27,45,.65)}
+.context a.active{color:#fff;background:linear-gradient(135deg,rgba(255,95,31,.95),rgba(255,138,61,.65));border-color:rgba(255,138,61,.75);box-shadow:0 0 0 2px rgba(255,95,31,.1)}
+.hero{max-width:1420px;margin:0 auto;padding:48px 22px 28px;display:grid;grid-template-columns:minmax(0,1.3fr) minmax(300px,.7fr);gap:24px;align-items:stretch}
+.hero-card{background:linear-gradient(180deg,rgba(21,27,45,.94),rgba(16,22,36,.94));border:1px solid var(--line);border-radius:28px;padding:34px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.hero-card:before{content:"";position:absolute;inset:-70px -110px auto auto;width:260px;height:260px;background:radial-gradient(circle,rgba(255,95,31,.24),transparent 64%);pointer-events:none}
+.kicker{color:var(--orange2);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;margin-bottom:12px}
+h2,h3,h4{line-height:1.2}
+.hero h2{font-size:44px;margin:0 0 16px;letter-spacing:-.04em}
+.hero p{font-size:17px;color:var(--muted);margin:0 0 16px;max-width:950px}
+.pills{display:flex;gap:8px;flex-wrap:wrap;margin-top:22px}
+.pill{border:1px solid var(--line);background:rgba(255,255,255,.04);border-radius:999px;padding:8px 11px;color:#dfe7f8;font-size:12px;font-weight:650}
+.side-card{background:rgba(21,27,45,.86);border:1px solid var(--line);border-radius:28px;padding:24px;box-shadow:var(--shadow)}
+.side-card h3{margin:0 0 12px;font-size:20px}.side-card ul{padding-left:18px;color:var(--muted);margin:0}.side-card li{margin:8px 0}.accent{color:var(--orange2);font-weight:800}.blue{color:var(--blue);font-weight:800}.green{color:var(--green);font-weight:800}.yellow{color:var(--yellow);font-weight:800}.red{color:var(--red);font-weight:800}.purple{color:var(--purple);font-weight:800}
+main{max-width:1420px;margin:0 auto;padding:0 22px 64px}.section{scroll-margin-top:90px;margin:24px 0}.section-title{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin:0 0 14px}.section-title h2{font-size:29px;margin:0;letter-spacing:-.02em}.section-title p{margin:0;color:var(--muted);max-width:760px}
+.grid{display:grid;gap:16px}.grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}.grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}.grid.four{grid-template-columns:repeat(4,minmax(0,1fr))}
+.card{background:linear-gradient(180deg,rgba(21,27,45,.94),rgba(16,22,36,.95));border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:0 12px 28px rgba(0,0,0,.24)}
+.card h3{margin:0 0 10px;font-size:20px}.card h4{margin:0 0 8px;font-size:15px;color:#fff}.card p{color:var(--muted);margin:0 0 12px}.card ul,.card ol{color:var(--muted);padding-left:20px;margin:8px 0}.card li{margin:6px 0}.mini{font-size:13px;color:var(--faint)}
+.callout{border-left:4px solid var(--orange);background:rgba(255,95,31,.08);padding:13px 14px;border-radius:12px;color:#ffe7dd;margin:12px 0}.callout.blue{border-color:var(--blue);background:rgba(77,184,255,.08);color:#dcf3ff}.callout.green{border-color:var(--green);background:rgba(126,231,135,.08);color:#e8ffe9}.callout.red{border-color:var(--red);background:rgba(255,107,107,.08);color:#ffe6e6}.callout.yellow{border-color:var(--yellow);background:rgba(255,209,102,.08);color:#fff2cf}
+.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:16px;background:rgba(0,0,0,.12)}table{width:100%;border-collapse:collapse;min-width:760px}th,td{border-bottom:1px solid var(--line);padding:12px 12px;text-align:left;vertical-align:top}th{background:rgba(255,255,255,.045);font-size:12px;color:#fff;text-transform:uppercase;letter-spacing:.08em}td{color:var(--muted)}tr:last-child td{border-bottom:none}.code{font-family:var(--mono);font-size:12.5px;background:rgba(0,0,0,.28);border:1px solid var(--line);border-radius:12px;padding:12px;overflow:auto;color:#d9e8ff}.kbd{font-family:var(--mono);font-size:12px;border:1px solid var(--line);background:#0b1020;border-radius:6px;padding:2px 6px;color:#fff}
+.pipeline{display:grid;grid-template-columns:repeat(8,minmax(120px,1fr));gap:10px;align-items:stretch}.pipe{position:relative;padding:14px;border:1px solid var(--line);background:rgba(255,255,255,.035);border-radius:16px;min-height:112px}.pipe:after{content:"→";position:absolute;right:-14px;top:42%;color:var(--orange);font-weight:900;font-size:18px}.pipe:last-child:after{display:none}.pipe b{display:block;color:#fff;margin-bottom:7px}.pipe span{display:block;font-size:12px;color:var(--muted)}.pipe small{display:inline-block;margin-top:8px;color:var(--orange2);font-family:var(--mono);font-size:11px}
+.frame{display:flex;align-items:stretch;gap:2px;overflow:auto;padding:14px;background:rgba(0,0,0,.22);border:1px solid var(--line);border-radius:16px}.field{min-width:92px;padding:10px 9px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);border-radius:9px;text-align:center}.field.long{min-width:150px}.field.tiny{min-width:64px}.field.rtag{background:rgba(255,95,31,.15);border-color:rgba(255,95,31,.36)}.field.vlan{background:rgba(77,184,255,.13);border-color:rgba(77,184,255,.34)}.field.payload{background:rgba(126,231,135,.1);border-color:rgba(126,231,135,.24)}.field b{display:block;font-size:12px;color:#fff}.field span{display:block;color:var(--muted);font-size:11px;font-family:var(--mono);margin-top:5px}.legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;color:var(--muted);font-size:12px}.dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;background:var(--orange)}.dot.v{background:var(--blue)}.dot.p{background:var(--green)}
+.scenario-shell{display:grid;grid-template-columns:320px 1fr;gap:16px}.scenario-list{display:flex;flex-direction:column;gap:8px;max-height:760px;overflow:auto}.scenario-btn{cursor:pointer;text-align:left;border:1px solid var(--line);background:rgba(255,255,255,.035);color:var(--muted);border-radius:14px;padding:12px 13px;font:inherit}.scenario-btn:hover{background:rgba(255,255,255,.065)}.scenario-btn.active{border-color:rgba(255,95,31,.85);background:rgba(255,95,31,.15);color:#fff}.scenario-panel{min-height:520px}.scenario-panel h3{font-size:24px}.chips{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.chip{font-family:var(--mono);font-size:12px;padding:5px 8px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid var(--line);color:#e8eefc}.decision{display:grid;grid-template-columns:1.1fr .9fr;gap:14px}.decision-step{border:1px solid var(--line);border-radius:15px;padding:14px;background:rgba(255,255,255,.035)}.decision-step b{color:#fff}.decision-step p{font-size:13px;margin:7px 0 0;color:var(--muted)}
+.seqbox{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.seq{width:54px;height:54px;border:1px solid var(--line);border-radius:13px;display:flex;align-items:center;justify-content:center;flex-direction:column;background:rgba(255,255,255,.04);font-family:var(--mono)}.seq.pass{border-color:rgba(126,231,135,.6);background:rgba(126,231,135,.12)}.seq.drop{border-color:rgba(255,107,107,.6);background:rgba(255,107,107,.12)}.seq.warn{border-color:rgba(255,209,102,.7);background:rgba(255,209,102,.12)}.seq small{font-size:10px;color:var(--muted)}
+.accordion{border:1px solid var(--line);border-radius:15px;overflow:hidden}.acc-head{cursor:pointer;padding:14px 16px;background:rgba(255,255,255,.045);display:flex;justify-content:space-between;gap:12px}.acc-body{display:none;padding:16px;background:rgba(0,0,0,.12);color:var(--muted)}.accordion.open .acc-body{display:block}.badge{font-size:11px;text-transform:uppercase;letter-spacing:.08em;border-radius:999px;padding:4px 7px;font-weight:800}.badge.pass{background:rgba(126,231,135,.14);color:var(--green)}.badge.drop{background:rgba(255,107,107,.14);color:var(--red)}.badge.info{background:rgba(77,184,255,.14);color:var(--blue)}.badge.warn{background:rgba(255,209,102,.15);color:var(--yellow)}
+.note-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.note{padding:13px;border:1px dashed rgba(255,255,255,.18);border-radius:14px;background:rgba(255,255,255,.025);color:var(--muted)}.note b{color:#fff}.footer{margin-top:36px;padding:22px;border-top:1px solid var(--line);color:var(--faint);font-size:13px}.footer ul{margin:8px 0 0;padding-left:18px}
+@media(max-width:1150px){.hero{grid-template-columns:1fr}.pipeline{grid-template-columns:repeat(4,minmax(120px,1fr))}.pipe:nth-child(4):after{display:none}.scenario-shell{grid-template-columns:1fr}.scenario-list{max-height:unset}.grid.three,.grid.four{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:720px){.top-inner{grid-template-columns:1fr}.context{justify-content:flex-start}.hero h2{font-size:33px}.hero-card{padding:24px}.grid.two,.grid.three,.grid.four,.decision,.note-grid{grid-template-columns:1fr}.pipeline{grid-template-columns:1fr}.pipe:after{display:none}}
+@media print{.topbar{position:static}.scenario-list{display:none}.scenario-shell{display:block}.section{break-inside:avoid}.card{box-shadow:none}.hero{display:block}.side-card{margin-top:12px}}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="top-inner">
+    <div class="brand"><div class="logo"></div><div><h1>FRER Flow Classification</h1><div class="sub">IEEE 802.1CB stream identification · R-TAG · sequence recovery · switch examples</div></div></div>
+    <nav class="context" id="contextNav">
+      <a href="#mental">Mental model</a><a href="#pipeline">Switch pipeline</a><a href="#streamid">Stream ID methods</a><a href="#pdu">PDU/header</a><a href="#seq">Sequence recovery</a><a href="#scenarios">Scenarios</a><a href="#config">Config patterns</a><a href="#checks">Checks</a>
+    </nav>
+  </div>
+</header>
+<section class="hero">
+  <div class="hero-card">
+    <div class="kicker">Training artifact · Databricks dark theme</div>
+    <h2>How FRER classifies a flow before it can replicate, recover, and eliminate duplicates</h2>
+    <p><b>Frame Replication and Elimination for Reliability (FRER)</b> does not start with duplication. It starts with a precise answer to a deceptively simple question: <span class="accent">which Stream does this frame belong to?</span></p>
+    <p>The classification result is a local <span class="kbd">stream_handle</span>. That handle is then carried internally to sequence generation, R-TAG encode/decode, stream splitting, individual recovery, sequence recovery, and counters. The R-TAG carries the sequence number, not the Stream identity.</p>
+    <div class="pills"><span class="pill">IEEE 802.1CB Clause 6</span><span class="pill">R-TAG EtherType 0xF1C1</span><span class="pill">16-bit sequence number</span><span class="pill">Vector and Match recovery</span><span class="pill">802.1CBdb mask-and-match</span></div>
+  </div>
+  <aside class="side-card">
+    <h3>Learning outcome</h3>
+    <ul>
+      <li>Separate <b>flow classification</b> from normal bridge forwarding.</li>
+      <li>Read the FRER-relevant PDU fields in Ethernet, VLAN, IP, transport, and R-TAG headers.</li>
+      <li>Understand why <b>stream_handle is local metadata</b>, not a header field.</li>
+      <li>Predict pass, duplicate discard, rogue discard, tagless handling, and reset behavior.</li>
+      <li>Recognize common configuration traps in automotive Ethernet switches.</li>
+    </ul>
+  </aside>
+</section>
+<main>
+<section class="section" id="mental">
+  <div class="section-title"><h2>1. The mental model</h2><p>FRER is a small chain of functions. Flow classification is the entry point into that chain.</p></div>
+  <div class="grid three">
+    <div class="card"><h3>Stream identification</h3><p>Examines selected packet attributes and assigns a local <span class="kbd">stream_handle</span>. In the receive direction, unknown packets pass as non-Stream traffic unless a local policy later drops them.</p><div class="callout blue">This is classification. It is not yet duplicate elimination.</div></div>
+    <div class="card"><h3>Sequence handling</h3><p>Sequence generation creates the monotonically increasing sequence value for a Compound Stream. Sequence encode/decode inserts or extracts that value. R-TAG is one standard sequence encapsulation.</p><div class="callout">The R-TAG carries <b>sequence_number</b>, not <b>stream_handle</b>.</div></div>
+    <div class="card"><h3>Recovery and elimination</h3><p>Sequence recovery uses the stream handle plus sequence number history to pass the first valid copy and discard duplicates, rogue packets, or tagless packets depending on algorithm and policy.</p><div class="callout green">The recovery decision is per configured Stream or Member Stream context.</div></div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <h3>Important vocabulary</h3>
+    <div class="table-wrap"><table><thead><tr><th>Term</th><th>Meaning in FRER</th><th>Teaching warning</th></tr></thead><tbody>
+      <tr><td><b>Stream</b></td><td>A sequence of packets from a Talker to one or more Listeners that receives a defined quality of service.</td><td>A Stream is not simply “all frames on a VLAN.” VLAN can be part of identification, but the Stream abstraction is higher.</td></tr>
+      <tr><td><b>Compound Stream</b></td><td>The protected Stream before or after it is split into redundant Member Streams.</td><td>The sequence number is common to the replicated copies of the same original packet.</td></tr>
+      <tr><td><b>Member Stream</b></td><td>One replicated path-specific copy of the Compound Stream.</td><td>Member Streams can have different destination MAC addresses, VLAN IDs, or ports depending on active stream identification and splitting.</td></tr>
+      <tr><td><b>stream_handle</b></td><td>A local integer metadata value identifying the Stream inside a bridge or end station.</td><td>Do not look for it in the wire PDU. It is connected to packet fields by configuration and protocol actions.</td></tr>
+      <tr><td><b>sequence_number</b></td><td>An unsigned value that orders packets in a Compound Stream. R-TAG carries the low-order 16 bits.</td><td>Two replicated copies of the same original packet should carry the same sequence number.</td></tr>
+      <tr><td><b>R-TAG</b></td><td>A 6-octet Redundancy tag with EtherType, Reserved field, and 16-bit Sequence Number.</td><td>R-TAG alone is not enough to know the Stream. Classification still needs Stream identification.</td></tr>
+    </tbody></table></div>
+  </div>
+</section>
+<section class="section" id="pipeline">
+  <div class="section-title"><h2>2. Where flow classification sits in the switch pipeline</h2><p>The same physical frame passes through ordinary bridge functions and FRER-specific functions. Keep the internal metadata separate from the transmitted PDU.</p></div>
+  <div class="card">
+    <div class="pipeline">
+      <div class="pipe"><b>Ingress parser</b><span>Extract port, DMAC, SMAC, tag status, VID, PCP, EtherType, IP tuple, transport ports.</span><small>frame → facts</small></div>
+      <div class="pipe"><b>VLAN and PCP normalization</b><span>Assign default VID/PCP for untagged frames if configured. Reject illegal or disallowed frame forms.</span><small>bridge context</small></div>
+      <div class="pipe"><b>Stream identification</b><span>Apply ordered Stream ID entries. First matching entry produces stream_handle.</span><small>classification</small></div>
+      <div class="pipe"><b>Sequence decode</b><span>If configured, extract sequence_number from R-TAG, HSR tag, PRP trailer, or other sequence method.</span><small>seq metadata</small></div>
+      <div class="pipe"><b>FRER function</b><span>Generate sequence, split Stream, recover sequence, or run individual recovery depending on port direction.</span><small>protection logic</small></div>
+      <div class="pipe"><b>Forwarding decision</b><span>Use FDB, VLAN membership, filters, destination port vector, and FRER modifications.</span><small>egress set</small></div>
+      <div class="pipe"><b>Sequence encode</b><span>Add R-TAG or chosen encapsulation on output if active sequence encoding is configured.</span><small>wire PDU</small></div>
+      <div class="pipe"><b>Egress queue</b><span>Queue and transmit according to priority, traffic class, shaper, and scheduler.</span><small>QoS</small></div>
+    </div>
+    <div class="callout yellow" style="margin-top:16px"><b>Pipeline rule:</b> stream identification creates local metadata. R-TAG encode/decode creates or extracts sequence metadata. Forwarding and queuing can then act on the resulting internal state.</div>
+  </div>
+</section>
+<section class="section" id="streamid">
+  <div class="section-title"><h2>3. Stream identification methods</h2><p>IEEE 802.1CB defines four original stream identification functions. IEEE 802.1CBdb adds extended identification, including mask-and-match.</p></div>
+  <div class="card">
+    <div class="table-wrap"><table><thead><tr><th>Method</th><th>Passive or active</th><th>Fields examined</th><th>Fields overwritten</th><th>Best-fit use case</th><th>Typical trap</th></tr></thead><tbody>
+      <tr><td><b>Null Stream identification</b></td><td>Passive</td><td>Destination MAC address, VLAN identifier</td><td>None</td><td>AVB/TSN multicast Stream where one destination MAC plus VLAN uniquely identifies one Stream.</td><td>Unsafe if several logical flows share the same DMAC and VLAN.</td></tr>
+      <tr><td><b>Source MAC and VLAN</b></td><td>Passive</td><td>Source MAC address, VLAN identifier</td><td>None</td><td>All traffic from one talker on a VLAN is one protected Stream.</td><td>Breaks when one ECU emits several independent flows on the same VLAN.</td></tr>
+      <tr><td><b>Active Destination MAC and VLAN</b></td><td>Active</td><td>Destination MAC address, VLAN identifier</td><td>Destination MAC, VLAN identifier, priority</td><td>Translate a Stream into a network-visible TSN identity and restore it later.</td><td>Must be symmetrically configured. Changing DMAC or VLAN can make the receiver fail to recognize the packet.</td></tr>
+      <tr><td><b>IP Stream identification</b></td><td>Passive</td><td>Destination MAC, VLAN, IP source, IP destination, DSCP, IP next protocol, source port, destination port</td><td>None</td><td>SOME/IP, UDP, TCP, RTP, sensor/control flows where L2 headers are not unique enough.</td><td>Fragmentation, tunneling, encrypted overlays, NAT, or header rewriting can hide the fields used for classification.</td></tr>
+      <tr><td><b>Mask-and-match</b></td><td>Extended method</td><td>Configured byte positions and masks over selected header regions</td><td>Normally none</td><td>Legacy or proprietary protocols where the unique identifier is not one of the fixed 802.1CB-2017 fields.</td><td>Overly broad masks merge unrelated flows. Overly narrow masks break when harmless header fields change.</td></tr>
+    </tbody></table></div>
+  </div>
+  <div class="grid two" style="margin-top:16px">
+    <div class="card"><h3>What “passive” means</h3><p>A passive identification method only examines the received frame and assigns local metadata. The wire frame is not changed by the identification function itself.</p><div class="code">match { dmac=91:E0:F0:00:01:01, vid=10 }
+→ stream_handle = 0x101
+→ continue with same DMAC, same VLAN</div></div>
+    <div class="card"><h3>What “active” means</h3><p>An active identification method can encode a Stream identity by changing header parameters on transmit and can decode by recognizing those changed values on receive.</p><div class="code">upper stream_handle = 0x401
+→ transmit as dmac=91:E0:F0:AA:00:01, vid=100, pcp=5
+→ receiver/proxy restores original addressing</div></div>
+  </div>
+</section>
+<section class="section" id="pdu">
+  <div class="section-title"><h2>4. PDU and header format</h2><p>The transmitted Ethernet frame contains ordinary L2/L3 fields and optionally a sequence encapsulation. The local stream_handle does not appear as a PDU field.</p></div>
+  <div class="grid two">
+    <div class="card">
+      <h3>Typical 802.1Q bridge example with C-TAG and R-TAG</h3>
+      <div class="frame" aria-label="Ethernet frame with VLAN and R-TAG">
+        <div class="field long"><b>Destination MAC</b><span>6 octets</span></div>
+        <div class="field long"><b>Source MAC</b><span>6 octets</span></div>
+        <div class="field vlan"><b>C-TAG TPID</b><span>0x8100</span></div>
+        <div class="field vlan"><b>TCI</b><span>PCP/DEI/VID</span></div>
+        <div class="field rtag"><b>R-TAG TPID</b><span>0xF1C1</span></div>
+        <div class="field rtag"><b>Reserved</b><span>16 bits = 0</span></div>
+        <div class="field rtag"><b>SeqNum</b><span>16 bits</span></div>
+        <div class="field"><b>Type/Length</b><span>e.g. IPv4</span></div>
+        <div class="field payload long"><b>Payload</b><span>n octets</span></div>
+        <div class="field tiny"><b>FCS</b><span>4</span></div>
+      </div>
+      <div class="legend"><span><i class="dot v"></i>VLAN tag</span><span><i class="dot"></i>FRER R-TAG</span><span><i class="dot p"></i>Upper-layer payload</span></div>
+      <div class="callout blue"><b>Placement nuance:</b> IEEE 802.1CB explicitly allows the position of the R-TAG relative to other tags to depend on the ordered placement of sequence encode/decode and other functions. The C-TAG → R-TAG layout above is the typical 802.1Q bridge example, not a universal law.</div>
+    </div>
+    <div class="card">
+      <h3>R-TAG field detail</h3>
+      <div class="table-wrap"><table style="min-width:560px"><thead><tr><th>R-TAG octets</th><th>Field</th><th>Meaning</th></tr></thead><tbody>
+        <tr><td>0–1</td><td><b>EtherType / TPID</b></td><td><span class="kbd">0xF1C1</span>, identifying the Redundancy tag.</td></tr>
+        <tr><td>2–3</td><td><b>Reserved</b></td><td>Transmitted as zeros and ignored on receipt. Reserved for future use.</td></tr>
+        <tr><td>4–5</td><td><b>Sequence Number</b></td><td>The low-order 16 bits of the sequence_number subparameter. Wrap-around is normal.</td></tr>
+      </tbody></table></div>
+      <div class="code">Example R-TAG bytes for sequence 1000 decimal:
+F1 C1  00 00  03 E8
+│      │      └─ Sequence Number = 0x03E8
+│      └──────── Reserved = 0
+└─────────────── R-TAG EtherType</div>
+      <div class="callout red"><b>Do not teach this incorrectly:</b> R-TAG does not contain source Stream ID, member Stream ID, ingress port, path ID, or VLAN. Those come from other fields and configuration.</div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <h3>Which header fields can be used for classification?</h3>
+    <div class="table-wrap"><table><thead><tr><th>Header region</th><th>Useful fields</th><th>Classification role</th><th>Example</th></tr></thead><tbody>
+      <tr><td>Ingress context</td><td>Physical/logical input port, facing direction</td><td>Disambiguates the same header values arriving from different redundant legs or zones.</td><td>Port P2 + VLAN 100 is Member Stream A. Port P3 + VLAN 100 is Member Stream B.</td></tr>
+      <tr><td>Ethernet MAC</td><td>Destination MAC, source MAC</td><td>Original four methods use DMAC or SMAC with VLAN. Active DMAC/VLAN can rewrite DMAC.</td><td>DMAC 91:E0:F0:00:01:01 + VID 10 → camera Stream.</td></tr>
+      <tr><td>VLAN tag</td><td>Tagged status, PCP, DEI, VID</td><td>VID is a core discriminator. PCP can be rewritten by active DMAC/VLAN and used by QoS after classification.</td><td>VID 20 carries control, VID 30 carries diagnostics from same ECU.</td></tr>
+      <tr><td>R-TAG</td><td>0xF1C1, Reserved, Sequence Number</td><td>Sequence decode extracts sequence_number for recovery. It does not identify the Stream by itself.</td><td>Seq 71 on Stream 0x210 passes first, duplicate from other leg drops.</td></tr>
+      <tr><td>IP header</td><td>Source IP, destination IP, DSCP, protocol</td><td>IP Stream identification separates flows that share the same L2 headers.</td><td>10.0.2.10 → 10.0.8.20, UDP, DSCP 46.</td></tr>
+      <tr><td>Transport header</td><td>UDP/TCP/SCTP source and destination ports</td><td>Separates services and methods inside the same IP pair.</td><td>SOME/IP service A on UDP 30501 versus service B on UDP 30502.</td></tr>
+      <tr><td>Payload bytes</td><td>Protocol-specific identifier using mask-and-match</td><td>Used when fixed L2/L3/L4 fields are not sufficient or are not available.</td><td>CAN-over-Ethernet tunnel payload byte range contains CAN ID 0x18DAF110.</td></tr>
+    </tbody></table></div>
+  </div>
+</section>
+<section class="section" id="seq">
+  <div class="section-title"><h2>5. From flow classification to sequence recovery classification</h2><p>Once the frame has a stream_handle and a sequence number, FRER can classify the arrival as new, duplicate, old-but-unseen, rogue, tagless, or reset-triggered.</p></div>
+  <div class="grid two">
+    <div class="card">
+      <h3>VectorRecoveryAlgorithm</h3>
+      <p>Designed for streams where a history window is useful. It maintains <span class="kbd">RecovSeqNum</span> and a bit-vector <span class="kbd">SequenceHistory</span> of length <span class="kbd">frerSeqRcvyHistoryLength</span>.</p>
+      <div class="seqbox"><div class="seq pass">200<small>latest</small></div><div class="seq pass">199<small>seen</small></div><div class="seq warn">198<small>gap?</small></div><div class="seq pass">197<small>seen</small></div><div class="seq drop">192<small>rogue</small></div></div>
+      <ul><li>First packet after reset is accepted.</li><li>Packet within the window and unseen can pass.</li><li>Repeated sequence number already marked seen is discarded as duplicate.</li><li>Packet too far ahead or too far behind is discarded as rogue.</li><li>Missing sequence numbers can later be counted as lost when the window shifts.</li></ul>
+    </div>
+    <div class="card">
+      <h3>MatchRecoveryAlgorithm</h3>
+      <p>Simpler algorithm. It only compares the incoming sequence number against the last accepted sequence number.</p>
+      <div class="seqbox"><div class="seq pass">400<small>accept</small></div><div class="seq drop">400<small>dup</small></div><div class="seq pass">399<small>accept</small></div><div class="seq pass">401<small>accept</small></div></div>
+      <ul><li>First packet after reset is accepted.</li><li>If the sequence number equals the last accepted value, discard.</li><li>If it differs, accept and update RecovSeqNum.</li><li>It is useful for individual recovery on single member streams but does not provide the same sliding-window duplicate protection as Vector.</li></ul>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <h3>Decision categories in plain language</h3>
+    <div class="table-wrap"><table><thead><tr><th>Category</th><th>What the algorithm sees</th><th>Typical action</th><th>Counter intuition</th></tr></thead><tbody>
+      <tr><td><span class="badge pass">First after reset</span></td><td><span class="kbd">TakeAny = true</span></td><td>Accept, set RecovSeqNum, start/reset recovery timer.</td><td>Passed increments. Reset counter already incremented by reset event.</td></tr>
+      <tr><td><span class="badge pass">Next in order</span></td><td>delta = +1 from RecovSeqNum</td><td>Accept, shift history, update RecovSeqNum.</td><td>Passed increments.</td></tr>
+      <tr><td><span class="badge warn">Out of order but valid</span></td><td>Inside Vector history window and not yet seen.</td><td>Accept, mark that older sequence as seen.</td><td>Passed and out-of-order increment.</td></tr>
+      <tr><td><span class="badge drop">Duplicate</span></td><td>Sequence value already marked seen, or equals last accepted value in Match.</td><td>Discard.</td><td>Discarded/duplicate counters increment.</td></tr>
+      <tr><td><span class="badge drop">Rogue</span></td><td>Outside Vector window by at least frerSeqRcvyHistoryLength.</td><td>Discard as invalid/out-of-range.</td><td>Rogue and port discard counters increment.</td></tr>
+      <tr><td><span class="badge info">Tagless/no sequence</span></td><td>No valid sequence_number subparameter after decode.</td><td>Policy-dependent. The managed object frerSeqRcvyTakeNoSequence says whether no-sequence packets are accepted or not; the 802.1CB-2017 Vector pseudocode explicitly uses it.</td><td>Tagless counter increments. Passed or discarded depends on policy/algorithm behavior.</td></tr>
+    </tbody></table></div>
+  </div>
+</section>
+<section class="section" id="scenarios">
+  <div class="section-title"><h2>6. Elucidative scenarios</h2><p>Select a scenario. Each one traces the fields, classification table, local metadata, and FRER consequence.</p></div>
+  <div class="scenario-shell">
+    <div class="scenario-list" id="scenarioList"></div>
+    <div class="card scenario-panel" id="scenarioPanel"></div>
+  </div>
+</section>
+<section class="section" id="config">
+  <div class="section-title"><h2>7. Configuration patterns and anti-patterns</h2><p>Use these as switch configuration review checks before integrating FRER in an automotive Ethernet topology.</p></div>
+  <div class="grid two">
+    <div class="card">
+      <h3>Pattern A: FRER-aware Talker and Listener</h3>
+      <ol><li>Talker classifies outgoing application packets with Null, IP, or active DMAC/VLAN Stream identification.</li><li>Sequence generation assigns a sequence number per Compound Stream.</li><li>Sequence encode inserts R-TAG.</li><li>Stream splitting creates two or more Member Streams, often with path-specific L2 values.</li><li>Listener or merge bridge classifies both members back to the same Compound Stream and performs sequence recovery.</li></ol>
+      <div class="callout green">Best when both end systems understand FRER and the network is engineered for redundant disjoint paths.</div>
+    </div>
+    <div class="card">
+      <h3>Pattern B: Proxy FRER in bridges</h3>
+      <ol><li>Legacy Talker emits ordinary IP/SOME-IP/AVTP frames.</li><li>Ingress bridge uses IP or mask-and-match classification to assign stream_handle.</li><li>Bridge sequence-generates and splits the stream into redundant network paths.</li><li>Near Listener, a merge bridge recovers, eliminates duplicates, and restores the ordinary frame.</li><li>Legacy Listener sees one normal packet, not duplicate FRER member frames.</li></ol>
+      <div class="callout blue">Best when ECUs cannot be changed but the Ethernet switching fabric supports FRER.</div>
+    </div>
+    <div class="card">
+      <h3>Anti-pattern: “VLAN equals flow”</h3><p>Using only VLAN ID for a whole zonal ECU may merge control, diagnostics, camera, and update traffic into one Stream. Recovery then treats unrelated packets as if they were one sequence.</p><div class="code">Bad:
+VID 40 → stream_handle 0x40
+
+Better:
+{VID 40, UDP dst 30501} → stream_handle 0x401
+{VID 40, UDP dst 30502} → stream_handle 0x402</div></div>
+    <div class="card">
+      <h3>Anti-pattern: “R-TAG tells me the path”</h3><p>R-TAG carries the sequence number. It does not identify the redundant leg. If two legs use the same VLAN and same R-TAG format, the bridge may need input port, active DMAC/VLAN, or configured member stream context to know which instance it is processing.</p><div class="code">R-TAG: F1 C1 00 00 00 47
+Meaning: sequence = 71
+Not meaning: path A, path B, stream 7, or port 3</div></div>
+  </div>
+</section>
+<section class="section" id="checks">
+  <div class="section-title"><h2>8. Validation checklist</h2><p>Use this to validate captures, switch tables, and FRER behavior.</p></div>
+  <div class="grid three">
+    <div class="card"><h3>Capture checks</h3><ul><li>Do you see R-TAG EtherType <span class="kbd">0xF1C1</span> where the switch expects it?</li><li>Do replicated copies carry the same sequence number?</li><li>Does the sequence number wrap from 65535 to 0 without being treated as fatal?</li><li>Does the listener receive one delivered packet for two network copies?</li></ul></div>
+    <div class="card"><h3>Classification checks</h3><ul><li>Is the identification method specific enough for the application flow?</li><li>Are entries ordered so the specific rule matches before a broad wildcard?</li><li>Does the rule include ingress port when needed to separate member paths?</li><li>Is active DMAC/VLAN restoration configured at the far end if the destination header was changed?</li></ul></div>
+    <div class="card"><h3>Recovery checks</h3><ul><li>Is Vector history length large enough for expected path skew and reordering?</li><li>Is reset timeout appropriate for talker reboot or silence?</li><li>Are tagless frames intentionally passed or intentionally dropped?</li><li>Are rogue, duplicate, out-of-order, lost, tagless, and passed counters moving as expected?</li></ul></div>
+  </div>
+  <div class="note-grid" style="margin-top:16px">
+    <div class="note"><b>Rule of thumb:</b> classify by the most stable unique tuple available. Use L2 only when L2 is truly unique. Use IP/L4 or mask-and-match when multiple logical flows share L2 identity.</div>
+    <div class="note"><b>Debug shortcut:</b> when recovery looks wrong, first prove that both copies map to the same intended compound stream_handle and that no unrelated traffic maps there.</div>
+  </div>
+</section>
+<footer class="footer">
+  <b>Standards anchors used for this artifact</b>
+  <ul>
+    <li>IEEE 802.1CB-2017, Clause 6: Stream identification and the four original functions.</li>
+    <li>IEEE 802.1CB-2017, Clause 7.4: sequence generation and sequence recovery algorithms.</li>
+    <li>IEEE 802.1CB-2017, Clause 7.8: Redundancy tag, R-TAG EtherType, Reserved field, and Sequence Number field.</li>
+    <li>IEEE 802.1CBdb-2021: Extended Stream identification functions, including mask-and-match.</li>
+    <li>AUTOSAR CP R24-11 Ethernet Switch Driver: stream identification as an optional switch processing stage before per-stream filtering, policing, queueing, shaping, and transmission selection.</li>
+  </ul>
+</footer>
+</main>
+<script>
+const sections=[...document.querySelectorAll('main .section')];
+const navLinks=[...document.querySelectorAll('#contextNav a')];
+const byId=new Map(navLinks.map(a=>[a.getAttribute('href').slice(1),a]));
+const obs=new IntersectionObserver(entries=>{
+  const visible=entries.filter(e=>e.isIntersecting).sort((a,b)=>b.intersectionRatio-a.intersectionRatio)[0];
+  if(!visible)return;
+  navLinks.forEach(a=>a.classList.remove('active'));
+  const link=byId.get(visible.target.id); if(link) link.classList.add('active');
+},{rootMargin:'-25% 0px -64% 0px',threshold:[0.1,0.25,0.5,0.75]});
+sections.forEach(s=>obs.observe(s));
+
+document.querySelectorAll('.acc-head').forEach(h=>h.addEventListener('click',()=>h.parentElement.classList.toggle('open')));
+
+const scenarios=[
+  {
+    title:'Scenario 1: AVTP camera stream identified by Null Stream identification',
+    tags:['Method: Null','Fields: DMAC + VID','R-TAG: present','Outcome: simple and robust'],
+    frame:['DMAC=91:E0:F0:00:01:01','SMAC=02:00:00:AA:10:01','VID=10 PCP=3','R-TAG seq=0x003A','EtherType=AVTP 0x22F0'],
+    problem:'A camera emits one AVTP stream to a unique multicast destination MAC on VLAN 10. No other flow uses that {DMAC, VID} pair.',
+    steps:[
+      ['Ingress parser','Extracts DMAC 91:E0:F0:00:01:01 and VID 10.'],
+      ['Stream identification','Null Stream identification matches {DMAC, VID} and assigns stream_handle = CAM_FRONT_1.'],
+      ['Sequence decode','R-TAG 0xF1C1 is recognized and sequence_number = 58 is extracted.'],
+      ['Recovery','If this is the first copy of sequence 58, pass. If a second copy arrives from another member path, discard as duplicate.']
+    ],
+    insight:'This is the cleanest case. L2 identity is intentionally unique, so no IP parsing is needed. It is common for AVB/AVTP-like streams, but only if the network design guarantees uniqueness of the destination MAC and VLAN pair.'
+  },
+  {
+    title:'Scenario 2: Same ECU emits two flows on same VLAN, Source MAC + VLAN is too broad',
+    tags:['Method trap','Fields: SMAC + VID','Risk: merged flows','Fix: IP stream ID'],
+    frame:['SMAC=02:00:00:ZC:01:01','VID=40','Flow A UDP dst=30501','Flow B UDP dst=30502','No unique L2 separation'],
+    problem:'A zonal controller sends a brake telemetry flow and a thermal telemetry flow. Both use the same source MAC and VLAN. Only UDP destination port separates them.',
+    steps:[
+      ['Bad classifier','Source MAC + VLAN maps both flows to stream_handle = ZC_TELEM.'],
+      ['Failure mode','Sequence generation/recovery now treats independent packets as one ordered sequence. Duplicate elimination becomes meaningless.'],
+      ['Correct classifier','Use IP Stream identification with {src IP, dst IP, UDP, dst port} or mask-and-match if this is a proprietary tunnel.'],
+      ['Result','Flow A and Flow B get separate stream handles and independent sequence/recovery state.']
+    ],
+    insight:'This is the classic “VLAN equals flow” mistake. VLAN can be a classifier input, but it is rarely enough for a zonal ECU that multiplexes many services.'
+  },
+  {
+    title:'Scenario 3: Active Destination MAC/VLAN converts an IP flow into a TSN-visible Stream',
+    tags:['Method: Active DMAC/VLAN','Header rewrite','Proxy possible','Restoration required'],
+    frame:['Original DMAC=Gateway MAC','Original VID=20','IP tuple identifies service','Rewrite to DMAC=91:E0:F0:AA:01:00','Rewrite to VID=100 PCP=5'],
+    problem:'An ordinary IP/UDP flow needs FRER treatment through a bridged TSN region. The original L2 destination is not the best Stream identity for the TSN fabric.',
+    steps:[
+      ['Upper classification','IP Stream identification recognizes the original service and assigns stream_handle = CTRL_FAST.'],
+      ['Active encoding','Active DMAC/VLAN Stream identification rewrites DMAC, VID, and PCP to the network-visible TSN identity.'],
+      ['FRER processing','Sequence generation and splitting replicate the flow across two disjoint paths.'],
+      ['Receive side','A listener or proxy bridge recognizes the active DMAC/VLAN identity and restores original addressing before ordinary delivery.']
+    ],
+    insight:'Active stream identification is powerful because it can deliberately encode Stream identity into L2 headers. It is dangerous if the receive-side restoration is missing or mismatched.'
+  },
+  {
+    title:'Scenario 4: Two redundant copies arrive with the same sequence number',
+    tags:['Recovery','Duplicate elimination','Vector or Match','Expected behavior'],
+    frame:['Copy A: stream_handle=0x210 seq=71 port=P2','Copy B: stream_handle=0x210 seq=71 port=P3','Same original packet','Different network paths'],
+    problem:'A listener-side bridge receives the path A copy first and the path B copy later. Both map to the same Compound Stream and same sequence number.',
+    steps:[
+      ['Copy A arrives','Stream ID maps to stream_handle = 0x210. Sequence decode extracts 71. Recovery accepts and forwards it.'],
+      ['Copy B arrives','Stream ID again maps to stream_handle = 0x210. Sequence decode extracts 71.'],
+      ['Recovery decision','The sequence is already seen for this Stream context, so the second copy is discarded.'],
+      ['Application view','The listener receives one packet, not two. That is successful FRER elimination.']
+    ],
+    insight:'Correct duplicate elimination depends on both copies mapping to the same recovery context. If path A and path B are accidentally classified into different stream handles, both copies can pass.'
+  },
+  {
+    title:'Scenario 5: Delayed out-of-order copy is still useful within the Vector window',
+    tags:['Vector recovery','Out-of-order','History window','Not automatically bad'],
+    frame:['Accepted latest seq=105','History length=8','Seq 104 already seen','Seq 103 not seen','Late copy seq=103 arrives'],
+    problem:'Path A lost sequence 103 but path B delivers it late, after 104 and 105 were already received.',
+    steps:[
+      ['Compute delta','Incoming 103 is behind RecovSeqNum 105, but still inside the Vector history window.'],
+      ['Check history bit','If the bit for 103 says not seen, the packet is accepted.'],
+      ['Counter effect','Passed and out-of-order counters increment.'],
+      ['Why this helps','FRER can recover a loss on one path even when the alternate path is delayed.']
+    ],
+    insight:'Out-of-order does not automatically mean discard. In Vector recovery, an older-but-unseen sequence inside the window can still be valuable and can pass.'
+  },
+  {
+    title:'Scenario 6: Rogue packet outside the recovery window',
+    tags:['Vector recovery','Rogue','Discard','History length matters'],
+    frame:['RecovSeqNum=200','History length=8','Incoming seq=180','Outside ±8 window'],
+    problem:'A very old duplicate, corrupted path replay, or misclassified packet arrives far outside the accepted sequence window.',
+    steps:[
+      ['Classify Stream','The frame maps to the configured Stream, so recovery is applied.'],
+      ['Compute window relation','Sequence 180 is too far from RecovSeqNum 200 for history length 8.'],
+      ['Recovery decision','Discard as rogue/out-of-range.'],
+      ['Counter effect','Rogue and discard counters increment.']
+    ],
+    insight:'Rogue classification protects the listener from stale or badly misaligned traffic. If legitimate path skew is larger than the history length, you can accidentally drop valid delayed packets.'
+  },
+  {
+    title:'Scenario 7: Tagless frame enters a Stream that expects R-TAG',
+    tags:['No sequence','Policy','TakeNoSequence','Migration issue'],
+    frame:['DMAC/VID matches Stream','No 0xF1C1 where expected','sequence_number = invalid','frerSeqRcvyTakeNoSequence decides policy'],
+    problem:'During mixed deployment, one sender path is FRER-aware and another is not. A frame matches Stream identity but has no sequence number.',
+    steps:[
+      ['Stream ID','The frame still maps to a known stream_handle from DMAC/VLAN/IP fields.'],
+      ['Sequence decode','No valid R-TAG is found, so the sequence_number subparameter is invalid.'],
+      ['Policy fork','If no-sequence packets are accepted, the packet can pass but duplicate elimination cannot reason about it. If rejected, it is discarded.'],
+      ['Engineering decision','Use pass only during controlled migration or for explicit tagless compatibility. Use drop for strict FRER protection.']
+    ],
+    insight:'A tagless frame is not necessarily unclassified. It can be classified as a Stream but lack the sequence metadata needed for reliable duplicate elimination.'
+  },
+  {
+    title:'Scenario 8: 16-bit sequence wrap-around is normal',
+    tags:['R-TAG seq field','Modulo arithmetic','Wrap-around','Do not panic'],
+    frame:['Seq: 65534','Seq: 65535','Seq: 0','Seq: 1','Same stream_handle'],
+    problem:'A capture shows sequence number going from 65535 to 0. This looks suspicious unless you remember the R-TAG carries only 16 bits.',
+    steps:[
+      ['Sequence generation','The larger internal sequence value is encoded using the low-order 16 bits.'],
+      ['R-TAG wire behavior','After 0xFFFF comes 0x0000.'],
+      ['Recovery behavior','The algorithm computes signed differences modulo the sequence space.'],
+      ['Validation','Accept wrap-around if the order and recovery window make sense. Investigate only if counters show rogue/discard spikes.']
+    ],
+    insight:'Wrap-around is expected. The important question is whether the recovery algorithm window and path delay are configured so that old duplicates are not confused with new post-wrap packets.'
+  },
+  {
+    title:'Scenario 9: R-TAG without ingress-port context cannot identify a member path',
+    tags:['Autoconfig caution','Port context','Member stream','R-TAG limitation'],
+    frame:['Port P2 VID=100 R-TAG seq=90','Port P3 VID=100 R-TAG seq=90','Same DMAC and VLAN on both paths'],
+    problem:'Both redundant paths use the same L2 values. The R-TAG sequence number is identical by design. The bridge still needs to know which path/context it is processing.',
+    steps:[
+      ['What R-TAG tells you','Only that this frame carries sequence 90.'],
+      ['What it does not tell you','It does not identify member path, source path, or stream handle.'],
+      ['Configuration solution','Use input port, VLAN, active DMAC/VLAN, or explicit stream identification entries to bind each arrival to the intended FRER context.'],
+      ['Debug symptom','If both legs are not merged into the same recovery function, duplicates may leak to the listener.']
+    ],
+    insight:'The receiving switch pipeline must combine header facts with port and configured stream tables. R-TAG is a sequence envelope, not a full flow label.'
+  },
+  {
+    title:'Scenario 10: Mask-and-match for CAN-over-Ethernet tunnelling',
+    tags:['802.1CBdb','Mask-and-match','Legacy payload','Careful masks'],
+    frame:['Ethernet/IP/UDP tunnel','Payload byte 0..3 = CAN ID','CAN ID=0x18DAF110','Mask selects ID bits only'],
+    problem:'A gateway tunnels many CAN frames inside one UDP destination port. L2, IP, and UDP fields are identical for many logical signals.',
+    steps:[
+      ['Fixed classifier fails','IP Stream identification can only say “this is the tunnel,” not which CAN signal is inside.'],
+      ['Mask-and-match','A mask over payload bytes extracts the CAN identifier and ignores changing data bytes.'],
+      ['Stream handle assignment','CAN ID 0x18DAF110 maps to stream_handle = DIAG_RESP_A.'],
+      ['Risk control','Mask only stable identifier bits. Do not include counters, checksums, or payload data that legitimately changes.']
+    ],
+    insight:'Mask-and-match is powerful for proprietary or tunneled traffic, but it moves responsibility to the configuration designer. Good masks encode intent; bad masks silently merge or split flows.'
+  }
+];
+function renderScenario(i){
+  const s=scenarios[i];
+  document.querySelectorAll('.scenario-btn').forEach((b,j)=>b.classList.toggle('active',i===j));
+  const panel=document.getElementById('scenarioPanel');
+  panel.innerHTML=`<h3>${s.title}</h3><div class="chips">${s.tags.map(t=>`<span class="chip">${t}</span>`).join('')}</div><p>${s.problem}</p><div class="frame" style="margin:14px 0">${s.frame.map((f,idx)=>`<div class="field ${idx===3||f.includes('R-TAG')||f.includes('seq')?'rtag':idx===2||f.includes('VID')?'vlan':'long'}"><b>${f.split('=')[0]}</b><span>${f.includes('=')?f.split('=').slice(1).join('='):f}</span></div>`).join('')}</div><div class="decision">${s.steps.map((st,n)=>`<div class="decision-step"><b>${n+1}. ${st[0]}</b><p>${st[1]}</p></div>`).join('')}</div><div class="callout green" style="margin-top:16px"><b>Key insight:</b> ${s.insight}</div>`;
+}
+const list=document.getElementById('scenarioList');
+scenarios.forEach((s,i)=>{const b=document.createElement('button');b.className='scenario-btn';b.innerHTML=`<b>${i+1}. ${s.title.replace(/^Scenario \d+: /,'')}</b><br><span class="mini">${s.tags.slice(0,3).join(' · ')}</span>`;b.onclick=()=>renderScenario(i);list.appendChild(b)});
+renderScenario(0);
+</script>
+</body>
+</html>

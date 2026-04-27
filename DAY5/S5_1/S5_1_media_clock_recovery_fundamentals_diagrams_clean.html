@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Media Clock Recovery Fundamentals</title>
+  <style>
+    :root{
+      --bg:#0b0f14; --bg2:#101620; --panel:#151b23; --panel2:#1b2430; --panel3:#0f1722;
+      --border:#2d3a4a; --border2:#405064; --text:#f8fafc; --muted:#cbd5e1; --soft:#94a3b8;
+      --orange:#ff3621; --orange2:#ff7a45; --blue:#60a5fa; --green:#34d399; --yellow:#fbbf24;
+      --purple:#a78bfa; --red:#fb7185; --code:#070b10; --shadow:0 24px 70px rgba(0,0,0,.45);
+      --radius:18px; --w:1240px;
+    }
+    *{box-sizing:border-box} html{scroll-behavior:smooth} body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text);background:radial-gradient(circle at 4% 0%,rgba(255,54,33,.18),transparent 38rem),radial-gradient(circle at 98% 5%,rgba(96,165,250,.14),transparent 36rem),linear-gradient(180deg,#0b0f14 0%,#0b0f14 42%,#080c12 100%);line-height:1.62} a{color:var(--blue);text-decoration:none} a:hover{text-decoration:underline}
+    .context-bar{position:sticky;top:0;z-index:1000;border-bottom:1px solid rgba(255,255,255,.10);background:rgba(9,13,19,.94);backdrop-filter:blur(18px);box-shadow:0 14px 45px rgba(0,0,0,.42)}
+    .context-inner{max-width:var(--w);margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:1rem;padding:.76rem 1.25rem}
+    .brand{display:flex;gap:.8rem;align-items:center;min-width:0}.mark{width:38px;height:38px;flex:0 0 auto;border-radius:11px;display:grid;place-items:center;font-weight:900;letter-spacing:-.07em;color:white;background:linear-gradient(135deg,var(--orange),#9d1c13);box-shadow:0 12px 30px rgba(255,54,33,.34)}
+    .ctx-label{min-width:0}.ctx-label small{display:block;color:var(--soft);text-transform:uppercase;letter-spacing:.13em;font-size:.72rem;line-height:1.15}#currentContext{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:800;color:var(--text);max-width:56vw}.pills{display:flex;gap:.42rem;flex-wrap:wrap;justify-content:flex-end}.pills a{color:var(--muted);font-size:.78rem;padding:.36rem .62rem;border-radius:999px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.04);transition:all .16s ease}.pills a.active,.pills a:hover{color:#fff;background:rgba(255,54,33,.18);border-color:rgba(255,54,33,.45);text-decoration:none}
+    .hero{max-width:var(--w);margin:0 auto;padding:4.6rem 1.25rem 2.2rem}.eyebrow{color:var(--orange2);text-transform:uppercase;letter-spacing:.16em;font-size:.78rem;font-weight:800;margin-bottom:1rem}h1{font-size:clamp(2.3rem,5vw,4.75rem);line-height:.96;letter-spacing:-.065em;margin:0 0 1.3rem;max-width:1050px}.hero p{max-width:940px;color:var(--muted);font-size:1.14rem;margin:.5rem 0}.badges{display:flex;flex-wrap:wrap;gap:.55rem;margin-top:1.4rem}.badge{border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);border-radius:999px;padding:.48rem .78rem;color:var(--muted);font-size:.86rem}
+    .layout{max-width:var(--w);margin:0 auto;display:grid;grid-template-columns:290px minmax(0,1fr);gap:1.4rem;padding:0 1.25rem 4rem}.toc{position:sticky;top:78px;align-self:start;max-height:calc(100vh - 100px);overflow:auto;border:1px solid rgba(255,255,255,.10);background:rgba(21,27,35,.72);border-radius:var(--radius);padding:1rem;box-shadow:var(--shadow)}.toc h3{margin:0 0 .7rem;font-size:.8rem;text-transform:uppercase;letter-spacing:.12em;color:var(--soft)}.toc a{display:block;color:var(--muted);padding:.48rem .55rem;border-radius:10px;font-size:.88rem;line-height:1.25;border-left:3px solid transparent}.toc a:hover,.toc a.active{background:rgba(255,54,33,.12);color:#fff;border-left-color:var(--orange);text-decoration:none}
+    main{min-width:0}section{scroll-margin-top:92px;margin-bottom:1.35rem;border:1px solid rgba(255,255,255,.10);background:linear-gradient(180deg,rgba(21,27,35,.96),rgba(15,23,34,.96));border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}section>.sec-head{padding:1.35rem 1.55rem .4rem;border-bottom:1px solid rgba(255,255,255,.06)}section>.sec-body{padding:1.2rem 1.55rem 1.55rem}h2{margin:0 0 .4rem;font-size:clamp(1.5rem,2.5vw,2.1rem);letter-spacing:-.035em;line-height:1.12}h3{margin:1.35rem 0 .55rem;color:#fff;font-size:1.18rem;letter-spacing:-.025em}h4{margin:1rem 0 .45rem;color:var(--yellow)}p{color:var(--muted);margin:.75rem 0}strong{color:#fff}.note{border-left:4px solid var(--orange);background:rgba(255,54,33,.09);border-radius:12px;padding:.85rem 1rem;color:var(--muted);margin:1rem 0}.ok{border-left-color:var(--green);background:rgba(52,211,153,.08)}.warn{border-left-color:var(--yellow);background:rgba(251,191,36,.08)}.purple{border-left-color:var(--purple);background:rgba(167,139,250,.08)}
+    pre{margin:1rem 0;padding:1.05rem 1.15rem;background:var(--code);border:1px solid rgba(255,255,255,.10);border-radius:14px;color:#e5e7eb;overflow-x:auto;font-family:"SFMono-Regular",Consolas,"Liberation Mono",monospace;font-size:.87rem;line-height:1.45}code{font-family:"SFMono-Regular",Consolas,"Liberation Mono",monospace;background:rgba(255,255,255,.08);padding:.12rem .28rem;border-radius:6px;color:#e5e7eb}pre code{background:transparent;padding:0}.formula{font-family:"SFMono-Regular",Consolas,"Liberation Mono",monospace;background:rgba(7,11,16,.55);border:1px solid rgba(255,255,255,.10);border-radius:14px;padding:1rem;margin:1rem 0;color:#e5e7eb;overflow:auto}.formula .sym{color:#fff;font-weight:800}.formula .blue{color:#bfdbfe}.formula .green{color:#bbf7d0}.formula .yellow{color:#fde68a}
+    .table-wrap{overflow-x:auto;margin:1rem 0 1.25rem;border-radius:14px;border:1px solid rgba(255,255,255,.09)}table{width:100%;border-collapse:collapse;min-width:760px;background:rgba(7,11,16,.35)}th,td{text-align:left;padding:.78rem .82rem;border-bottom:1px solid rgba(255,255,255,.08);vertical-align:top}th{color:#fff;background:rgba(255,255,255,.06);font-size:.82rem;text-transform:uppercase;letter-spacing:.08em}td{color:var(--muted)}tr:last-child td{border-bottom:none}.field{color:#fff;font-weight:800;white-space:nowrap}.bits{color:var(--yellow);white-space:nowrap;font-weight:700}.chip{display:inline-flex;align-items:center;padding:.18rem .48rem;border-radius:999px;background:rgba(96,165,250,.13);color:#bfdbfe;border:1px solid rgba(96,165,250,.22);font-size:.78rem;margin:.12rem .15rem .12rem 0}.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem}.card{background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.09);border-radius:16px;padding:1rem}.card h4{margin-top:0}ul,ol{color:var(--muted)}li{margin:.38rem 0}.diagram{margin:1rem 0;border:1px solid rgba(255,255,255,.10);border-radius:16px;background:rgba(7,11,16,.35);padding:1rem;overflow-x:auto}.diagram svg{max-width:100%;height:auto;display:block;min-width:700px}.svg-title{font-size:18px;font-weight:800;fill:#f8fafc}.svg-label{font-size:13px;fill:#cbd5e1}.svg-small{font-size:11px;fill:#94a3b8}.box{fill:#151b23;stroke:#405064;stroke-width:1.4}.box-blue{fill:rgba(96,165,250,.18);stroke:#60a5fa;stroke-width:1.4}.box-green{fill:rgba(52,211,153,.18);stroke:#34d399;stroke-width:1.4}.box-orange{fill:rgba(255,54,33,.16);stroke:#ff7a45;stroke-width:1.4}.box-purple{fill:rgba(167,139,250,.18);stroke:#a78bfa;stroke-width:1.4}.box-yellow{fill:rgba(251,191,36,.15);stroke:#fbbf24;stroke-width:1.4}.arrow{stroke:#cbd5e1;stroke-width:2;fill:none;marker-end:url(#arrow)}.arrow-green{stroke:#34d399;stroke-width:2;fill:none;marker-end:url(#arrowGreen)}.arrow-orange{stroke:#ff7a45;stroke-width:2;fill:none;marker-end:url(#arrowOrange)}.footer{max-width:var(--w);margin:0 auto;padding:1rem 1.25rem 3rem;color:var(--soft);font-size:.9rem}
+    @media (max-width:980px){.layout{grid-template-columns:1fr}.toc{position:relative;top:auto;max-height:none}.context-inner{grid-template-columns:1fr}.pills{justify-content:flex-start}#currentContext{max-width:88vw}.grid2,.grid3{grid-template-columns:1fr}.diagram svg{min-width:720px}}
+  </style>
+</head>
+<body>
+  <div class="context-bar">
+    <div class="context-inner">
+      <div class="brand"><div class="mark">db</div><div class="ctx-label"><small>Current context</small><span id="currentContext">Media Clock Recovery Fundamentals</span></div></div>
+      <nav class="pills" aria-label="Top navigation">
+        <a href="#problem" data-target="problem">Problem</a><a href="#buffer" data-target="buffer">Buffer</a><a href="#ruler" data-target="ruler">Common ruler</a><a href="#cross" data-target="cross">Cross timestamp</a><a href="#loop" data-target="loop">Loop</a><a href="#timestamp" data-target="timestamp">Timestamp</a><a href="#crf" data-target="crf">CRF</a>
+      </nav>
+    </div>
+  </div>
+  <header class="hero">
+    <div class="eyebrow">Audio Video Bridging / Time-Sensitive Networking · first-principles training</div>
+    <h1>Media Clock Recovery Fundamentals</h1>
+    <p>Media clock recovery is the process by which a listener reconstructs the talker’s sampling cadence from packetized media transport. The central difficulty is that Ethernet transports packets, not a continuous clock wire.</p>
+    <div class="badges"><span class="badge">gPTP network time</span><span class="badge">media sampling clock</span><span class="badge">buffer drift</span><span class="badge">cross-time-stamping</span><span class="badge">CRF</span><span class="badge">feedback loop</span></div>
+  </header>
+  <div class="layout">
+    <aside class="toc"><h3>Sections</h3>
+      <a href="#problem" data-target="problem">1. The fundamental problem</a>
+      <a href="#twodomains" data-target="twodomains">2. Two time domains</a>
+      <a href="#buffer" data-target="buffer">3. Why buffers fill or drain</a>
+      <a href="#arrival" data-target="arrival">4. Why arrival time is not enough</a>
+      <a href="#ruler" data-target="ruler">5. Common gPTP ruler</a>
+      <a href="#cross" data-target="cross">6. Cross-time-stamping</a>
+      <a href="#talkerlistener" data-target="talkerlistener">7. Talker/listener architecture</a>
+      <a href="#loop" data-target="loop">8. Recovery feedback loop</a>
+      <a href="#filtering" data-target="filtering">9. Why filtering is essential</a>
+      <a href="#timestamp" data-target="timestamp">10. Timestamp vs recovered clock</a>
+      <a href="#crf" data-target="crf">11. Embedded recovery vs CRF</a>
+      <a href="#switches" data-target="switches">12. Switches vs endpoints</a>
+      <a href="#math" data-target="math">13. Compact mathematical picture</a>
+      <a href="#summary" data-target="summary">14. Final summary</a>
+    </aside>
+    <main>
+      <section id="problem" data-title="The fundamental problem">
+        <div class="sec-head"><h2>1. The fundamental problem</h2></div>
+        <div class="sec-body">
+          <p>A talker may sample audio at a nominal <strong>48 kHz</strong>. A listener may also play audio using a nominal <strong>48 kHz</strong> clock. But “48 kHz” is only the intended rate. The physical oscillators are never exactly identical.</p>
+          <p>If the talker produces samples slightly faster than the listener consumes them, the receive buffer fills. If the listener consumes samples faster than the talker produces them, the receive buffer drains. Over time, this causes overflow, underflow, clicks, gaps, repeated samples, or muting.</p>
+          <div class="diagram">
+            <svg viewBox="0 0 920 310" role="img" aria-label="Producer consumer view of media clock mismatch">
+              <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#cbd5e1"/></marker><marker id="arrowGreen" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#34d399"/></marker><marker id="arrowOrange" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#ff7a45"/></marker></defs>
+              <text x="25" y="32" class="svg-title">Audio samples are produced by one clock and consumed by another clock</text>
+              <rect x="40" y="85" width="230" height="105" rx="16" class="box-blue"/><text x="72" y="122" class="svg-label">Talker</text><text x="72" y="148" class="svg-small">source media clock</text><text x="72" y="171" class="svg-small">nominal 48 kHz</text>
+              <rect x="355" y="72" width="230" height="130" rx="16" class="box-yellow"/><text x="400" y="112" class="svg-label">Receive buffer</text><text x="400" y="138" class="svg-small">absorbs packet jitter</text><text x="400" y="161" class="svg-small">reveals long-term clock mismatch</text>
+              <rect x="670" y="85" width="210" height="105" rx="16" class="box-green"/><text x="705" y="122" class="svg-label">Listener</text><text x="705" y="148" class="svg-small">local playback clock</text><text x="705" y="171" class="svg-small">nominal 48 kHz</text>
+              <path d="M270 137 C300 137, 325 137, 355 137" class="arrow-orange"/><text x="292" y="120" class="svg-small">samples arrive</text>
+              <path d="M585 137 C615 137, 640 137, 670 137" class="arrow-green"/><text x="607" y="120" class="svg-small">samples consumed</text>
+              <text x="282" y="250" class="svg-label">Buffer change rate = arrival rate − consumption rate</text>
+            </svg>
+          </div>
+          <div class="note ok"><strong>Goal:</strong> estimate the talker’s true media-clock rate, compare it with the local playback rate, filter measurement noise, and adjust the listener’s clock until the long-term frequency error approaches zero. This long-term rate matching is called <strong>syntonization</strong>.</div>
+        </div>
+      </section>
+
+      <section id="twodomains" data-title="Two time domains">
+        <div class="sec-head"><h2>2. Two time domains</h2></div>
+        <div class="sec-body">
+          <p>In Ethernet Audio Video Bridging, or AVB, and Time-Sensitive Networking, or TSN, there are two different clocks that must not be confused.</p>
+          <div class="grid2">
+            <div class="card"><h4>Network time</h4><p>The common time base shared across the Ethernet domain using generalized Precision Time Protocol, or <strong>gPTP</strong>.</p><p><strong>Question answered:</strong> What time is it in the system?</p></div>
+            <div class="card"><h4>Media clock</h4><p>The sampling or playback cadence used by audio, video, pixel processing, or another media engine.</p><p><strong>Question answered:</strong> When should the next sample be captured or played?</p></div>
+          </div>
+          <div class="diagram">
+            <svg viewBox="0 0 920 330" role="img" aria-label="Network time and media clock domains">
+              <defs><marker id="arrow2" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#cbd5e1"/></marker></defs>
+              <text x="25" y="34" class="svg-title">Network time is the ruler; media clock is the cadence</text>
+              <line x1="90" y1="115" x2="820" y2="115" stroke="#60a5fa" stroke-width="4"/><text x="90" y="88" class="svg-label">gPTP network time axis</text>
+              <g fill="#60a5fa"><circle cx="150" cy="115" r="5"/><circle cx="300" cy="115" r="5"/><circle cx="450" cy="115" r="5"/><circle cx="600" cy="115" r="5"/><circle cx="750" cy="115" r="5"/></g>
+              <rect x="100" y="190" width="720" height="80" rx="16" class="box-green"/><text x="130" y="222" class="svg-label">Media sample cadence</text><text x="130" y="247" class="svg-small">sample 0, sample 1, sample 2, sample 3 ... at a recovered 48 kHz rhythm</text>
+              <g stroke="#34d399" stroke-width="3"><line x1="230" y1="190" x2="230" y2="270"/><line x1="330" y1="190" x2="330" y2="270"/><line x1="430" y1="190" x2="430" y2="270"/><line x1="530" y1="190" x2="530" y2="270"/><line x1="630" y1="190" x2="630" y2="270"/></g>
+              <text x="100" y="305" class="svg-small">The media clock is expressed and controlled with reference to network time, but it is not identical to network time.</text>
+            </svg>
+          </div>
+        </div>
+      </section>
+
+      <section id="buffer" data-title="Why buffers fill or drain">
+        <div class="sec-head"><h2>3. Why buffers fill or drain</h2></div>
+        <div class="sec-body">
+          <p>The buffer level is governed by a simple producer-consumer balance. The talker is the producer. The listener playback engine is the consumer.</p>
+          <div class="formula"><span class="sym">buffer growth rate</span> = <span class="blue">sample arrival rate</span> − <span class="green">sample consumption rate</span></div>
+          <h3>3.1 Listener slower than talker: buffer fills</h3>
+          <p>Suppose the talker really produces <strong>48,000.5 samples/s</strong>, while the listener consumes <strong>47,999.5 samples/s</strong>. The buffer gains one sample every second.</p>
+          <div class="diagram">
+            <svg viewBox="0 0 920 340" role="img" aria-label="Buffer filling when listener is slower">
+              <defs><marker id="arrowOrange3" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#ff7a45"/></marker></defs>
+              <text x="25" y="34" class="svg-title">Listener slower than talker: producer rate &gt; consumer rate</text>
+              <rect x="70" y="72" width="240" height="78" rx="14" class="box-blue"/><text x="105" y="105" class="svg-label">Talker: 48,000.5 samples/s</text><text x="105" y="128" class="svg-small">putting samples into the buffer</text>
+              <rect x="600" y="72" width="250" height="78" rx="14" class="box-green"/><text x="635" y="105" class="svg-label">Listener: 47,999.5 samples/s</text><text x="635" y="128" class="svg-small">taking samples out</text>
+              <path d="M310 112 C385 112, 465 112, 600 112" class="arrow-orange"/><text x="388" y="92" class="svg-small">+1 sample/s remains</text>
+              <text x="70" y="200" class="svg-label">Buffer level over time</text>
+              <rect x="70" y="222" width="750" height="30" rx="8" fill="#070b10" stroke="#405064"/><rect x="70" y="222" width="220" height="30" rx="8" fill="#fbbf24" opacity=".75"/><text x="835" y="243" class="svg-small">start</text>
+              <rect x="70" y="262" width="750" height="30" rx="8" fill="#070b10" stroke="#405064"/><rect x="70" y="262" width="420" height="30" rx="8" fill="#fbbf24" opacity=".8"/><text x="835" y="283" class="svg-small">later</text>
+              <rect x="70" y="302" width="750" height="30" rx="8" fill="#070b10" stroke="#405064"/><rect x="70" y="302" width="670" height="30" rx="8" fill="#fb7185" opacity=".82"/><text x="835" y="323" class="svg-small">overflow risk</text>
+            </svg>
+          </div>
+          <h3>3.2 Listener faster than talker: buffer drains</h3>
+          <p>If the talker produces <strong>47,999.5 samples/s</strong>, while the listener consumes <strong>48,000.5 samples/s</strong>, the buffer loses one sample every second. Eventually the listener asks for a sample that has not arrived.</p>
+          <div class="diagram">
+            <svg viewBox="0 0 920 310" role="img" aria-label="Buffer draining when listener is faster">
+              <text x="25" y="34" class="svg-title">Listener faster than talker: consumer rate &gt; producer rate</text>
+              <rect x="70" y="72" width="240" height="78" rx="14" class="box-blue"/><text x="105" y="105" class="svg-label">Talker: 47,999.5 samples/s</text><text x="105" y="128" class="svg-small">samples arrive too slowly</text>
+              <rect x="600" y="72" width="250" height="78" rx="14" class="box-green"/><text x="635" y="105" class="svg-label">Listener: 48,000.5 samples/s</text><text x="635" y="128" class="svg-small">samples consumed too quickly</text>
+              <path d="M310 112 C385 112, 465 112, 600 112" class="arrow-green"/><text x="388" y="92" class="svg-small">−1 sample/s from buffer</text>
+              <text x="70" y="190" class="svg-label">Buffer level over time</text>
+              <rect x="70" y="212" width="750" height="30" rx="8" fill="#070b10" stroke="#405064"/><rect x="70" y="212" width="650" height="30" rx="8" fill="#34d399" opacity=".75"/><text x="835" y="233" class="svg-small">start</text>
+              <rect x="70" y="252" width="750" height="30" rx="8" fill="#070b10" stroke="#405064"/><rect x="70" y="252" width="350" height="30" rx="8" fill="#34d399" opacity=".8"/><text x="835" y="273" class="svg-small">later</text>
+              <rect x="70" y="292" width="750" height="12" rx="6" fill="#070b10" stroke="#405064"/><rect x="70" y="292" width="60" height="12" rx="6" fill="#fb7185" opacity=".85"/><text x="835" y="304" class="svg-small">underflow risk</text>
+            </svg>
+          </div>
+        </div>
+      </section>
+
+      <section id="arrival" data-title="Why packet arrival time alone is not enough">
+        <div class="sec-head"><h2>4. Why packet arrival time alone is not enough</h2></div>
+        <div class="sec-body">
+          <p>A beginner may think the listener can watch packet inter-arrival times and infer the talker clock. That is unreliable because packet arrival time contains both source timing and network-induced delay variation.</p>
+          <div class="diagram">
+            <svg viewBox="0 0 920 360" role="img" aria-label="Packet arrival jitter contaminates timing measurement">
+              <text x="25" y="34" class="svg-title">Packet arrival spacing is contaminated by transport jitter</text>
+              <line x1="100" y1="105" x2="820" y2="105" stroke="#60a5fa" stroke-width="3"/><text x="100" y="82" class="svg-label">Talker emission times: regular media-derived packet cadence</text>
+              <g fill="#60a5fa"><circle cx="160" cy="105" r="7"/><circle cx="300" cy="105" r="7"/><circle cx="440" cy="105" r="7"/><circle cx="580" cy="105" r="7"/><circle cx="720" cy="105" r="7"/></g>
+              <line x1="100" y1="230" x2="820" y2="230" stroke="#ff7a45" stroke-width="3"/><text x="100" y="207" class="svg-label">Listener arrival times: shifted by queues, shaping, residence time, burstiness</text>
+              <g fill="#ff7a45"><circle cx="178" cy="230" r="7"/><circle cx="326" cy="230" r="7"/><circle cx="452" cy="230" r="7"/><circle cx="625" cy="230" r="7"/><circle cx="745" cy="230" r="7"/></g>
+              <path d="M160 115 C160 150,178 180,178 220" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5,5" fill="none"/><path d="M300 115 C300 150,326 180,326 220" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5,5" fill="none"/><path d="M440 115 C440 150,452 180,452 220" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5,5" fill="none"/><path d="M580 115 C580 150,625 180,625 220" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5,5" fill="none"/><path d="M720 115 C720 150,745 180,745 220" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5,5" fill="none"/>
+              <rect x="130" y="285" width="665" height="45" rx="12" class="box-orange"/><text x="160" y="313" class="svg-label">Inter-arrival spacing is not a pure sample-clock measurement.</text>
+            </svg>
+          </div>
+          <div class="note warn"><strong>Therefore:</strong> deterministic media systems use timestamps referenced to a common network time base rather than relying only on raw packet arrival spacing.</div>
+        </div>
+      </section>
+
+      <section id="ruler" data-title="The common gPTP ruler">
+        <div class="sec-head"><h2>5. The key idea: a common gPTP ruler</h2></div>
+        <div class="sec-body">
+          <p>To compare two clocks properly, both must be measured against the same reference. In AVB/TSN, that shared reference is the <strong>generalized Precision Time Protocol</strong>, or <strong>gPTP</strong>, time base.</p>
+          <div class="diagram">
+            <svg viewBox="0 0 920 330" role="img" aria-label="Common gPTP time ruler">
+              <text x="25" y="34" class="svg-title">Both media clocks are measured against one common ruler</text>
+              <rect x="80" y="78" width="280" height="85" rx="16" class="box-blue"/><text x="115" y="112" class="svg-label">Talker media counter</text><text x="115" y="138" class="svg-small">n = 0, 1, 2, 3 ...</text>
+              <rect x="560" y="78" width="280" height="85" rx="16" class="box-green"/><text x="595" y="112" class="svg-label">Listener media counter</text><text x="595" y="138" class="svg-small">local playback samples</text>
+              <line x1="100" y1="245" x2="820" y2="245" stroke="#fbbf24" stroke-width="5"/><text x="115" y="220" class="svg-label">shared gPTP network-time axis</text>
+              <path d="M220 164 C220 190,220 210,220 241" class="arrow"/><path d="M700 164 C700 190,700 210,700 241" class="arrow"/>
+              <text x="250" y="191" class="svg-small">cross timestamp at talker</text><text x="560" y="191" class="svg-small">cross timestamp at listener</text>
+              <text x="115" y="292" class="svg-small">Once both slopes are described in gPTP time, the listener can compare the remote and local media rates.</text>
+            </svg>
+          </div>
+        </div>
+      </section>
+
+      <section id="cross" data-title="Cross-time-stamping">
+        <div class="sec-head"><h2>6. What cross-time-stamping means</h2></div>
+        <div class="sec-body">
+          <p>A cross timestamp is a paired observation linking two time domains at one instant. At the talker, it links the media sample counter to gPTP time.</p>
+          <div class="diagram">
+            <svg viewBox="0 0 920 390" role="img" aria-label="Cross timestamp slope estimation">
+              <text x="25" y="34" class="svg-title">Two cross timestamps estimate the source sample-clock slope</text>
+              <line x1="105" y1="310" x2="810" y2="310" stroke="#cbd5e1" stroke-width="2"/><line x1="105" y1="310" x2="105" y2="70" stroke="#cbd5e1" stroke-width="2"/>
+              <text x="760" y="342" class="svg-small">gPTP time t</text><text x="40" y="85" class="svg-small">sample count n</text>
+              <circle cx="250" cy="245" r="8" fill="#60a5fa"/><text x="270" y="248" class="svg-label">(t₁, n₁)</text>
+              <circle cx="650" cy="125" r="8" fill="#60a5fa"/><text x="670" y="128" class="svg-label">(t₂, n₂)</text>
+              <line x1="250" y1="245" x2="650" y2="125" stroke="#60a5fa" stroke-width="3"/>
+              <line x1="250" y1="245" x2="650" y2="245" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5,5"/><line x1="650" y1="245" x2="650" y2="125" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5,5"/>
+              <text x="425" y="267" class="svg-small">Δt = t₂ − t₁</text><text x="667" y="190" class="svg-small">Δn = n₂ − n₁</text>
+              <rect x="135" y="35" width="650" height="42" rx="12" class="box-purple"/><text x="160" y="62" class="svg-label">f_src = (n₂ − n₁) / (t₂ − t₁) and T_src = (t₂ − t₁) / (n₂ − n₁)</text>
+            </svg>
+          </div>
+          <p>The listener performs a similar measurement for its own local playback clock. Then it compares the remote source slope with the local slope.</p>
+          <div class="formula"><span class="sym">Source period:</span> T<sub>src</sub> = (t₂ − t₁) / (n₂ − n₁)<br><span class="sym">Source frequency:</span> f<sub>src</sub> = (n₂ − n₁) / (t₂ − t₁)<br><span class="sym">Frequency error:</span> e<sub>f</sub> = f<sub>src</sub> − f<sub>loc</sub></div>
+        </div>
+      </section>
+
+      <section id="talkerlistener" data-title="What the talker and listener actually do">
+        <div class="sec-head"><h2>7. What the talker and listener actually do</h2></div>
+        <div class="sec-body">
+          <p>The end-to-end architecture must be read as <strong>two related paths</strong>, not one single chain. The <strong>media-data path</strong> moves audio/video samples into a receive buffer and then to the playout engine. The <strong>clock-recovery path</strong> uses timestamps and clock-reference information to tune the listener's local media clock. The switch or network transports packets and generalized Precision Time Protocol time, but the listener endpoint reconstructs the continuous playback clock.</p>
+
+          <div class="diagram">
+            <svg viewBox="0 0 1320 760" role="img" aria-label="End-to-end media clock recovery architecture with separate media path, timing path, gPTP path, and local clock actuator">
+              <defs>
+                <marker id="arrowArch" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#cbd5e1"/></marker>
+                <marker id="arrowArchGreen" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#34d399"/></marker>
+                <marker id="arrowArchOrange" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#ff7a45"/></marker>
+                <marker id="arrowArchPurple" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#a78bfa"/></marker>
+              </defs>
+
+              <text x="28" y="40" class="svg-title">End-to-end media clock recovery architecture</text>
+              <text x="28" y="66" class="svg-small">Media packets feed the receive buffer. Timing observations feed the recovery loop. The recovered local clock drives playout.</text>
+
+              <rect x="35" y="100" width="360" height="500" rx="20" class="box-blue"/>
+              <text x="62" y="135" class="svg-label">Talker endpoint</text>
+
+              <rect x="65" y="170" width="138" height="72" rx="12" class="box"/>
+              <text x="90" y="198" class="svg-small">Media source</text>
+              <text x="86" y="220" class="svg-small">sampling clock</text>
+
+              <rect x="230" y="170" width="138" height="72" rx="12" class="box"/>
+              <text x="268" y="198" class="svg-small">gPTP / PHC</text>
+              <text x="255" y="220" class="svg-small">network time</text>
+
+              <rect x="65" y="285" width="138" height="72" rx="12" class="box-green"/>
+              <text x="88" y="313" class="svg-small">Sample capture</text>
+              <text x="90" y="335" class="svg-small">and framing</text>
+
+              <rect x="230" y="285" width="138" height="72" rx="12" class="box-purple"/>
+              <text x="252" y="313" class="svg-small">Cross timestamp</text>
+              <text x="264" y="335" class="svg-small">estimator</text>
+
+              <rect x="65" y="400" width="303" height="78" rx="12" class="box-yellow"/>
+              <text x="92" y="430" class="svg-small">AVTP media packetizer</text>
+              <text x="92" y="452" class="svg-small">AAF or CVF payload plus presentation timestamp</text>
+
+              <rect x="65" y="505" width="303" height="60" rx="12" class="box-orange"/>
+              <text x="118" y="540" class="svg-small">Optional CRF timing stream</text>
+
+              <rect x="470" y="165" width="360" height="350" rx="20" class="box"/>
+              <text x="572" y="200" class="svg-label">Ethernet TSN network</text>
+              <rect x="510" y="235" width="280" height="72" rx="12" class="box"/>
+              <text x="572" y="264" class="svg-small">Bridges, queues, shapers</text>
+              <text x="548" y="286" class="svg-small">residence time and deterministic transport</text>
+              <rect x="510" y="345" width="280" height="72" rx="12" class="box-purple"/>
+              <text x="566" y="374" class="svg-small">gPTP distributes</text>
+              <text x="570" y="396" class="svg-small">common network time</text>
+              <text x="492" y="560" class="svg-small">The network forwards packets and provides a shared time base.</text>
+              <text x="492" y="582" class="svg-small">It does not generate the listener's playback clock.</text>
+
+              <rect x="900" y="100" width="385" height="585" rx="20" class="box-green"/>
+              <text x="928" y="135" class="svg-label">Listener endpoint</text>
+
+              <rect x="930" y="170" width="145" height="72" rx="12" class="box"/>
+              <text x="968" y="198" class="svg-small">gPTP / PHC</text>
+              <text x="955" y="220" class="svg-small">network time</text>
+
+              <rect x="1110" y="170" width="145" height="72" rx="12" class="box-orange"/>
+              <text x="1146" y="198" class="svg-small">AVTP / CRF</text>
+              <text x="1131" y="220" class="svg-small">timestamp parser</text>
+
+              <rect x="930" y="285" width="145" height="72" rx="12" class="box-green"/>
+              <text x="965" y="313" class="svg-small">Receive buffer</text>
+              <text x="947" y="335" class="svg-small">packet decoupling</text>
+
+              <rect x="1110" y="285" width="145" height="72" rx="12" class="box-purple"/>
+              <text x="1138" y="313" class="svg-small">Remote-rate</text>
+              <text x="1142" y="335" class="svg-small">estimator</text>
+
+              <rect x="930" y="400" width="145" height="72" rx="12" class="box-yellow"/>
+              <text x="948" y="428" class="svg-small">Presentation</text>
+              <text x="959" y="450" class="svg-small">scheduler</text>
+
+              <rect x="1110" y="400" width="145" height="72" rx="12" class="box-purple"/>
+              <text x="1154" y="428" class="svg-small">Loop filter</text>
+              <text x="1132" y="450" class="svg-small">jitter rejection</text>
+
+              <rect x="930" y="515" width="145" height="72" rx="12" class="box"/>
+              <text x="972" y="543" class="svg-small">Codec and</text>
+              <text x="969" y="565" class="svg-small">playout</text>
+
+              <rect x="1110" y="515" width="145" height="72" rx="12" class="box-yellow"/>
+              <text x="1136" y="543" class="svg-small">NCO / clock</text>
+              <text x="1138" y="565" class="svg-small">synthesizer</text>
+
+              <path d="M134 242 L134 285" stroke="#34d399" stroke-width="2" fill="none" marker-end="url(#arrowArchGreen)"/>
+              <path d="M203 206 L230 206" stroke="#a78bfa" stroke-width="2" fill="none" marker-end="url(#arrowArchPurple)"/>
+              <path d="M299 242 L299 285" stroke="#a78bfa" stroke-width="2" fill="none" marker-end="url(#arrowArchPurple)"/>
+              <path d="M134 357 L134 400" stroke="#34d399" stroke-width="2" fill="none" marker-end="url(#arrowArchGreen)"/>
+              <path d="M299 357 L299 400" stroke="#a78bfa" stroke-width="2" fill="none" marker-end="url(#arrowArchPurple)"/>
+              <path d="M216 478 L216 505" stroke="#ff7a45" stroke-width="2" fill="none" marker-end="url(#arrowArchOrange)"/>
+
+              <path d="M368 439 C420 439, 440 271, 510 271" stroke="#34d399" stroke-width="2.5" fill="none" marker-end="url(#arrowArchGreen)"/>
+              <text x="420" y="250" class="svg-small">AVTP media packets</text>
+              <path d="M368 535 C430 535, 452 381, 510 381" stroke="#ff7a45" stroke-width="2.5" fill="none" marker-end="url(#arrowArchOrange)"/>
+              <text x="420" y="505" class="svg-small">CRF or embedded timing observations</text>
+              <path d="M790 271 C840 271, 860 321, 930 321" stroke="#34d399" stroke-width="2.5" fill="none" marker-end="url(#arrowArchGreen)"/>
+              <path d="M790 381 C848 381, 905 206, 1110 206" stroke="#ff7a45" stroke-width="2.5" fill="none" marker-end="url(#arrowArchOrange)"/>
+              <path d="M790 381 C855 381, 875 206, 930 206" stroke="#a78bfa" stroke-width="2.2" fill="none" marker-end="url(#arrowArchPurple)"/>
+
+              <path d="M1075 206 L1110 206" stroke="#a78bfa" stroke-width="2" fill="none" marker-end="url(#arrowArchPurple)"/>
+              <path d="M1182 242 L1182 285" stroke="#ff7a45" stroke-width="2" fill="none" marker-end="url(#arrowArchOrange)"/>
+              <path d="M1182 357 L1182 400" stroke="#a78bfa" stroke-width="2" fill="none" marker-end="url(#arrowArchPurple)"/>
+              <path d="M1182 472 L1182 515" stroke="#a78bfa" stroke-width="2" fill="none" marker-end="url(#arrowArchPurple)"/>
+              <path d="M1110 551 L1075 551" stroke="#cbd5e1" stroke-width="2" fill="none" marker-end="url(#arrowArch)"/>
+              <text x="1078" y="532" class="svg-small">recovered local clock</text>
+
+              <path d="M1002 357 L1002 400" stroke="#34d399" stroke-width="2" fill="none" marker-end="url(#arrowArchGreen)"/>
+              <path d="M1002 472 L1002 515" stroke="#34d399" stroke-width="2" fill="none" marker-end="url(#arrowArchGreen)"/>
+              <path d="M930 206 C885 240, 885 420, 930 436" stroke="#a78bfa" stroke-width="2" fill="none" marker-end="url(#arrowArchPurple)"/>
+              <text x="836" y="377" class="svg-small">network time anchors</text>
+              <text x="840" y="399" class="svg-small">the presentation instant</text>
+
+              <rect x="58" y="634" width="24" height="12" rx="3" fill="#34d399"/>
+              <text x="92" y="645" class="svg-small">media sample and payload path</text>
+              <rect x="320" y="634" width="24" height="12" rx="3" fill="#ff7a45"/>
+              <text x="354" y="645" class="svg-small">timing observations and CRF path</text>
+              <rect x="640" y="634" width="24" height="12" rx="3" fill="#a78bfa"/>
+              <text x="674" y="645" class="svg-small">gPTP common-time path</text>
+              <rect x="930" y="634" width="24" height="12" rx="3" fill="#fbbf24"/>
+              <text x="964" y="645" class="svg-small">presentation control and local actuation</text>
+            </svg>
+          </div>
+
+          <div class="grid2">
+            <div class="card"><h4>Talker function</h4><ol><li>Capture media using its source media clock.</li><li>Capture relationships between media count and gPTP time.</li><li>Packetize media as AAF/CVF and optionally publish a dedicated CRF timing stream.</li><li>Transmit media and timing information over Ethernet; it does not transmit a physical sampling clock wire.</li></ol></div>
+            <div class="card"><h4>Listener function</h4><ol><li>Buffer incoming media packets separately from timing extraction.</li><li>Use AVTP timestamps or CRF observations, interpreted against local gPTP time, to estimate the remote media-clock rate.</li><li>Filter the rate/phase error to reject jitter.</li><li>Adjust a local Numerically Controlled Oscillator, clock synthesizer, or codec clock input.</li><li>Use the presentation scheduler for the start instant and the recovered media clock for the continuous sample cadence.</li></ol></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="loop" data-title="The control-loop view">
+        <div class="sec-head"><h2>8. The control-loop view</h2></div>
+        <div class="sec-body">
+          <p>Media clock recovery is a feedback-control problem. The receiver measures timing, computes error, filters noise, and adjusts a local controllable oscillator.</p>
+          <div class="diagram">
+            <svg viewBox="0 0 950 350" role="img" aria-label="Media clock recovery feedback loop">
+              <defs><marker id="arrowLoop" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#cbd5e1"/></marker></defs>
+              <text x="25" y="34" class="svg-title">Digital locked-loop view of media clock recovery</text>
+              <rect x="45" y="110" width="150" height="70" rx="14" class="box-blue"/><text x="75" y="139" class="svg-label">Measurement</text><text x="68" y="162" class="svg-small">remote/local periods</text>
+              <rect x="250" y="110" width="135" height="70" rx="14" class="box-orange"/><text x="292" y="139" class="svg-label">Error</text><text x="277" y="162" class="svg-small">f_src − f_loc</text>
+              <rect x="440" y="110" width="145" height="70" rx="14" class="box-purple"/><text x="476" y="139" class="svg-label">Loop filter</text><text x="462" y="162" class="svg-small">smooths jitter</text>
+              <rect x="640" y="110" width="155" height="70" rx="14" class="box-yellow"/><text x="675" y="139" class="svg-label">Clock actuator</text><text x="666" y="162" class="svg-small">NCO / PLL / synth</text>
+              <rect x="640" y="230" width="155" height="58" rx="14" class="box-green"/><text x="673" y="263" class="svg-label">Playback clock</text>
+              <path d="M195 145 L250 145" stroke="#cbd5e1" stroke-width="2" marker-end="url(#arrowLoop)"/><path d="M385 145 L440 145" stroke="#cbd5e1" stroke-width="2" marker-end="url(#arrowLoop)"/><path d="M585 145 L640 145" stroke="#cbd5e1" stroke-width="2" marker-end="url(#arrowLoop)"/><path d="M718 180 L718 230" stroke="#cbd5e1" stroke-width="2" marker-end="url(#arrowLoop)"/>
+              <path d="M640 260 C520 300, 180 300, 120 180" stroke="#34d399" stroke-width="2" fill="none" marker-end="url(#arrowLoop)"/><text x="285" y="320" class="svg-small">feedback: local clock is remeasured and compared again</text>
+            </svg>
+          </div>
+          <p>The actuator may be a numerically controlled oscillator, a fractional clock synthesizer, a codec clock input, an external phase-locked loop, or another hardware clock-generation mechanism.</p>
+          <div class="note purple"><strong>Important:</strong> the loop should not follow every short-term fluctuation. It should recover the talker’s true long-term media rate while rejecting measurement noise.</div>
+        </div>
+      </section>
+
+      <section id="filtering" data-title="Why filtering is essential">
+        <div class="sec-head"><h2>9. Why filtering is essential</h2></div>
+        <div class="sec-body">
+          <p>Raw timestamp differences are noisy. Noise comes from timestamp quantization, imperfect timestamp capture, variable packet delay, occasional lost packets, bridge timing disturbances, and local measurement uncertainty.</p>
+          <div class="grid2"><div class="card"><h4>Fast loop</h4><p>Responds quickly to drift, startup changes, and clock transitions.</p><p><strong>Risk:</strong> passes more measurement noise into the recovered clock.</p></div><div class="card"><h4>Slow loop</h4><p>Produces a cleaner recovered clock and rejects jitter better.</p><p><strong>Risk:</strong> responds slowly to real drift or startup convergence.</p></div></div>
+          <div class="diagram">
+            <svg viewBox="0 0 920 310" role="img" aria-label="Filtering removes timestamp noise">
+              <text x="25" y="34" class="svg-title">Filtering trades response speed against clock cleanliness</text>
+              <polyline points="70,190 110,125 150,210 190,115 230,198 270,150 310,215 350,125 390,195 430,160" fill="none" stroke="#fb7185" stroke-width="3"/><text x="80" y="90" class="svg-label">raw frequency error estimate</text>
+              <polyline points="500,175 540,168 580,162 620,158 660,155 700,152 740,150 780,148 820,146" fill="none" stroke="#34d399" stroke-width="4"/><text x="535" y="90" class="svg-label">filtered correction signal</text>
+              <rect x="435" y="130" width="55" height="55" rx="12" class="box-purple"/><text x="449" y="162" class="svg-small">filter</text>
+              <path d="M430 160 L435 160" stroke="#cbd5e1" stroke-width="2"/><path d="M490 160 L500 160" stroke="#cbd5e1" stroke-width="2"/>
+              <text x="90" y="260" class="svg-small">Directly driving a clock from raw measurements creates jittery playback timing.</text><text x="520" y="260" class="svg-small">Filtering produces a smoother but slightly delayed correction.</text>
+            </svg>
+          </div>
+        </div>
+      </section>
+
+      <section id="timestamp" data-title="Presentation timestamp versus recovered media clock">
+        <div class="sec-head"><h2>10. Presentation timestamp versus recovered media clock</h2></div>
+        <div class="sec-body">
+          <p>A presentation timestamp tells the listener when a block of media should start relative to network time. It does not by itself create the continuous sample cadence needed by an audio codec or digital audio interface.</p>
+          <div class="diagram">
+            <svg viewBox="0 0 950 390" role="img" aria-label="Presentation timestamp anchors first sample, recovered clock spaces subsequent samples">
+              <text x="25" y="34" class="svg-title">Timestamp anchors the block; recovered clock spaces the samples</text>
+              <line x1="85" y1="115" x2="850" y2="115" stroke="#fbbf24" stroke-width="4"/><text x="88" y="88" class="svg-label">gPTP time axis</text>
+              <circle cx="260" cy="115" r="8" fill="#ff7a45"/><text x="190" y="147" class="svg-label">presentation timestamp: play S0 at 10.000000 s</text>
+              <rect x="210" y="205" width="520" height="85" rx="16" class="box-green"/><text x="240" y="235" class="svg-label">One audio packet carries samples S0 to S5</text>
+              <g>
+                <rect x="245" y="252" width="55" height="28" rx="6" fill="#34d399" opacity=".75"/><text x="265" y="272" class="svg-small">S0</text>
+                <rect x="315" y="252" width="55" height="28" rx="6" fill="#34d399" opacity=".75"/><text x="335" y="272" class="svg-small">S1</text>
+                <rect x="385" y="252" width="55" height="28" rx="6" fill="#34d399" opacity=".75"/><text x="405" y="272" class="svg-small">S2</text>
+                <rect x="455" y="252" width="55" height="28" rx="6" fill="#34d399" opacity=".75"/><text x="475" y="272" class="svg-small">S3</text>
+                <rect x="525" y="252" width="55" height="28" rx="6" fill="#34d399" opacity=".75"/><text x="545" y="272" class="svg-small">S4</text>
+                <rect x="595" y="252" width="55" height="28" rx="6" fill="#34d399" opacity=".75"/><text x="615" y="272" class="svg-small">S5</text>
+              </g>
+              <path d="M260 123 L260 205" stroke="#ff7a45" stroke-width="2" stroke-dasharray="6,5"/><text x="702" y="262" class="svg-small">S1..S5 are spaced by recovered 48 kHz clock</text>
+              <text x="270" y="330" class="svg-label">For 48 kHz audio, sample spacing is about 20.833 µs.</text>
+            </svg>
+          </div>
+          <div class="grid2"><div class="card"><h4>Presentation timestamp</h4><p>Absolute timing marker. It says when a media block should begin on the shared gPTP time axis.</p></div><div class="card"><h4>Recovered media clock</h4><p>Continuous cadence generator. It keeps samples stepping at the source rate between timestamp anchors.</p></div></div>
+          <div class="note ok"><strong>Analogy:</strong> the presentation timestamp is the conductor saying “begin on this beat.” The recovered media clock is the metronome that keeps every following beat evenly spaced.</div>
+        </div>
+      </section>
+
+      <section id="crf" data-title="Embedded recovery versus dedicated clock-reference recovery">
+        <div class="sec-head"><h2>11. Embedded recovery versus dedicated clock-reference recovery</h2></div>
+        <div class="sec-body">
+          <p>The talker can communicate media timing in two general ways: embedded in the media stream itself, or through a dedicated clock-reference stream such as IEEE 1722 Clock Reference Format, or CRF.</p>
+          <div class="diagram">
+            <svg viewBox="0 0 950 410" role="img" aria-label="Embedded stream timing versus dedicated CRF stream">
+              <text x="25" y="34" class="svg-title">Two ways to distribute media clock information</text>
+              <rect x="55" y="80" width="380" height="250" rx="18" class="box-blue"/><text x="90" y="118" class="svg-label">Embedded in media stream</text>
+              <rect x="95" y="155" width="300" height="55" rx="12" class="box"/><text x="120" y="188" class="svg-small">AAF/CVF packets carry timing fields</text>
+              <rect x="95" y="235" width="300" height="55" rx="12" class="box-green"/><text x="125" y="268" class="svg-small">Listener recovers clock for that stream</text>
+              <rect x="515" y="80" width="380" height="250" rx="18" class="box-purple"/><text x="550" y="118" class="svg-label">Dedicated clock-reference stream</text>
+              <rect x="555" y="145" width="300" height="50" rx="12" class="box-yellow"/><text x="603" y="176" class="svg-small">CRF stream distributes clock events</text>
+              <rect x="555" y="220" width="135" height="55" rx="12" class="box-green"/><text x="584" y="252" class="svg-small">Listener A</text>
+              <rect x="720" y="220" width="135" height="55" rx="12" class="box-green"/><text x="749" y="252" class="svg-small">Listener B</text>
+              <path d="M705 195 L625 220" class="arrow"/><path d="M705 195 L787 220" class="arrow"/>
+              <text x="93" y="355" class="svg-small">Adequate for a simple one-stream talker/listener relationship.</text><text x="548" y="355" class="svg-small">Useful when multiple streams/devices share one media-clock domain.</text>
+            </svg>
+          </div>
+          <div class="table-wrap"><table><thead><tr><th>Method</th><th>Best fit</th><th>Main benefit</th></tr></thead><tbody><tr><td class="field">Timing embedded in media stream</td><td>Single talker-listener stream or simple audio/video path.</td><td>Timing information travels with the media packets that need it.</td></tr><tr><td class="field">Dedicated CRF stream</td><td>Multiple streams, mixers, aggregators, coordinated playback, or shared media-clock domains.</td><td>One timing reference can discipline multiple media streams and endpoints.</td></tr></tbody></table></div>
+        </div>
+      </section>
+
+      <section id="switches" data-title="Role of switches versus endpoints">
+        <div class="sec-head"><h2>12. Role of switches versus endpoints</h2></div>
+        <div class="sec-body">
+          <p>Switches and bridges mainly preserve deterministic transport behavior and forward the common network time accurately across the Ethernet domain. The actual media clock recovery loop is usually an endpoint function.</p>
+          <div class="diagram">
+            <svg viewBox="0 0 950 310" role="img" aria-label="Switches support transport timing, endpoint recovers media clock">
+              <text x="25" y="34" class="svg-title">The switch supports the timing ecosystem; the endpoint reconstructs the sample clock</text>
+              <rect x="55" y="95" width="190" height="90" rx="16" class="box-blue"/><text x="95" y="130" class="svg-label">Talker</text><text x="85" y="155" class="svg-small">media + timing packets</text>
+              <rect x="335" y="95" width="210" height="90" rx="16" class="box-yellow"/><text x="380" y="130" class="svg-label">TSN bridge</text><text x="365" y="155" class="svg-small">forwarding, shaping, gPTP support</text>
+              <rect x="635" y="95" width="240" height="90" rx="16" class="box-green"/><text x="680" y="130" class="svg-label">Listener endpoint</text><text x="665" y="155" class="svg-small">buffer + estimator + clock actuator</text>
+              <path d="M245 140 L335 140" class="arrow"/><path d="M545 140 L635 140" class="arrow"/>
+              <text x="83" y="235" class="svg-small">Talker timestamps media timing.</text><text x="345" y="235" class="svg-small">Bridge preserves bounded transport behavior.</text><text x="655" y="235" class="svg-small">Listener recovers the actual playout clock.</text>
+            </svg>
+          </div>
+          <div class="note warn"><strong>Implementation warning:</strong> a switch may support gPTP, traffic shaping, stream filtering, and bounded forwarding delay, but it normally does not synthesize the listener’s audio codec clock. That is the listener endpoint’s job.</div>
+        </div>
+      </section>
+
+      <section id="math" data-title="One compact mathematical picture">
+        <div class="sec-head"><h2>13. One compact mathematical picture</h2></div>
+        <div class="sec-body">
+          <p>Suppose the listener receives two source timing observations, where <code>t</code> is gPTP time and <code>n</code> is source sample count:</p>
+          <div class="formula">(t₁, n₁), (t₂, n₂)</div>
+          <p>The source sample frequency estimate is:</p>
+          <div class="formula">f<sub>src</sub> = (n₂ − n₁) / (t₂ − t₁)</div>
+          <p>The listener measures its own local playback oscillator against the same network-time ruler:</p>
+          <div class="formula">f<sub>loc</sub> = (m₂ − m₁) / (t₂ − t₁)</div>
+          <p>Then it forms an error, filters it, and drives the local clock generator:</p>
+          <div class="formula">e<sub>f</sub>[k] = f<sub>src</sub>[k] − f<sub>loc</sub>[k]<br>u[k] = F{ e<sub>f</sub>[k] }<br>clock actuator ← u[k]</div>
+          <div class="note ok">As the loop converges, <code>f_loc ≈ f_src</code>, and the receive buffer stops drifting on average.</div>
+        </div>
+      </section>
+
+      <section id="summary" data-title="Final summary">
+        <div class="sec-head"><h2>14. Final summary</h2></div>
+        <div class="sec-body">
+          <p>Media clock recovery can be summarized as one chain:</p>
+          <ol><li>The sender has a real media sampling clock.</li><li>The network provides a shared gPTP time base.</li><li>The sender expresses media timing against that shared time base.</li><li>The receiver uses those observations to estimate the sender’s media rate.</li><li>The receiver compares that estimate with its own local media clock.</li><li>A filtered feedback loop adjusts the local media oscillator.</li><li>Buffered media is rendered at the correct presentation time using the recovered clock.</li></ol>
+          <div class="diagram">
+            <svg viewBox="0 0 950 220" role="img" aria-label="Media clock recovery summary chain">
+              <text x="25" y="34" class="svg-title">Deep intuition</text>
+              <rect x="60" y="80" width="160" height="60" rx="14" class="box-blue"/><text x="84" y="115" class="svg-small">sender media clock</text>
+              <rect x="250" y="80" width="135" height="60" rx="14" class="box-yellow"/><text x="278" y="106" class="svg-small">gPTP ruler</text><text x="278" y="124" class="svg-small">timestamps</text>
+              <rect x="415" y="80" width="140" height="60" rx="14" class="box-purple"/><text x="440" y="115" class="svg-small">estimation</text>
+              <rect x="585" y="80" width="135" height="60" rx="14" class="box-orange"/><text x="615" y="115" class="svg-small">filtering</text>
+              <rect x="750" y="80" width="150" height="60" rx="14" class="box-green"/><text x="776" y="106" class="svg-small">local recovered</text><text x="805" y="124" class="svg-small">clock</text>
+              <path d="M220 110 L250 110" class="arrow"/><path d="M385 110 L415 110" class="arrow"/><path d="M555 110 L585 110" class="arrow"/><path d="M720 110 L750 110" class="arrow"/>
+              <text x="78" y="180" class="svg-label">The packet network does not carry a physical clock wire. It carries enough timing information for the listener to synthesize an equivalent local clock.</text>
+            </svg>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <footer class="footer">Standalone HTML training page generated from the uploaded Media Clock Recovery Fundamentals note.</footer>
+  <script>
+    const sections=[...document.querySelectorAll('section[id]')];
+    const navLinks=[...document.querySelectorAll('a[data-target]')];
+    const currentContext=document.getElementById('currentContext');
+    function setActive(id){const sec=document.getElementById(id);if(!sec)return;currentContext.textContent=sec.dataset.title||sec.querySelector('h2')?.textContent||id;navLinks.forEach(a=>a.classList.toggle('active',a.dataset.target===id));}
+    const observer=new IntersectionObserver((entries)=>{const visible=entries.filter(e=>e.isIntersecting).sort((a,b)=>b.intersectionRatio-a.intersectionRatio)[0];if(visible)setActive(visible.target.id);},{rootMargin:'-18% 0px -68% 0px',threshold:[.05,.12,.2,.35]});
+    sections.forEach(s=>observer.observe(s));
+    window.addEventListener('hashchange',()=>{const id=location.hash.replace('#','');if(id)setActive(id);});
+  </script>
+</body>
+</html>

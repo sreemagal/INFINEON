@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>802.1Qbv, Frame Preemption, and FRER Interaction</title>
+<style>
+:root{
+  --bg:#0e1117;
+  --panel:#111827;
+  --panel2:#151b2b;
+  --panel3:#0b1220;
+  --line:#273248;
+  --line2:#334155;
+  --text:#e6edf3;
+  --muted:#a8b3c7;
+  --soft:#c9d3e8;
+  --orange:#ff6d3a;
+  --orange2:#ffb86b;
+  --blue:#38bdf8;
+  --green:#22c55e;
+  --red:#fb7185;
+  --yellow:#facc15;
+  --purple:#a78bfa;
+  --cyan:#2dd4bf;
+  --shadow:0 18px 40px rgba(0,0,0,.28);
+  --radius:18px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;
+  font-family:Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: radial-gradient(circle at top left, rgba(255,109,58,.10), transparent 30%), linear-gradient(180deg,#0e1117 0%,#080b10 100%);
+  color:var(--text);
+  line-height:1.55;
+}
+a{color:#8bd8ff;text-decoration:none}
+a:hover{text-decoration:underline}
+.topbar{
+  position:sticky; top:0; z-index:1000;
+  background:rgba(9,12,18,.92);
+  backdrop-filter:blur(14px);
+  border-bottom:1px solid rgba(255,255,255,.08);
+  box-shadow:0 8px 30px rgba(0,0,0,.25);
+}
+.context-row{
+  display:grid;
+  grid-template-columns:260px 1fr auto;
+  gap:16px; align-items:center;
+  padding:12px 24px;
+}
+.brand{display:flex; align-items:center; gap:10px; font-weight:800; letter-spacing:.2px}
+.spark{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,var(--orange),#ff9b43); box-shadow:0 0 24px rgba(255,109,58,.35)}
+.current-context{font-size:14px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.current-context strong{color:var(--orange2)}
+.actions{display:flex; gap:8px; align-items:center}
+button,.pillbtn{
+  border:1px solid rgba(255,255,255,.12);
+  background:#151b2b;color:#eaf2ff;border-radius:999px;padding:8px 12px;cursor:pointer;font-weight:650;font-size:13px;
+}
+button:hover,.pillbtn:hover{background:#1f2937;text-decoration:none}
+.navstrip{
+  display:flex; gap:8px; overflow-x:auto; padding:0 24px 12px 24px; scrollbar-width:thin;
+}
+.navstrip a{
+  flex:0 0 auto; color:#b8c3d9; font-size:13px; padding:7px 12px; border:1px solid rgba(255,255,255,.10); border-radius:999px; background:rgba(255,255,255,.03)
+}
+.navstrip a.active{background:rgba(255,109,58,.16);border-color:rgba(255,109,58,.55);color:#fff}
+main{max-width:1240px;margin:0 auto;padding:34px 24px 90px}
+.hero{display:grid;grid-template-columns:1.2fr .8fr; gap:22px; align-items:stretch;margin:20px 0 26px}
+.card{
+  background:linear-gradient(180deg,rgba(21,27,43,.92),rgba(12,18,32,.92));
+  border:1px solid rgba(255,255,255,.09);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow);
+  padding:24px;
+}
+.card.flat{box-shadow:none;background:rgba(17,24,39,.86)}
+h1{font-size:clamp(34px,5vw,64px);line-height:1.02;margin:0 0 18px;letter-spacing:-1.7px}
+h2{font-size:32px;line-height:1.15;margin:8px 0 16px;letter-spacing:-.7px}
+h3{font-size:21px;margin:26px 0 10px;color:#f5f7fb}
+h4{font-size:16px;margin:18px 0 8px;color:#f5f7fb}
+p{margin:0 0 14px;color:#d9e1f2}.muted{color:var(--muted)}
+.kicker{color:var(--orange2);font-weight:800;letter-spacing:.08em;text-transform:uppercase;font-size:13px;margin-bottom:12px}
+.badges{display:flex;flex-wrap:wrap;gap:8px;margin:20px 0 0}
+.badge{font-size:12px;border:1px solid rgba(255,255,255,.10);border-radius:999px;padding:6px 10px;background:rgba(255,255,255,.04);color:#cbd5e1}
+.badge.orange{border-color:rgba(255,109,58,.35);background:rgba(255,109,58,.12);color:#ffd6c4}
+.badge.blue{border-color:rgba(56,189,248,.35);background:rgba(56,189,248,.12);color:#c4f1ff}
+.badge.green{border-color:rgba(34,197,94,.35);background:rgba(34,197,94,.12);color:#c7ffd9}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px}.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.section{scroll-margin-top:122px;margin:26px 0}
+.callout{border-left:4px solid var(--orange);padding:14px 16px;background:rgba(255,109,58,.08);border-radius:12px;margin:18px 0;color:#f8e8df}
+.callout.blue{border-left-color:var(--blue);background:rgba(56,189,248,.08)}
+.callout.green{border-left-color:var(--green);background:rgba(34,197,94,.08)}
+.callout.red{border-left-color:var(--red);background:rgba(251,113,133,.08)}
+.small{font-size:13px}.mono{font-family:"SFMono-Regular",Consolas,"Liberation Mono",monospace}
+ul{margin:10px 0 12px 20px;padding:0}li{margin:7px 0;color:#d9e1f2}
+.tablewrap{overflow-x:auto;border-radius:16px;border:1px solid rgba(255,255,255,.08);margin:16px 0;background:#0d1320}
+table{border-collapse:collapse;width:100%;min-width:720px}th,td{border-bottom:1px solid rgba(255,255,255,.08);padding:12px 14px;text-align:left;vertical-align:top}th{color:#ffe2d2;background:rgba(255,109,58,.11);font-size:13px;text-transform:uppercase;letter-spacing:.04em}td{color:#dbe5f6;font-size:14px}tr:last-child td{border-bottom:0}
+.diagram{border:1px solid rgba(255,255,255,.08);border-radius:18px;background:linear-gradient(180deg,#0d1422,#0a101b);padding:18px;margin:18px 0;overflow-x:auto}
+.diagram-title{font-weight:800;color:#fff;margin-bottom:12px;display:flex;align-items:center;gap:8px}.diagram-title::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--orange);display:inline-block}
+.pipeline{display:flex;align-items:stretch;gap:10px;min-width:980px}.stage{position:relative;flex:1;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.035);border-radius:14px;padding:12px;min-height:104px}.stage h4{margin:0 0 8px;color:#fff}.stage p{font-size:12px;color:#aebbd1;margin:0}.stage:not(:last-child)::after{content:"→";position:absolute;right:-18px;top:42%;font-size:20px;color:var(--orange2);font-weight:900}.stage.orange{border-color:rgba(255,109,58,.40);background:rgba(255,109,58,.08)}.stage.blue{border-color:rgba(56,189,248,.35);background:rgba(56,189,248,.08)}.stage.green{border-color:rgba(34,197,94,.35);background:rgba(34,197,94,.08)}.stage.purple{border-color:rgba(167,139,250,.35);background:rgba(167,139,250,.08)}
+.bytebar{display:flex;min-width:860px;margin:12px 0;border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,.10)}
+.byte{padding:12px 10px;border-right:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.055);text-align:center;min-height:64px;display:flex;flex-direction:column;justify-content:center}.byte:last-child{border-right:0}.byte b{font-size:13px;color:#fff}.byte span{font-size:11px;color:#b8c4dc}.w2{flex:2}.w3{flex:3}.w4{flex:4}.w6{flex:6}.w8{flex:8}.w12{flex:12}.w16{flex:16}.w20{flex:20}.r{background:rgba(251,113,133,.10)}.o{background:rgba(255,109,58,.12)}.b{background:rgba(56,189,248,.12)}.g{background:rgba(34,197,94,.12)}.p{background:rgba(167,139,250,.12)}.y{background:rgba(250,204,21,.10)}
+.timeline{min-width:960px;position:relative;padding:26px 4px 6px}.lane{display:grid;grid-template-columns:120px 1fr;align-items:center;margin:14px 0}.lane-label{font-weight:700;color:#dbe5f6}.track{height:42px;background:#0b1220;border:1px solid rgba(255,255,255,.08);border-radius:999px;position:relative;overflow:hidden}.seg{position:absolute;top:6px;height:28px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#07111f}.seg.ex{background:var(--orange2)}.seg.pre{background:#64748b;color:#fff}.seg.frer{background:var(--cyan);color:#03131a}.seg.drop{background:repeating-linear-gradient(45deg, rgba(251,113,133,.9),rgba(251,113,133,.9) 7px,rgba(127,29,29,.9) 7px,rgba(127,29,29,.9) 14px);color:#fff}.marker{position:absolute;top:0;bottom:0;width:2px;background:rgba(255,255,255,.20)}
+.switchfig{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;min-width:920px}.switchbox{border:1px solid rgba(255,255,255,.10);border-radius:16px;background:rgba(255,255,255,.04);padding:14px}.switchbox h4{margin:0 0 12px}.queue{border:1px dashed rgba(255,255,255,.22);border-radius:12px;padding:10px;margin:8px 0;background:#0b1220}.queue-head{font-size:12px;color:#aebbd1;margin-bottom:8px}.pkt{display:inline-block;border-radius:8px;padding:6px 9px;margin:3px;font-weight:800;font-size:12px}.pkt.e{background:rgba(255,184,107,.90);color:#111827}.pkt.p{background:rgba(100,116,139,.85);color:white}.pkt.rtag{box-shadow:0 0 0 2px rgba(45,212,191,.65) inset}
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:16px}.yesno{padding:14px;border-radius:14px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.035)}.yesno h4{margin-top:0}.yesno.yes{border-color:rgba(34,197,94,.32)}.yesno.no{border-color:rgba(251,113,133,.32)}
+.scenario{border:1px solid rgba(255,255,255,.09);border-radius:18px;background:linear-gradient(180deg,rgba(17,24,39,.96),rgba(10,16,27,.96));padding:20px;margin:20px 0;box-shadow:0 10px 30px rgba(0,0,0,.18)}.scenario h3{margin-top:0;display:flex;align-items:center;gap:10px}.num{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:10px;background:rgba(255,109,58,.18);color:#ffd4c0;font-weight:900;border:1px solid rgba(255,109,58,.35)}
+.note{font-size:13px;color:#c2cee4;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:12px;margin-top:12px}.note b{color:#fff}
+.acronyms{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.acr{padding:12px;border-radius:14px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.035)}.acr b{display:block;color:#fff}.acr span{font-size:13px;color:#b8c4dc}
+.checklist{counter-reset:item}.check{display:grid;grid-template-columns:38px 1fr;gap:12px;margin:12px 0;padding:12px;border:1px solid rgba(255,255,255,.08);border-radius:14px;background:rgba(255,255,255,.035)}.check::before{counter-increment:item;content:counter(item);width:28px;height:28px;border-radius:50%;background:rgba(56,189,248,.15);border:1px solid rgba(56,189,248,.35);display:flex;align-items:center;justify-content:center;font-weight:900;color:#bdeeff}.check b{color:#fff}
+.footer{margin-top:44px;color:#9aa7bd;font-size:13px;border-top:1px solid rgba(255,255,255,.08);padding-top:24px}
+@media(max-width:980px){.hero,.grid-2,.grid-3,.grid-4,.compare{grid-template-columns:1fr}.context-row{grid-template-columns:1fr}.actions{display:none}.acronyms{grid-template-columns:1fr}.section{scroll-margin-top:165px}}
+@media print{body{background:#fff;color:#000}.topbar{position:static;background:#fff;color:#000}.navstrip,.actions{display:none}.card,.scenario,.diagram{box-shadow:none;background:#fff;color:#000;border-color:#ccc}.byte,.stage,.switchbox,.queue{background:#fff;color:#000}.muted,p,li,td{color:#111}a{color:#111;text-decoration:underline}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="context-row">
+    <div class="brand"><div class="spark"></div><div>Databricks-style TSN Lab</div></div>
+    <div class="current-context">Current context: <strong id="ctx">Overview</strong></div>
+    <div class="actions"><button onclick="window.print()">Print / Save PDF</button><a class="pillbtn" href="#summary">Start</a></div>
+  </div>
+  <nav class="navstrip" id="nav">
+    <a href="#summary">Executive view</a>
+    <a href="#standards">Standards map</a>
+    <a href="#mental-model">Mental model</a>
+    <a href="#headers">PDU and headers</a>
+    <a href="#interaction">Interaction rules</a>
+    <a href="#scenarios">Scenarios</a>
+    <a href="#observability">Observability</a>
+    <a href="#pitfalls">Pitfalls</a>
+    <a href="#references">References</a>
+  </nav>
+</div>
+<main>
+  <section class="hero section" id="summary" data-title="Executive view">
+    <div class="card">
+      <div class="kicker">IEEE 802.1Qbv • IEEE 802.1Qbu / 802.3br • IEEE 802.1CB</div>
+      <h1>How scheduled traffic, frame preemption, and FRER really interact</h1>
+      <p class="muted">This note explains the interaction in switch-pipeline language. It keeps the layers separate, shows the PDU formats that matter, and uses concrete failure and timing scenarios to explain what you should expect to observe.</p>
+      <div class="badges">
+        <span class="badge orange">Time-Aware Shaper gates queues</span>
+        <span class="badge blue">Preemption fragments only preemptable MAC traffic</span>
+        <span class="badge green">FRER duplicates and eliminates whole frames</span>
+      </div>
+    </div>
+    <div class="card flat">
+      <h3 style="margin-top:0">Core answer in one view</h3>
+      <p><b>802.1Qbv</b> decides when a traffic-class queue is eligible for selection by opening or closing a time-controlled gate.</p>
+      <p><b>Frame preemption</b> is the 802.1Q / 802.3 MAC-level mechanism that lets an express frame interrupt a preemptable frame on a single physical link.</p>
+      <p><b>FRER</b> is a stream-level reliability mechanism. It identifies a stream, attaches or uses a sequence number, replicates frames across member streams, and eliminates duplicate complete frames at recovery points.</p>
+      <div class="callout"><b>Important:</b> preemption does not replicate frames, FRER does not fragment frames, and Qbv does not by itself make traffic reliable.</div>
+    </div>
+  </section>
+
+  <section class="section" id="standards" data-title="Standards map">
+    <div class="card">
+      <h2>1. Standards map and responsibilities</h2>
+      <p>The easiest way to avoid confusion is to keep the three functions at three different conceptual levels.</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Function</th><th>Where it sits</th><th>What it decides</th><th>What it does not decide</th></tr></thead>
+          <tbody>
+            <tr><td><b>802.1Qbv scheduled traffic</b><br><span class="muted">Now incorporated into IEEE 802.1Q revisions</span></td><td>Bridge egress queueing and transmission selection</td><td>Which traffic-class gates are open or closed at precise times, using a Gate Control List.</td><td>It does not create redundant paths and does not assign FRER sequence numbers.</td></tr>
+            <tr><td><b>802.1Qbu + 802.3br frame preemption</b><br><span class="muted">802.1 config view plus 802.3 MAC Merge view</span></td><td>Egress queue to MAC service boundary and physical link</td><td>Whether a traffic class is express or preemptable, and whether a preemptable frame may be interrupted link-by-link.</td><td>It does not create end-to-end fragments. Fragments are reassembled at the next link partner.</td></tr>
+            <tr><td><b>802.1CB FRER</b></td><td>Stream identification, sequence generation, splitting, and recovery functions in bridges and end systems</td><td>Which frames belong to a stream, what sequence number they carry, where they are replicated, and where duplicates are discarded.</td><td>It does not compute disjoint paths by itself and does not define the Qbv schedule.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout blue"><b>Standards-aligned wording:</b> 802.1Qbv is the Time-Aware Shaper. Frame preemption is usually discussed as 802.1Qbu together with 802.3br. In modern references, 802.1Qbu and 802.1Qbv have been rolled into later IEEE 802.1Q revisions, while 802.3br has been incorporated into later IEEE 802.3 revisions.</div>
+    </div>
+  </section>
+
+  <section class="section" id="mental-model" data-title="Mental model">
+    <div class="card">
+      <h2>2. First-principles mental model</h2>
+      <p>Think of a TSN bridge as a sequence of transformations. FRER works on streams and complete frames. Qbv works on queues. Preemption works at the MAC Merge Sublayer on a single outgoing link.</p>
+      <div class="diagram">
+        <div class="diagram-title">Switch-pipeline position of the three mechanisms</div>
+        <div class="pipeline">
+          <div class="stage green"><h4>1. Stream identification</h4><p>Classify a frame as belonging to a compound stream or member stream. Match may use destination MAC, VLAN, priority, IP tuple, or configured stream identification.</p></div>
+          <div class="stage green"><h4>2. FRER encode / split</h4><p>Attach or derive sequence number. Replicate one logical stream into two or more member streams.</p></div>
+          <div class="stage blue"><h4>3. VLAN / priority / queue</h4><p>PCP and bridge configuration map each copy to a traffic class and egress queue.</p></div>
+          <div class="stage orange"><h4>4. Qbv gate</h4><p>The traffic class gate is open or closed according to the Gate Control List.</p></div>
+          <div class="stage purple"><h4>5. Express or preemptable</h4><p>Each traffic class has a frame preemption status. Express goes to eMAC. Preemptable goes to pMAC.</p></div>
+          <div class="stage purple"><h4>6. MAC Merge</h4><p>Express mPackets may interrupt preemptable mPackets. Fragments are local to this link.</p></div>
+          <div class="stage green"><h4>7. FRER recovery</h4><p>At a recovery point, complete frames are checked using sequence numbers. First valid copy passes. Later duplicates are discarded.</p></div>
+        </div>
+      </div>
+      <div class="compare">
+        <div class="yesno yes"><h4>What preemption can improve</h4><p>It can reduce the blocking delay caused by a lower-priority or preemptable frame already being transmitted when a scheduled express frame becomes eligible.</p></div>
+        <div class="yesno no"><h4>What preemption cannot improve</h4><p>It cannot rescue a frame lost on both FRER member paths. It also cannot fragment a frame across multiple bridges as an end-to-end mechanism.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="headers" data-title="PDU and header formats">
+    <div class="card">
+      <h2>3. PDU and header formats that matter</h2>
+      <p>There are two distinct packet views. FRER sees the Ethernet frame and its sequence information. Preemption sees MAC Merge mPackets on one link. Do not mix them.</p>
+
+      <h3>3.1 VLAN-tagged Ethernet frame with FRER R-TAG</h3>
+      <p>IEEE 802.1CB defines a 6-octet Redundancy Tag, or R-TAG. It carries EtherType or TPID <span class="mono">0xF1C1</span>, a 16-bit reserved field, and a 16-bit sequence number. A typical 802.1Q C-VLAN example places the C-TAG before the R-TAG and the original payload length/EtherType after the R-TAG.</p>
+      <div class="diagram">
+        <div class="diagram-title">Example FRER frame on an IEEE 802.1Q C-VLAN component</div>
+        <div class="bytebar">
+          <div class="byte w6"><b>Destination MAC</b><span>6 octets</span></div>
+          <div class="byte w6"><b>Source MAC</b><span>6 octets</span></div>
+          <div class="byte w2 b"><b>C-TAG TPID</b><span>0x8100, 2</span></div>
+          <div class="byte w2 b"><b>TCI</b><span>PCP + DEI + VID, 2</span></div>
+          <div class="byte w2 g"><b>R-TAG TPID</b><span>0xF1C1, 2</span></div>
+          <div class="byte w2 g"><b>Reserved</b><span>0, 2</span></div>
+          <div class="byte w2 g"><b>Sequence</b><span>16-bit, 2</span></div>
+          <div class="byte w2"><b>Type / Length</b><span>2</span></div>
+          <div class="byte w12"><b>Payload</b><span>n octets</span></div>
+          <div class="byte w4"><b>FCS</b><span>4</span></div>
+        </div>
+      </div>
+      <div class="callout"><b>Teaching point:</b> the R-TAG is part of the MAC frame delivered to the lower layers. If the frame is later preempted on a link, the R-TAG is merely bytes inside the preemptable frame fragments until the next system reassembles the original frame.</div>
+
+      <h3>3.2 R-TAG field-level view</h3>
+      <div class="diagram">
+        <div class="diagram-title">FRER R-TAG layout</div>
+        <div class="bytebar" style="min-width:640px">
+          <div class="byte w2 g"><b>R-TAG TPID</b><span>16 bits = 0xF1C1</span></div>
+          <div class="byte w2 y"><b>Reserved</b><span>16 bits, transmitted as zero</span></div>
+          <div class="byte w2 o"><b>Sequence Number</b><span>16 bits, wraps modulo 65536</span></div>
+        </div>
+      </div>
+      <p>The sequence number is the field used by the sequence recovery function to decide whether a received copy is new, duplicate, old, or outside the recovery algorithm's acceptance window.</p>
+
+      <h3>3.3 MAC Merge mPacket view for preemption</h3>
+      <p>Frame preemption replaces the ordinary start delimiter view on the link with MAC Merge packet delimiters. Express traffic uses the express MAC path. Preemptable traffic uses the preemptable MAC path. Only preemptable frames can be fragmented.</p>
+      <div class="diagram">
+        <div class="diagram-title">Express mPacket and preemptable fragments</div>
+        <div class="bytebar">
+          <div class="byte w4 o"><b>Preamble + SMD-E</b><span>Express start</span></div>
+          <div class="byte w6"><b>DA</b><span>6</span></div>
+          <div class="byte w6"><b>SA</b><span>6</span></div>
+          <div class="byte w8"><b>Tags + Type + Payload</b><span>may include VLAN and R-TAG</span></div>
+          <div class="byte w4"><b>FCS</b><span>final CRC</span></div>
+        </div>
+        <div class="bytebar">
+          <div class="byte w4 p"><b>Preamble + SMD-S</b><span>start fragment</span></div>
+          <div class="byte w12"><b>First part of preemptable frame</b><span>contains ordinary frame bytes</span></div>
+          <div class="byte w3 r"><b>mCRC</b><span>non-final fragment check</span></div>
+        </div>
+        <div class="bytebar">
+          <div class="byte w4 p"><b>Preamble + SMD-C</b><span>continuation</span></div>
+          <div class="byte w12"><b>Next part of same frame</b><span>more ordinary frame bytes</span></div>
+          <div class="byte w3 r"><b>mCRC or FCS</b><span>mCRC unless final</span></div>
+        </div>
+      </div>
+      <div class="callout blue"><b>Critical distinction:</b> FRER sequence recovery should see one complete frame after MAC Merge reassembly. It should not see each MAC Merge fragment as an independent FRER packet.</div>
+    </div>
+  </section>
+
+  <section class="section" id="interaction" data-title="Interaction rules">
+    <div class="card">
+      <h2>4. Rules for 802.1Qbv, preemption, and FRER interaction</h2>
+      <div class="grid-2">
+        <div class="card flat"><h3>Rule 1: Qbv schedules queues, not FRER streams directly</h3><p>A FRER stream is eventually mapped to one or more egress queues through stream identification, VLAN, priority, and forwarding configuration. Qbv gates then decide whether each queue can be selected at a given time.</p></div>
+        <div class="card flat"><h3>Rule 2: preemption is link-local</h3><p>A preemptable frame can be cut into fragments on one physical link. The next system reassembles it before normal MAC-client processing continues. The next link may preempt the same frame again, but that is a new link-local event.</p></div>
+        <div class="card flat"><h3>Rule 3: FRER operates on complete frames</h3><p>The sequence generation and recovery functions work on packet or frame service primitives. If a preemptable frame is fragmented on a link, the recovery function downstream should receive either a complete reassembled frame or no frame if reassembly fails.</p></div>
+        <div class="card flat"><h3>Rule 4: preemption changes latency skew</h3><p>FRER often delivers the first valid copy and discards later duplicates. Preemption and Qbv can make one member path consistently faster or less jittery than another, which changes which copy usually wins.</p></div>
+      </div>
+
+      <h3>4.1 What happens in the egress datapath</h3>
+      <div class="diagram">
+        <div class="diagram-title">Egress behavior when a scheduled FRER copy competes with background traffic</div>
+        <div class="switchfig">
+          <div class="switchbox"><h4>Before scheduled window</h4><div class="queue"><div class="queue-head">Preemptable queue</div><span class="pkt p">Diag 1500B</span><span class="pkt p">BE</span></div><div class="queue"><div class="queue-head">Express scheduled queue</div><span class="pkt e rtag">FRER seq 100</span></div><p class="small muted">A long preemptable frame may already be transmitting.</p></div>
+          <div class="switchbox"><h4>Window opens</h4><div class="queue"><div class="queue-head">MAC Merge action</div><span class="pkt p">Frag 1</span><span class="pkt e rtag">FRER seq 100</span><span class="pkt p">Frag 2</span></div><p class="small muted">The express FRER copy interrupts only after the minimum fragment rule allows the cut.</p></div>
+          <div class="switchbox"><h4>At next system</h4><div class="queue"><div class="queue-head">Reassembly and FRER</div><span class="pkt p">Reassembled diag</span><span class="pkt e rtag">Complete FRER seq 100</span></div><p class="small muted">FRER sees the complete sequence-tagged frame, not the individual fragments.</p></div>
+        </div>
+      </div>
+
+      <h3>4.2 Timing side effect that matters for FRER</h3>
+      <p>FRER recovery windows are not scheduling windows. They are sequence acceptance windows. A Qbv schedule or preemption delay can cause one copy to arrive much later than its sibling copy. That late copy should be discarded as a duplicate if the earlier copy already passed. However, if paths are badly skewed, the recovery function parameters must still tolerate the expected duplicate arrival pattern and possible sequence wrap behavior.</p>
+      <div class="callout green"><b>Good design expectation:</b> the fastest path may change during congestion. FRER should not assume that member stream A always wins. It should accept the first valid copy regardless of which member stream carried it, then eliminate duplicates using the sequence algorithm.</div>
+    </div>
+  </section>
+
+  <section class="section" id="scenarios" data-title="Interesting scenarios">
+    <div class="card">
+      <h2>5. Elucidative scenarios</h2>
+      <p>These scenarios show what to expect in real switch traces and counters.</p>
+
+      <div class="scenario">
+        <h3><span class="num">1</span> Scheduled express FRER stream interrupts a long diagnostic frame</h3>
+        <p><b>Setup.</b> A drive-by-wire control frame is protected by FRER. The talker emits sequence 440 on two disjoint paths. On path A, the output port has a Qbv express window. A 1500-byte diagnostic frame is already transmitting as preemptable traffic.</p>
+        <div class="diagram">
+          <div class="diagram-title">Timeline on path A</div>
+          <div class="timeline">
+            <div class="lane"><div class="lane-label">pMAC</div><div class="track"><div class="seg pre" style="left:3%;width:33%">Diag frag 1</div><div class="seg pre" style="left:62%;width:26%">Diag frag 2</div></div></div>
+            <div class="lane"><div class="lane-label">eMAC</div><div class="track"><div class="marker" style="left:38%"></div><div class="seg ex" style="left:40%;width:20%">FRER seq 440</div></div></div>
+            <div class="lane"><div class="lane-label">Recovery</div><div class="track"><div class="seg frer" style="left:62%;width:17%">Pass seq 440</div><div class="seg drop" style="left:83%;width:13%">Drop duplicate</div></div></div>
+          </div>
+        </div>
+        <div class="note"><b>Observation.</b> You may see pMAC fragment counters increment, express frame counters increment, and FRER recovery pass one copy. The duplicate copy from the other member path is expected to be eliminated. This is a healthy outcome, not packet loss.</div>
+      </div>
+
+      <div class="scenario">
+        <h3><span class="num">2</span> One FRER copy is express, the other is preemptable</h3>
+        <p><b>Setup.</b> A system integrator maps member stream A to Priority Code Point 6 and express status, but member stream B to Priority Code Point 3 and preemptable status. Both carry the same R-TAG sequence number.</p>
+        <div class="diagram">
+          <div class="diagram-title">Asymmetric QoS mapping</div>
+          <div class="pipeline">
+            <div class="stage green"><h4>Original frame</h4><p>stream_handle = brake_cmd, sequence = 901</p></div>
+            <div class="stage green"><h4>FRER split</h4><p>copy A and copy B carry the same logical sequence.</p></div>
+            <div class="stage orange"><h4>Copy A</h4><p>PCP 6, scheduled express queue, low blocking.</p></div>
+            <div class="stage purple"><h4>Copy B</h4><p>PCP 3, preemptable queue, can be interrupted.</p></div>
+            <div class="stage green"><h4>Recovery</h4><p>A usually wins. B is usually a duplicate.</p></div>
+          </div>
+        </div>
+        <p><b>Meaning.</b> This is legal if configured intentionally, but it weakens the symmetry of redundancy. FRER still protects against path failure, but the preemptable member path has larger and more variable latency. If path A fails, path B may still work, but with a different latency budget.</p>
+        <div class="note"><b>Validation.</b> Check per-member path latency, duplicate elimination counters, and whether the preemptable path alone still satisfies the application deadline during failover.</div>
+      </div>
+
+      <div class="scenario">
+        <h3><span class="num">3</span> A preempted FRER frame loses a fragment</h3>
+        <p><b>Setup.</b> The FRER-protected frame itself is assigned to a preemptable traffic class on one link. It is fragmented by the MAC Merge Sublayer. A continuation fragment is corrupted or lost.</p>
+        <div class="diagram">
+          <div class="diagram-title">Failure point is below FRER recovery</div>
+          <div class="timeline">
+            <div class="lane"><div class="lane-label">Link A</div><div class="track"><div class="seg pre" style="left:3%;width:20%">FRER frag 1</div><div class="seg ex" style="left:26%;width:18%">Express other</div><div class="seg drop" style="left:48%;width:20%">FRER frag 2 lost</div></div></div>
+            <div class="lane"><div class="lane-label">Reassembly</div><div class="track"><div class="seg drop" style="left:52%;width:25%">No complete frame</div></div></div>
+            <div class="lane"><div class="lane-label">FRER recovery</div><div class="track"><div class="seg frer" style="left:20%;width:21%">Pass copy B</div><div class="seg drop" style="left:55%;width:24%">No copy A event</div></div></div>
+          </div>
+        </div>
+        <p><b>Meaning.</b> FRER does not repair the lost fragment. MAC Merge reassembly fails to deliver a complete frame on that link. Reliability comes from the other replicated member path delivering another complete frame with the same sequence number.</p>
+        <div class="note"><b>Expected counters.</b> MAC Merge receive or fragment error counters may increment. FRER may show one missing member-stream copy but no application loss if another copy passed.</div>
+      </div>
+
+      <div class="scenario">
+        <h3><span class="num">4</span> Qbv gate closes before a preemptable duplicate can finish</h3>
+        <p><b>Setup.</b> Two FRER member streams enter the same bridge but different output ports. Path A is express and passes in the scheduled window. Path B is preemptable and waits behind a gate or other traffic.</p>
+        <div class="diagram">
+          <div class="diagram-title">Late duplicate caused by schedule and preemption</div>
+          <div class="timeline">
+            <div class="lane"><div class="lane-label">Path A</div><div class="track"><div class="seg ex" style="left:10%;width:18%">seq 1200</div></div></div>
+            <div class="lane"><div class="lane-label">Path B</div><div class="track"><div class="seg pre" style="left:58%;width:22%">seq 1200 late</div></div></div>
+            <div class="lane"><div class="lane-label">Recovery</div><div class="track"><div class="seg frer" style="left:31%;width:20%">accept first</div><div class="seg drop" style="left:81%;width:15%">duplicate</div></div></div>
+          </div>
+        </div>
+        <p><b>Meaning.</b> A duplicate arriving late is not a problem by itself. A problem appears when the duplicate is so late that it collides with sequence-history limits, recovery reset timing, or application-level diagnostics that mistake normal duplicate elimination for loss.</p>
+      </div>
+
+      <div class="scenario">
+        <h3><span class="num">5</span> Sequence wraparound during scheduled bursts</h3>
+        <p><b>Setup.</b> A high-rate sensor stream uses the 16-bit R-TAG sequence number. It eventually wraps from 65535 to 0. Because Qbv sends traffic in bursts, duplicates from the older sequence range may coexist briefly with newer wrapped values if path skew is extreme.</p>
+        <div class="diagram">
+          <div class="diagram-title">Wraparound visibility</div>
+          <div class="bytebar" style="min-width:720px">
+            <div class="byte w2 g"><b>65534</b><span>accepted</span></div>
+            <div class="byte w2 g"><b>65535</b><span>accepted</span></div>
+            <div class="byte w2 o"><b>0</b><span>valid wrap</span></div>
+            <div class="byte w2 o"><b>1</b><span>valid wrap</span></div>
+            <div class="byte w2 r"><b>65535 late</b><span>duplicate / old</span></div>
+          </div>
+        </div>
+        <p><b>Meaning.</b> Wraparound is normal. Recovery logic must use the standard sequence recovery algorithm and configured history/window behavior rather than naive numerical comparison such as “0 is always lower than 65535”.</p>
+      </div>
+
+      <div class="scenario">
+        <h3><span class="num">6</span> Preemption not enabled on one hop</h3>
+        <p><b>Setup.</b> All bridges support Qbv and FRER, but one physical link has not successfully enabled frame preemption at both ends. Express scheduled traffic still exists, but long lower-priority frames can now cause a larger guard-band or blocking effect on that hop.</p>
+        <div class="callout red"><b>Failure signature:</b> FRER may still show successful delivery because at least one copy arrives, but latency histograms show a fat tail or member path B becomes the frequent winner. The problem is not FRER sequence recovery. It is an egress link configuration or capability problem.</div>
+        <p><b>Validation.</b> Check LLDP or management state for preemption capability and operational status on both link partners. Also check per-priority express/preemptable assignment. The link must understand MAC Merge formats to reassemble fragments safely.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="observability" data-title="Observability and counters">
+    <div class="card">
+      <h2>6. Observability: what to measure and where</h2>
+      <p>When debugging this interaction, do not rely on a single packet capture point. You need counters and captures at the queueing layer, the MAC Merge layer, and the FRER recovery layer.</p>
+      <div class="checklist">
+        <div class="check"><div><b>Check queue gate state.</b><br><span class="muted">Verify base time, cycle time, Gate Control List entries, and whether the traffic-class gate is open during the expected window.</span></div></div>
+        <div class="check"><div><b>Check traffic-class to express/preemptable mapping.</b><br><span class="muted">The VLAN PCP may map to a traffic class, and that traffic class has a frame preemption status. A wrong PCP value can silently move a FRER copy from eMAC to pMAC.</span></div></div>
+        <div class="check"><div><b>Check MAC Merge operational state.</b><br><span class="muted">Preemption needs hardware support and compatible link partners. If one side cannot process fragments, preemption must not be treated as operational.</span></div></div>
+        <div class="check"><div><b>Check FRER sequence generation.</b><br><span class="muted">Confirm that all replicated copies of one logical frame carry the same sequence number and are not accidentally re-sequenced independently after splitting.</span></div></div>
+        <div class="check"><div><b>Check recovery behavior.</b><br><span class="muted">Expected counters include passed frames, discarded duplicates, discarded old frames, rogue or reset events, and possibly missing member-stream observations.</span></div></div>
+        <div class="check"><div><b>Correlate clocks and captures.</b><br><span class="muted">Qbv schedules depend on synchronized time. FRER debugging depends on knowing whether a late copy is late because of path delay, gate closure, preemption blocking, or actual loss.</span></div></div>
+      </div>
+
+      <h3>Layered counter interpretation</h3>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Counter / trace symptom</th><th>Likely layer</th><th>Interpretation</th></tr></thead>
+          <tbody>
+            <tr><td>Express frames pass but preemptable frame fragments increase</td><td>MAC Merge</td><td>Preemption is active and doing its intended job.</td></tr>
+            <tr><td>FRER duplicate discards increase</td><td>FRER recovery</td><td>Usually normal. Duplicate elimination is the purpose of FRER.</td></tr>
+            <tr><td>FRER passed frame count stays good, but latency tail increases</td><td>Qbv / preemption / path asymmetry</td><td>Reliability is intact, but deterministic latency may be degraded on one member path.</td></tr>
+            <tr><td>Fragment or mCRC errors increase, but application sees no loss</td><td>MAC Merge plus FRER</td><td>A preempted copy may be lost on one path while the other FRER copy succeeds.</td></tr>
+            <tr><td>Frames without valid R-TAG sequence appear at recovery</td><td>FRER encapsulation / stream identification</td><td>Check R-TAG insertion/removal position, encapsulation type, and whether a bridge popped or transformed the tag unexpectedly.</td></tr>
+            <tr><td>Scheduled queue misses its window</td><td>Qbv configuration or time synchronization</td><td>Check base time, cycle time, clock sync, gate length, and whether the frame could complete before window close.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="pitfalls" data-title="Design pitfalls">
+    <div class="card">
+      <h2>7. Common design pitfalls</h2>
+      <div class="grid-2">
+        <div class="card flat"><h3>Pitfall A: Treating FRER duplicates as packet loss</h3><p>At the recovery point, duplicate discard is success. The application should see one delivered frame per sequence value, not both copies.</p></div>
+        <div class="card flat"><h3>Pitfall B: Forgetting preemption is not end-to-end fragmentation</h3><p>A packet capture between bridges may show MAC Merge behavior only if the capture point sees the physical link encoding or a device exposes fragment information. Ordinary host captures usually see complete frames.</p></div>
+        <div class="card flat"><h3>Pitfall C: Replicating before sequence generation</h3><p>If each copy is assigned a different sequence number after splitting, the recovery function cannot recognize them as duplicates of one logical frame.</p></div>
+        <div class="card flat"><h3>Pitfall D: Making only one member path deterministic</h3><p>If the backup path is preemptable and unscheduled, failover may preserve connectivity but violate the deadline. Test the degraded case, not just the normal case.</p></div>
+        <div class="card flat"><h3>Pitfall E: Wrong R-TAG parsing relative to VLAN tags</h3><p>802.1CB allows placement flexibility depending on function position, but the bridge configuration must parse and transform tags consistently. The typical C-VLAN example is C-TAG followed by R-TAG.</p></div>
+        <div class="card flat"><h3>Pitfall F: Using a naive sequence comparison</h3><p>The 16-bit sequence number wraps. Recovery must use a wrap-safe sequence acceptance rule and configured history/window behavior.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="acronyms" data-title="Acronyms">
+    <div class="card">
+      <h2>8. Acronym expansion card</h2>
+      <div class="acronyms">
+        <div class="acr"><b>FRER</b><span>Frame Replication and Elimination for Reliability</span></div>
+        <div class="acr"><b>TAS</b><span>Time-Aware Shaper</span></div>
+        <div class="acr"><b>Qbv</b><span>IEEE 802.1Q amendment for scheduled traffic</span></div>
+        <div class="acr"><b>Qbu</b><span>IEEE 802.1Q amendment for frame preemption management</span></div>
+        <div class="acr"><b>IET</b><span>Interspersing Express Traffic</span></div>
+        <div class="acr"><b>MMS / MAC Merge</b><span>MAC Merge Sublayer defined by 802.3br and later 802.3 revisions</span></div>
+        <div class="acr"><b>eMAC</b><span>Express MAC service interface</span></div>
+        <div class="acr"><b>pMAC</b><span>Preemptable MAC service interface</span></div>
+        <div class="acr"><b>R-TAG</b><span>802.1CB Redundancy Tag carrying sequence information</span></div>
+        <div class="acr"><b>PCP</b><span>Priority Code Point in the VLAN Tag Control Information field</span></div>
+        <div class="acr"><b>GCL</b><span>Gate Control List</span></div>
+        <div class="acr"><b>SMD</b><span>Start mPacket Delimiter</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="references" data-title="References">
+    <div class="card">
+      <h2>9. Source notes</h2>
+      <p>This material is written as a training explanation, not as a substitute for the standards. For conformance, use the official IEEE standards text and the device vendor’s implementation documentation.</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Topic</th><th>Useful public reference</th><th>Used here for</th></tr></thead>
+          <tbody>
+            <tr><td>IEEE 802.1Q bridges and scheduled traffic context</td><td>IEEE SA page for IEEE 802.1Q-2022 and IEEE 802.1 maintenance pages</td><td>Current standard status and incorporation of 802.1Qbv and 802.1Qbu into 802.1Q revisions.</td></tr>
+            <tr><td>IEEE 802.1CB FRER</td><td>IEEE SA page and IEEE GET Program copy of IEEE 802.1CB-2017</td><td>FRER scope, R-TAG, sequence number, and example C-VLAN frame format.</td></tr>
+            <tr><td>IEEE 802.3br / MAC Merge</td><td>IEEE SA 802.3br page, IEEE 802.3br Task Force page, and public technical whitepapers</td><td>MAC Merge, eMAC/pMAC, SMD-E/SMD-S/SMD-C, fragment behavior, and link-local reassembly.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="footer">Generated as a self-contained HTML artifact. No external JavaScript or CSS libraries are required.</div>
+    </div>
+  </section>
+</main>
+<script>
+const sections=[...document.querySelectorAll('.section')];
+const links=[...document.querySelectorAll('#nav a')];
+const ctx=document.getElementById('ctx');
+const obs=new IntersectionObserver((entries)=>{
+  const visible=entries.filter(e=>e.isIntersecting).sort((a,b)=>b.intersectionRatio-a.intersectionRatio)[0];
+  if(!visible) return;
+  const id=visible.target.id;
+  ctx.textContent=visible.target.dataset.title || id;
+  links.forEach(a=>a.classList.toggle('active', a.getAttribute('href')==='#'+id));
+},{root:null,rootMargin:'-120px 0px -60% 0px',threshold:[0,.1,.25,.5,.75,1]});
+sections.forEach(s=>obs.observe(s));
+</script>
+</body>
+</html>

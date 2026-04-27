@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>FRER + TAS + Qci Combined Stream Protection</title>
+<style>
+:root{
+  --bg:#0b1020;
+  --bg2:#111827;
+  --panel:#151b2f;
+  --panel2:#0f172a;
+  --ink:#f8fafc;
+  --muted:#a8b3cf;
+  --subtle:#73809f;
+  --line:#26334f;
+  --accent:#ff5f46;
+  --accent2:#ffb45c;
+  --cyan:#46d9ff;
+  --green:#7ee787;
+  --blue:#7aa2ff;
+  --purple:#c084fc;
+  --red:#ff6b7a;
+  --yellow:#ffe082;
+  --shadow: 0 16px 50px rgba(0,0,0,.35);
+  --radius:18px;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  --sans: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;
+  background:
+    radial-gradient(1200px 600px at 15% -10%, rgba(255,95,70,.22), transparent 60%),
+    radial-gradient(1100px 600px at 90% 0%, rgba(70,217,255,.13), transparent 58%),
+    linear-gradient(180deg,#080b13 0%, var(--bg) 42%, #090d18 100%);
+  color:var(--ink);
+  font-family:var(--sans);
+  line-height:1.58;
+}
+a{color:#90cdf4;text-decoration:none}
+a:hover{text-decoration:underline}
+.topbar{
+  position:sticky; top:0; z-index:30;
+  background:rgba(8,12,24,.88);
+  backdrop-filter: blur(18px);
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+.topbar-inner{
+  max-width:1480px; margin:0 auto; padding:10px 22px;
+  display:grid; grid-template-columns:1fr auto; gap:16px; align-items:center;
+}
+.context-title{font-size:13px; color:var(--muted); display:flex; align-items:center; gap:10px; min-width:0}
+.context-title strong{color:var(--ink); font-size:14px; white-space:nowrap}
+.context-pill{
+  display:inline-flex; align-items:center; gap:8px; padding:7px 10px;
+  border:1px solid rgba(255,255,255,.10); border-radius:999px;
+  background:rgba(255,255,255,.04); color:#e7edf8;
+  white-space:nowrap; font-size:12px;
+}
+.context-track{
+  height:4px; background:rgba(255,255,255,.08); overflow:hidden; border-radius:99px;
+  grid-column:1 / -1;
+}
+#progress{height:100%; width:0%; background:linear-gradient(90deg,var(--accent),var(--cyan)); border-radius:99px}
+.layout{
+  display:grid; grid-template-columns:290px minmax(0,1fr);
+  gap:28px; max-width:1480px; margin:0 auto; padding:28px 22px 70px;
+}
+aside{
+  position:sticky; top:72px; align-self:start;
+  max-height:calc(100vh - 90px); overflow:auto;
+  border:1px solid rgba(255,255,255,.08); border-radius:var(--radius);
+  background:rgba(15,23,42,.68); box-shadow:var(--shadow);
+}
+.nav-head{padding:18px 18px 8px; color:var(--muted); font-size:12px; letter-spacing:.08em; text-transform:uppercase}
+nav a{
+  display:block; padding:10px 18px; color:#cbd5e1; font-size:14px; border-left:3px solid transparent;
+}
+nav a.active{background:rgba(255,95,70,.12); color:white; border-left-color:var(--accent)}
+main{min-width:0}
+.hero{
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:28px; padding:36px;
+  background:
+   linear-gradient(135deg,rgba(255,95,70,.16),rgba(70,217,255,.08) 48%,rgba(192,132,252,.11)),
+   rgba(17,24,39,.78);
+  box-shadow:var(--shadow);
+  overflow:hidden; position:relative;
+}
+.hero:after{
+  content:""; position:absolute; inset:auto -120px -140px auto; width:360px; height:360px;
+  border-radius:50%; background:rgba(255,95,70,.13); filter:blur(10px);
+}
+.eyebrow{color:var(--accent2); font-weight:700; letter-spacing:.08em; text-transform:uppercase; font-size:12px}
+h1{font-size:clamp(34px,5vw,66px); line-height:1.02; margin:12px 0 16px; letter-spacing:-.04em}
+h2{font-size:clamp(26px,3vw,40px); line-height:1.12; letter-spacing:-.03em; margin:0 0 18px}
+h3{font-size:22px; margin:28px 0 12px; letter-spacing:-.015em}
+h4{font-size:16px; margin:18px 0 8px; color:#e2e8f0}
+p{margin:0 0 14px}
+.lead{font-size:19px; color:#dce6f5; max-width:920px}
+section{
+  margin-top:28px; padding:28px;
+  border:1px solid rgba(255,255,255,.08); border-radius:24px;
+  background:rgba(15,23,42,.76); box-shadow:var(--shadow);
+}
+.grid{display:grid; gap:18px}
+.grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+.grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.grid.four{grid-template-columns:repeat(4,minmax(0,1fr))}
+.card{
+  border:1px solid rgba(255,255,255,.09); border-radius:18px; background:rgba(255,255,255,.035);
+  padding:18px; min-width:0;
+}
+.card.good{border-color:rgba(126,231,135,.32); background:rgba(126,231,135,.06)}
+.card.warn{border-color:rgba(255,180,92,.38); background:rgba(255,180,92,.06)}
+.card.bad{border-color:rgba(255,107,122,.36); background:rgba(255,107,122,.06)}
+.card.info{border-color:rgba(70,217,255,.32); background:rgba(70,217,255,.06)}
+.kpi{font-family:var(--mono); color:#e2e8f0; font-size:13px}
+.badge{
+  display:inline-flex; align-items:center; gap:6px; padding:5px 9px; border-radius:999px;
+  font-size:12px; font-weight:700; color:#0b1020; background:#e2e8f0; margin:2px 5px 2px 0;
+}
+.badge.frer{background:var(--green)}
+.badge.qci{background:var(--cyan)}
+.badge.tas{background:var(--accent2)}
+.badge.meta{background:var(--purple); color:#16051f}
+.badge.drop{background:var(--red); color:#2c0106}
+.table-wrap{overflow:auto; border:1px solid rgba(255,255,255,.08); border-radius:16px}
+table{width:100%; border-collapse:collapse; min-width:780px}
+th,td{padding:12px 14px; border-bottom:1px solid rgba(255,255,255,.08); vertical-align:top}
+th{color:#f8fafc; text-align:left; background:rgba(255,255,255,.05); font-size:13px}
+td{color:#d6deec; font-size:14px}
+tr:last-child td{border-bottom:0}
+code,.code{font-family:var(--mono); color:#f5d491; background:rgba(255,255,255,.06); padding:.15rem .35rem; border-radius:6px}
+pre{white-space:pre-wrap; overflow:auto; background:#070b14; border:1px solid rgba(255,255,255,.08); border-radius:16px; padding:16px; color:#d7e1f2}
+.pipeline{
+  display:grid; grid-template-columns:repeat(7,minmax(115px,1fr)); gap:10px; align-items:stretch; margin:18px 0;
+}
+.stage{
+  border:1px solid rgba(255,255,255,.11); border-radius:16px; padding:14px 12px;
+  background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.025));
+  position:relative; min-height:120px;
+}
+.stage:not(:last-child):after{
+  content:"→"; position:absolute; right:-16px; top:44%; color:var(--subtle); font-size:22px; z-index:2;
+}
+.stage b{display:block; color:white; margin-bottom:6px}
+.stage small{display:block; color:var(--muted); line-height:1.4}
+.stage.frer{box-shadow:inset 0 0 0 1px rgba(126,231,135,.23)}
+.stage.qci{box-shadow:inset 0 0 0 1px rgba(70,217,255,.25)}
+.stage.tas{box-shadow:inset 0 0 0 1px rgba(255,180,92,.28)}
+.pdu{
+  overflow:auto; padding:14px; border:1px solid rgba(255,255,255,.08); border-radius:18px; background:#070b14;
+}
+.pdu-row{display:flex; min-width:max-content; margin:8px 0}
+.octet{
+  min-width:72px; padding:10px 8px; text-align:center; border:1px solid rgba(255,255,255,.12); margin-left:-1px;
+  background:rgba(255,255,255,.04); font-family:var(--mono); font-size:12px;
+}
+.octet.w2{min-width:144px}.octet.w3{min-width:216px}.octet.w4{min-width:288px}.octet.w6{min-width:432px}.octet.payload{min-width:320px}
+.octet.da{background:rgba(122,162,255,.12)} .octet.sa{background:rgba(70,217,255,.10)}
+.octet.vlan{background:rgba(255,180,92,.12)} .octet.rtag{background:rgba(126,231,135,.12)}
+.octet.payload{background:rgba(192,132,252,.11)} .octet.fcs{background:rgba(255,255,255,.08)}
+.timeline{
+  border:1px solid rgba(255,255,255,.08); border-radius:18px; padding:16px; background:#070b14; overflow:auto;
+}
+.timebar{display:grid; grid-template-columns:90px repeat(10,90px); gap:6px; min-width:1050px; align-items:center}
+.timecell{height:44px; border:1px solid rgba(255,255,255,.10); border-radius:10px; display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-size:12px; color:#dce6f5; background:rgba(255,255,255,.04)}
+.timecell.win{background:rgba(255,180,92,.18); border-color:rgba(255,180,92,.38)}
+.timecell.block{background:rgba(255,107,122,.12); border-color:rgba(255,107,122,.28)}
+.timecell.pass{background:rgba(126,231,135,.16); border-color:rgba(126,231,135,.33)}
+.timecell.drop{background:rgba(255,107,122,.22); border-color:rgba(255,107,122,.45)}
+.timecell.dup{background:rgba(192,132,252,.18); border-color:rgba(192,132,252,.35)}
+.legend{display:flex; flex-wrap:wrap; gap:8px; margin-top:12px}
+.legend span{display:inline-flex; align-items:center; gap:6px; font-size:12px; color:#cbd5e1}
+.swatch{width:14px;height:14px;border-radius:4px;border:1px solid rgba(255,255,255,.18)}
+.scenario-tabs{display:flex; flex-wrap:wrap; gap:8px; margin:14px 0 18px}
+button{
+  border:1px solid rgba(255,255,255,.12); color:#dce6f5; background:rgba(255,255,255,.05);
+  padding:10px 13px; border-radius:12px; cursor:pointer; font-family:var(--sans); font-weight:650;
+}
+button:hover,button.active{background:rgba(255,95,70,.18); border-color:rgba(255,95,70,.5); color:#fff}
+.scenario-box{display:grid; grid-template-columns:1.05fr .95fr; gap:18px}
+.callout{
+  border-left:4px solid var(--accent); padding:14px 16px; background:rgba(255,95,70,.08); border-radius:0 14px 14px 0;
+}
+.note{color:var(--muted); font-size:14px}
+.small{font-size:13px; color:var(--muted)}
+.mermaidish{
+  font-family:var(--mono); font-size:13px; line-height:1.4; background:#070b14; padding:16px; border-radius:16px;
+  border:1px solid rgba(255,255,255,.08); overflow:auto;
+}
+.node{display:inline-block; padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,.14); margin:4px; background:rgba(255,255,255,.05)}
+.node.red{border-color:rgba(255,107,122,.45)} .node.green{border-color:rgba(126,231,135,.45)}
+.node.blue{border-color:rgba(70,217,255,.45)} .node.yellow{border-color:rgba(255,180,92,.45)}
+.footer{margin-top:28px; color:var(--muted); font-size:13px}
+hr{border:0; border-top:1px solid rgba(255,255,255,.08); margin:20px 0}
+@media (max-width:1100px){
+  .layout{grid-template-columns:1fr}
+  aside{position:relative; top:0; max-height:none}
+  .grid.two,.grid.three,.grid.four,.scenario-box{grid-template-columns:1fr}
+  .pipeline{grid-template-columns:1fr}
+  .stage:not(:last-child):after{content:"↓"; right:50%; top:auto; bottom:-22px}
+  .topbar-inner{grid-template-columns:1fr}
+}
+@media print{
+  body{background:white;color:black}
+  .topbar, aside, button{display:none}
+  section,.hero,.card{box-shadow:none;background:white;color:black;border-color:#ccc}
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="context-title">
+      <strong>Current context</strong>
+      <span id="currentContext" class="context-pill">Loading section…</span>
+    </div>
+    <div>
+      <span class="context-pill"><span class="badge frer">FRER</span> sequence protection</span>
+      <span class="context-pill"><span class="badge qci">Qci</span> ingress admission</span>
+      <span class="context-pill"><span class="badge tas">TAS</span> egress time gating</span>
+    </div>
+    <div class="context-track"><div id="progress"></div></div>
+  </div>
+</header>
+
+<div class="layout">
+  <aside>
+    <div class="nav-head">Contents</div>
+    <nav id="toc">
+      <a href="#mental-model">1. Mental model</a>
+      <a href="#standards-map">2. Standards map</a>
+      <a href="#pdu-format">3. PDU and header format</a>
+      <a href="#combined-pipeline">4. Combined switch pipeline</a>
+      <a href="#frer-deep">5. FRER mechanics</a>
+      <a href="#qci-deep">6. Qci mechanics</a>
+      <a href="#tas-deep">7. TAS mechanics</a>
+      <a href="#scenarios">8. Interesting scenarios</a>
+      <a href="#observability">9. Failure observability</a>
+      <a href="#config-checklist">10. Configuration checklist</a>
+      <a href="#misconceptions">11. Misconceptions</a>
+      <a href="#sources">12. Sources</a>
+    </nav>
+  </aside>
+
+  <main>
+    <div class="hero">
+      <div class="eyebrow">Time-Sensitive Networking training note</div>
+      <h1>FRER + TAS + Qci Combined Stream Protection</h1>
+      <p class="lead">
+        A standards-oriented explanation of how <b>Frame Replication and Elimination for Reliability</b>,
+        <b>Time-Aware Shaping</b>, and <b>Per-Stream Filtering and Policing</b> work together to protect
+        automotive and industrial Ethernet streams. The important lesson is that these mechanisms do not
+        protect the same failure mode. FRER protects delivery against path loss. Qci protects the switch
+        against wrong, oversized, mistimed, or over-rate streams. TAS protects bounded egress timing.
+      </p>
+      <div style="margin-top:18px">
+        <span class="badge frer">IEEE 802.1CB</span>
+        <span class="badge qci">IEEE 802.1Qci / PSFP</span>
+        <span class="badge tas">IEEE 802.1Qbv / TAS</span>
+        <span class="badge meta">IEEE 802.1AS time base</span>
+      </div>
+    </div>
+
+    <section id="mental-model" data-title="Mental model">
+      <h2>1. The combined protection idea</h2>
+      <p>
+        Think of a critical stream as a train that must reach the listener at a precise time and must not be allowed
+        to damage the rest of the network if it behaves incorrectly.
+      </p>
+      <div class="grid three">
+        <div class="card good">
+          <h3><span class="badge frer">FRER</span> protects delivery</h3>
+          <p>
+            The talker or an intermediate bridge creates member-stream copies of the same frame. Each copy carries
+            the same sequence value. The listener or merge point accepts one valid copy and discards later duplicates.
+          </p>
+          <p class="small"><b>Failure addressed:</b> one link, bridge, or path loses a frame.</p>
+        </div>
+        <div class="card info">
+          <h3><span class="badge qci">Qci</span> protects the ingress pipeline</h3>
+          <p>
+            A stream is identified and matched to a stream filter. Maximum size, stream gate, and flow meter decisions
+            decide whether the frame can enter the forwarding path.
+          </p>
+          <p class="small"><b>Failure addressed:</b> rogue rate, wrong size, wrong priority, wrong stream, or burst flood.</p>
+        </div>
+        <div class="card warn">
+          <h3><span class="badge tas">TAS</span> protects egress time</h3>
+          <p>
+            Egress queues have gates that open and close according to a time-aware gate control list. A frame can be
+            transmitted only when its queue gate is open and the transmission can fit safely.
+          </p>
+          <p class="small"><b>Failure addressed:</b> loss of deterministic timing due to uncontrolled queue transmission.</p>
+        </div>
+      </div>
+
+      <div class="callout" style="margin-top:18px">
+        <b>The most important design rule:</b> FRER does not replace Qci and Qci does not replace TAS.
+        FRER can hide path loss, but it can also double offered load on member paths. Qci prevents each member path
+        from becoming a policing blind spot. TAS then gives the admitted frames deterministic egress windows.
+      </div>
+    </section>
+
+    <section id="standards-map" data-title="Standards map">
+      <h2>2. Standards map and what each one changes</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Mechanism</th>
+              <th>Standard family</th>
+              <th>Where it acts</th>
+              <th>Does it add a header?</th>
+              <th>Typical managed/configured objects</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>FRER</b><br>Frame Replication and Elimination for Reliability</td>
+              <td>IEEE 802.1CB</td>
+              <td>Stream identification, sequence encode/decode, split/merge, duplicate elimination</td>
+              <td><b>May add R-TAG</b>, or may use another configured sequence encoding method</td>
+              <td>Stream identification, sequence generation, sequence recovery, member streams, recovery algorithm state</td>
+            </tr>
+            <tr>
+              <td><b>Qci / PSFP</b><br>Per-Stream Filtering and Policing</td>
+              <td>IEEE 802.1Qci, later integrated into IEEE 802.1Q</td>
+              <td>Ingress side of a bridge, before queueing</td>
+              <td><b>No protocol header</b>. It uses frame fields and internal metadata.</td>
+              <td>Stream filters, stream gates, maximum SDU size, flow meters, priority/internal priority value</td>
+            </tr>
+            <tr>
+              <td><b>TAS</b><br>Time-Aware Shaper</td>
+              <td>IEEE 802.1Qbv, later integrated into IEEE 802.1Q</td>
+              <td>Egress queue transmission selection</td>
+              <td><b>No protocol header</b>. It controls queue gates in time.</td>
+              <td>Gate control list, gate states, base time, cycle time, interval, guard band, queueMaxSDU, optional hold/release commands</td>
+            </tr>
+            <tr>
+              <td><b>Time synchronization</b></td>
+              <td>IEEE 802.1AS / gPTP</td>
+              <td>Common time base for TAS schedules and sometimes diagnostics</td>
+              <td>Uses timing protocol PDUs, separate from the data stream PDU</td>
+              <td>Grandmaster, time-aware system, time-aware bridge, clock domain, sync/follow-up/path delay</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Why the mechanisms are usually deployed together</h3>
+      <div class="grid two">
+        <div class="card">
+          <h4>FRER alone is not enough</h4>
+          <p>
+            FRER duplicates frames. If each copy is not separately filtered and policed, a misconfigured talker or a
+            duplicated burst can consume both redundant paths and the egress queues. FRER improves probability of
+            delivery but does not by itself enforce the stream's traffic contract.
+          </p>
+        </div>
+        <div class="card">
+          <h4>TAS alone is not enough</h4>
+          <p>
+            TAS gives deterministic egress service only to frames that have already been admitted into the correct
+            queue. If oversized, over-rate, or spoofed frames are allowed into that queue, the scheduled window can
+            still be polluted.
+          </p>
+        </div>
+        <div class="card">
+          <h4>Qci alone is not enough</h4>
+          <p>
+            Qci can reject bad or excessive frames, but it cannot make a lost frame reappear on another path. It also
+            does not schedule the egress port by itself.
+          </p>
+        </div>
+        <div class="card">
+          <h4>Time sync is the silent dependency</h4>
+          <p>
+            TAS assumes that bridge egress gate schedules have a meaningful common time base. Without a correct time
+            base, two redundant paths can deliver valid FRER copies at unexpected times.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="pdu-format" data-title="PDU and header format">
+      <h2>3. PDU and header format</h2>
+      <p>
+        The combined system has only one major stream-protection header that may appear in the data frame:
+        the <b>FRER Redundancy Tag</b>, usually called the <b>R-TAG</b>. Qci and TAS are bridge functions.
+        They normally do not insert protocol headers into the protected stream.
+      </p>
+
+      <h3>3.1 Ordinary Ethernet frame with optional VLAN tag</h3>
+      <div class="pdu">
+        <div class="pdu-row">
+          <div class="octet da w6">Destination MAC<br>6 octets</div>
+          <div class="octet sa w6">Source MAC<br>6 octets</div>
+          <div class="octet vlan w4">802.1Q VLAN tag<br>TPID + TCI</div>
+          <div class="octet w2">EtherType / Length<br>2 octets</div>
+          <div class="octet payload">MAC client data<br>payload</div>
+          <div class="octet fcs w4">FCS<br>4 octets</div>
+        </div>
+      </div>
+
+      <h3>3.2 VLAN tag internal fields</h3>
+      <div class="pdu">
+        <div class="pdu-row">
+          <div class="octet vlan w2">TPID<br>0x8100 for C-tag</div>
+          <div class="octet vlan">PCP<br>3 bits</div>
+          <div class="octet vlan">DEI<br>1 bit</div>
+          <div class="octet vlan w2">VID<br>12 bits</div>
+        </div>
+      </div>
+      <p class="note">
+        PCP is often the first priority hint, but Qci stream identification can use more than PCP. AUTOSAR's Ethernet
+        switch driver model also exposes stream-filter primitives such as MAC addresses, IP addresses, transport ports,
+        VLAN ID, and IEEE 1722 Stream ID.
+      </p>
+
+      <h3>3.3 FRER R-TAG format</h3>
+      <div class="pdu">
+        <div class="pdu-row">
+          <div class="octet rtag w2">R-TAG TPID / EtherType<br><b>0xF1C1</b></div>
+          <div class="octet rtag w2">Reserved<br>16 bits</div>
+          <div class="octet rtag w2">Sequence Number<br>16 bits</div>
+        </div>
+      </div>
+      <div class="grid two">
+        <div class="card">
+          <h4>What the R-TAG does</h4>
+          <p>
+            It carries the low-order sequence value used by FRER recovery. Copies of the same original frame carry the
+            same sequence number, allowing a recovery point to accept the first valid copy and reject later duplicates.
+          </p>
+        </div>
+        <div class="card warn">
+          <h4>What the R-TAG does not do</h4>
+          <p>
+            It does not carry the whole route, the TAS schedule, the Qci meter state, or the reason why a frame was dropped.
+            Those are bridge configuration and runtime state, not data-frame fields.
+          </p>
+        </div>
+      </div>
+
+      <h3>3.4 Example protected frame layout</h3>
+      <div class="pdu">
+        <div class="pdu-row">
+          <div class="octet da w6">DA<br>Listener multicast/unicast</div>
+          <div class="octet sa w6">SA<br>Talker</div>
+          <div class="octet vlan w4">VLAN<br>PCP=6, VID=20</div>
+          <div class="octet rtag w3">R-TAG<br>0xF1C1, res=0, seq=1027</div>
+          <div class="octet w2">Payload EtherType<br>e.g. 0x22F0 AVTP</div>
+          <div class="octet payload">Application payload<br>sensor / control / AVTP</div>
+          <div class="octet fcs w4">FCS</div>
+        </div>
+      </div>
+      <p class="note">
+        R-TAG placement relative to VLAN tags can vary depending on the configured encoding and equipment capability.
+        The key point for training is that all FRER-aware recovery points must know where to find the sequence value.
+      </p>
+
+      <h3>3.5 Header ownership rule</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Field or metadata</th><th>Used by</th><th>Interpretation in combined protection</th></tr></thead>
+          <tbody>
+            <tr><td>Destination MAC, Source MAC</td><td>Stream identification, bridge forwarding</td><td>Can identify the stream or member stream, and can feed FDB/VLAN decisions.</td></tr>
+            <tr><td>VLAN ID and PCP</td><td>Stream identification, priority regeneration, traffic class assignment</td><td>PCP may map to an internal priority or traffic class, unless Qci stream gate assigns an Internal Priority Value.</td></tr>
+            <tr><td>R-TAG sequence number</td><td>FRER sequence recovery</td><td>Used to decide new, duplicate, old, or suspicious sequence behavior.</td></tr>
+            <tr><td>Internal stream handle</td><td>Qci and FRER configuration</td><td>Not on the wire. It is created by stream identification and used to find stream-filter and recovery state.</td></tr>
+            <tr><td>Internal priority value</td><td>Qci to queueing/TAS interaction</td><td>Not on the wire. It can override regenerated PCP for queue assignment.</td></tr>
+            <tr><td>Gate state and meter color</td><td>Qci/TAS runtime state</td><td>Not on the wire. They determine pass/drop/mark and egress eligibility.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="combined-pipeline" data-title="Combined switch pipeline">
+      <h2>4. Combined switch pipeline</h2>
+      <p>
+        A useful standards-oriented order is to separate <b>ingress admission</b>, <b>FRER sequence handling</b>,
+        <b>forwarding/replication</b>, and <b>egress time scheduling</b>. Actual silicon pipelines differ, but the
+        conceptual dependencies are stable.
+      </p>
+
+      <div class="pipeline">
+        <div class="stage"><b>1. Parse</b><small>Read DA, SA, VLAN, EtherType, possible R-TAG, payload headers.</small></div>
+        <div class="stage qci"><b>2. Stream ID</b><small>Create stream handle/member-stream handle from configured match rules.</small></div>
+        <div class="stage qci"><b>3. Qci PSFP</b><small>Max SDU, stream gate, flow meter, priority metadata. Drop bad traffic early.</small></div>
+        <div class="stage frer"><b>4. FRER</b><small>Encode, split, decode, recover, or eliminate duplicates depending on node role.</small></div>
+        <div class="stage"><b>5. Forward</b><small>FDB/VLAN/multicast destination selection and per-member-path egress choice.</small></div>
+        <div class="stage"><b>6. Queue</b><small>Priority/internal priority to traffic class to egress queue.</small></div>
+        <div class="stage tas"><b>7. TAS</b><small>Transmit only when the queue gate is open and the frame can fit.</small></div>
+      </div>
+
+      <div class="callout">
+        <b>Important distinction:</b> Qci stream gates and TAS queue gates are not the same gate. A Qci stream gate is an
+        ingress admission control associated with a stream filter. A TAS gate is an egress queue transmission gate
+        associated with a traffic class/queue and a time schedule.
+      </div>
+
+      <h3>4.1 Talker to listener with two redundant paths</h3>
+      <div class="mermaidish">
+        <span class="node green">Talker<br>Sequence encode<br>seq=501</span>
+        → <span class="node green">Split<br>copy A + copy B</span>
+        → <span class="node blue">Bridge SW1<br>Qci per member</span>
+        → <span class="node yellow">TAS window A</span>
+        → <span class="node green">Path A</span><br>
+        <span style="margin-left:230px">↘</span>
+        <span class="node blue">Bridge SW2<br>Qci per member</span>
+        → <span class="node yellow">TAS window B</span>
+        → <span class="node green">Path B</span>
+        → <span class="node green">Listener / merge<br>accept first seq=501<br>discard duplicate</span>
+      </div>
+
+      <h3>4.2 Where mistakes usually happen</h3>
+      <div class="grid three">
+        <div class="card bad"><h4>Policing original stream only</h4><p>If only the compound stream is policed before replication, each member path can still be overrun after replication.</p></div>
+        <div class="card bad"><h4>Same TAS slot for both paths</h4><p>If both member streams share the same congested scheduled instant through common bottlenecks, redundancy can collapse into correlated delay.</p></div>
+        <div class="card bad"><h4>Recover too early</h4><p>If duplicates are eliminated before a true disjoint segment, protection may be lost for the remaining path.</p></div>
+      </div>
+    </section>
+
+    <section id="frer-deep" data-title="FRER mechanics">
+      <h2>5. FRER mechanics in detail</h2>
+      <p>
+        FRER is easiest to understand as five linked functions: identify, sequence, split, transmit member streams,
+        and recover/eliminate. The sequence number is the anchor that connects copies of the same original frame.
+      </p>
+
+      <div class="grid two">
+        <div class="card">
+          <h3>5.1 Stream split and sequence encode</h3>
+          <p>
+            The talker or replication bridge takes one original stream frame, assigns a sequence value, and produces
+            multiple member stream frames. Each member copy is forwarded on a configured path. The copies must be
+            recognized as belonging to the same recovery context at the merge point.
+          </p>
+          <pre>Original frame:
+  stream = BrakeStatus
+  seq    = 840
+
+Replicated member frames:
+  A: stream=BrakeStatus.memberA, seq=840, egress=Path-A
+  B: stream=BrakeStatus.memberB, seq=840, egress=Path-B</pre>
+        </div>
+        <div class="card">
+          <h3>5.2 Sequence recovery</h3>
+          <p>
+            The recovery function keeps recent sequence history. If a frame has a sequence number that is acceptable
+            and not already seen, it is passed upward. If a second copy with the same sequence arrives later, it is
+            discarded as a duplicate.
+          </p>
+          <pre>Recovery state:
+  accepted: 837, 838, 839
+  arrival:  A seq=840  → pass
+  arrival:  B seq=840  → duplicate discard
+  arrival:  A seq=841  → pass</pre>
+        </div>
+      </div>
+
+      <h3>5.3 Sequence number wrap-around</h3>
+      <p>
+        With the R-TAG, the visible sequence field is 16 bits, so the field wraps after 65535 to 0.
+        A recovery algorithm must not treat wrap-around as a permanent reset or as an attack by itself.
+        It must compare sequence numbers within the configured recovery history/window.
+      </p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Arrival</th><th>Naive interpretation</th><th>Correct FRER-style interpretation</th></tr></thead>
+          <tbody>
+            <tr><td>65534</td><td>new</td><td>Accept and update history.</td></tr>
+            <tr><td>65535</td><td>new</td><td>Accept and update history.</td></tr>
+            <tr><td>0</td><td>looks smaller than 65535</td><td>Accept if it is the next sequence value modulo the sequence space.</td></tr>
+            <tr><td>65535 again</td><td>old</td><td>Discard as duplicate/old because it is already in recent history.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>5.4 What FRER hides and what it exposes</h3>
+      <div class="grid three">
+        <div class="card good"><h4>Hidden from application</h4><p>Single-path loss where the other copy arrives within the recovery expectation.</p></div>
+        <div class="card warn"><h4>Visible in counters</h4><p>Duplicate discards, lost member frames, sequence gaps, latent error alarms, path asymmetry.</p></div>
+        <div class="card bad"><h4>Not solved by FRER</h4><p>All paths failing, duplicated traffic overrunning queues, misconfigured TAS windows, spoofed stream identifiers.</p></div>
+      </div>
+    </section>
+
+    <section id="qci-deep" data-title="Qci mechanics">
+      <h2>6. Qci mechanics in detail</h2>
+      <p>
+        Qci is the ingress firewall for time-sensitive streams. Its job is to ensure that the frame entering the
+        forwarding and scheduling path is the right stream, right size, right priority, and right rate.
+      </p>
+
+      <h3>6.1 Qci processing objects</h3>
+      <div class="pipeline" style="grid-template-columns:repeat(5,minmax(150px,1fr))">
+        <div class="stage qci"><b>Stream identification</b><small>Match DA/SA, VLAN, IP tuple, transport port, AVTP/1722 Stream ID, ingress port, etc.</small></div>
+        <div class="stage qci"><b>Stream filter</b><small>Bind stream handle + priority to max SDU, gate, meter, and actions.</small></div>
+        <div class="stage qci"><b>Max SDU</b><small>Drop frames larger than the configured stream-specific maximum.</small></div>
+        <div class="stage qci"><b>Stream gate</b><small>Pass/close state and optional internal priority metadata.</small></div>
+        <div class="stage qci"><b>Flow meter</b><small>Token-bucket-like committed/excess rate and burst enforcement.</small></div>
+      </div>
+
+      <h3>6.2 Qci is per stream, not just per port</h3>
+      <p>
+        A port policer answers, “Is this port too busy?” Qci answers, “Is this specific stream behaving according to
+        its contract?” That difference is critical with FRER because each replicated member stream can take a different
+        path and can fail differently.
+      </p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Qci decision</th><th>Example</th><th>Why it matters with FRER</th></tr></thead>
+          <tbody>
+            <tr><td>Stream identification miss</td><td>Wrong source MAC or wrong Stream ID</td><td>Prevents a spoofed frame from being treated as a valid FRER member copy.</td></tr>
+            <tr><td>Max SDU exceed</td><td>Expected 128-byte control frame, received 900-byte frame</td><td>Prevents one bad member from occupying a scheduled transmission window.</td></tr>
+            <tr><td>Gate closed</td><td>Frame arrives outside allowed admission interval</td><td>Blocks time-invalid traffic before it reaches queues.</td></tr>
+            <tr><td>Meter red/drop</td><td>Talker sends 5 frames in a period where only 1 is allowed</td><td>Prevents replicated overload from becoming twice the damage.</td></tr>
+            <tr><td>Internal priority override</td><td>Stream gate assigns IPV=6</td><td>Ensures correct traffic-class mapping even if outer PCP is regenerated or not trusted.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>6.3 AUTOSAR naming alignment</h3>
+      <p>
+        In AUTOSAR Classic Ethernet Switch Driver terminology, the same teaching model appears as objects such as
+        <code>EthSwtStreamFilterEntry</code>, <code>EthSwtFilterMaxSduSizeRef</code>,
+        <code>EthSwtStreamGateEntryRef</code>, <code>EthSwtFlowMeteringEntryRef</code>, and
+        <code>EthSwtAssignedStreamHandle</code>. AUTOSAR also models how an internal priority value can be added to
+        frame metadata before traffic-class assignment.
+      </p>
+      <div class="callout">
+        <b>Teaching caution:</b> IEEE Qci stream gates can be time-dependent gates. Some AUTOSAR switch-driver profiles
+        or hardware mappings may expose only a subset of that behavior. Always distinguish the IEEE bridge concept
+        from the ECU software configuration interface.
+      </div>
+    </section>
+
+    <section id="tas-deep" data-title="TAS mechanics">
+      <h2>7. TAS mechanics in detail</h2>
+      <p>
+        TAS is an egress function. Once a frame is assigned to a traffic class and queue, TAS controls whether the
+        queue is allowed to transmit at that instant.
+      </p>
+
+      <h3>7.1 Gate control list idea</h3>
+      <div class="timeline">
+        <div class="timebar">
+          <div class="timecell">time</div>
+          <div class="timecell">0.0 ms</div><div class="timecell">0.1</div><div class="timecell">0.2</div><div class="timecell">0.3</div><div class="timecell">0.4</div>
+          <div class="timecell">0.5</div><div class="timecell">0.6</div><div class="timecell">0.7</div><div class="timecell">0.8</div><div class="timecell">0.9</div>
+          <div class="timecell">TC6</div>
+          <div class="timecell win">open</div><div class="timecell win">open</div><div class="timecell block">closed</div><div class="timecell block">closed</div><div class="timecell block">closed</div>
+          <div class="timecell win">open</div><div class="timecell block">closed</div><div class="timecell block">closed</div><div class="timecell block">closed</div><div class="timecell block">closed</div>
+          <div class="timecell">TC3</div>
+          <div class="timecell block">closed</div><div class="timecell block">closed</div><div class="timecell win">open</div><div class="timecell win">open</div><div class="timecell block">closed</div>
+          <div class="timecell block">closed</div><div class="timecell win">open</div><div class="timecell win">open</div><div class="timecell block">closed</div><div class="timecell block">closed</div>
+        </div>
+        <div class="legend">
+          <span><i class="swatch" style="background:rgba(255,180,92,.18)"></i>queue gate open</span>
+          <span><i class="swatch" style="background:rgba(255,107,122,.12)"></i>queue gate closed</span>
+        </div>
+      </div>
+
+      <h3>7.2 What the gate really means</h3>
+      <div class="grid three">
+        <div class="card"><h4>Open does not mean “must send”</h4><p>It means the queue is eligible for selection. The scheduler still chooses among eligible queues according to configuration.</p></div>
+        <div class="card"><h4>Closed means “cannot send”</h4><p>A frame can wait in the queue, but the queue cannot transmit while the corresponding gate is closed.</p></div>
+        <div class="card"><h4>Guard band matters</h4><p>A frame should not start if it cannot finish before a protected window, unless preemption/hold-release behavior is configured appropriately.</p></div>
+      </div>
+
+      <h3>7.3 TAS does not police the stream</h3>
+      <p>
+        TAS can stop a queue from transmitting at the wrong time, but it does not decide whether a particular stream is
+        valid. If bad frames are queued in the same traffic class, TAS will faithfully schedule the wrong workload.
+        That is why Qci must happen before queueing.
+      </p>
+    </section>
+
+    <section id="scenarios" data-title="Interesting scenarios">
+      <h2>8. Elucidative combined scenarios</h2>
+      <p>
+        Use the buttons to switch between scenario narratives. Each scenario shows where FRER, Qci, and TAS each act.
+      </p>
+      <div class="scenario-tabs" id="scenarioTabs"></div>
+      <div class="scenario-box">
+        <div class="card" id="scenarioNarrative"></div>
+        <div class="timeline" id="scenarioTimeline"></div>
+      </div>
+
+      <h3>8.1 Scenario summary table</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Scenario</th><th>What FRER does</th><th>What Qci does</th><th>What TAS does</th><th>What the application sees</th></tr></thead>
+          <tbody>
+            <tr><td>Normal two-path delivery</td><td>Accepts first copy, removes duplicate</td><td>Admits only valid member streams</td><td>Sends each member in configured window</td><td>One in-order frame</td></tr>
+            <tr><td>Path A link failure</td><td>Path B copy is enough</td><td>May count missing member on A indirectly via counters</td><td>Path B still scheduled</td><td>No loss if B arrives in time</td></tr>
+            <tr><td>Rogue duplicate storm</td><td>Can discard duplicate sequence values after they arrive</td><td>Limits or drops excess frames before queues</td><td>Prevents admitted queues from transmitting outside windows</td><td>No false extra frames, but counters show attack/misbehavior</td></tr>
+            <tr><td>Oversized member frame</td><td>May not even see it if Qci drops first</td><td>Max SDU drops frame</td><td>Window protected from oversize occupation</td><td>No frame from that member; redundant copy may still pass</td></tr>
+            <tr><td>Bad TAS alignment</td><td>May see late/out-of-order copies</td><td>Admits valid frames, unless time gate catches them</td><td>Root cause: bad or too-narrow schedule</td><td>Possible late delivery or loss</td></tr>
+            <tr><td>Talker sequence reset</td><td>Needs recovery reset/re-synchronization logic</td><td>Keeps rate/size under control during transient</td><td>Keeps egress windows controlled</td><td>Possible short disruption, then recovery</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="observability" data-title="Failure observability">
+      <h2>9. Failure observability: where to look when the stream fails</h2>
+      <p>
+        A combined deployment is only useful if you can tell which layer failed. The same application symptom can come
+        from very different root causes.
+      </p>
+
+      <div class="grid three">
+        <div class="card good">
+          <h3>FRER counters and symptoms</h3>
+          <ul>
+            <li>Accepted packets per compound stream</li>
+            <li>Discarded duplicates</li>
+            <li>Out-of-window or rogue sequence numbers</li>
+            <li>Sequence gaps and latent error indications</li>
+            <li>Member path imbalance: A copy usually first, B usually late</li>
+          </ul>
+        </div>
+        <div class="card info">
+          <h3>Qci counters and symptoms</h3>
+          <ul>
+            <li>Stream identification misses</li>
+            <li>Max SDU drops</li>
+            <li>Stream gate closed drops</li>
+            <li>Flow meter red/yellow decisions</li>
+            <li>Unexpected internal priority or traffic-class assignment</li>
+          </ul>
+        </div>
+        <div class="card warn">
+          <h3>TAS counters and symptoms</h3>
+          <ul>
+            <li>Frames waiting for gate open</li>
+            <li>Frames not fitting because of guard band</li>
+            <li>Queue occupancy spikes before scheduled windows</li>
+            <li>Missed cycle due to time-sync or base-time configuration</li>
+            <li>Wrong queue selected due to priority mapping error</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3>9.1 Symptom-to-root-cause map</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Observed symptom</th><th>Likely root cause</th><th>Check first</th><th>Do not conclude too early</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>Application receives one copy but FRER duplicate counter increases</td>
+              <td>Normal FRER operation</td>
+              <td>Sequence recovery accepted-first/discard-duplicate behavior</td>
+              <td>Do not treat every duplicate discard as a fault.</td>
+            </tr>
+            <tr>
+              <td>Application misses frame, both member paths show Qci drops</td>
+              <td>Policing too strict or talker burst exceeds contract</td>
+              <td>Max SDU, CIR/CBS, gate state, stream ID match</td>
+              <td>Do not blame TAS until you know the frames reached the queues.</td>
+            </tr>
+            <tr>
+              <td>Application misses frame, Qci passes, FRER sees gap</td>
+              <td>Both copies lost after ingress admission, or merge-point window too small</td>
+              <td>Per-path TAS windows and egress drops</td>
+              <td>Do not increase FRER window blindly if TAS is misaligned.</td>
+            </tr>
+            <tr>
+              <td>Frames arrive valid but late</td>
+              <td>TAS schedule, time sync, guard band, or queue competition</td>
+              <td>Gate control list, base time, cycle time, queueMaxSDU, traffic class mapping</td>
+              <td>FRER cannot make late frames on-time.</td>
+            </tr>
+            <tr>
+              <td>Rogue source appears as valid stream</td>
+              <td>Stream identification rule too broad</td>
+              <td>Ingress port binding, MAC/IP/UDP/StreamID primitive specificity</td>
+              <td>Do not rely on sequence number alone as authentication.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="config-checklist" data-title="Configuration checklist">
+      <h2>10. Configuration checklist for combined stream protection</h2>
+
+      <div class="grid two">
+        <div class="card">
+          <h3>10.1 Stream identity</h3>
+          <ul>
+            <li>Define the compound stream and each member stream.</li>
+            <li>Bind identification rules to ingress ports wherever possible.</li>
+            <li>Use sufficiently specific primitives: VLAN, DA/SA, IP tuple, UDP port, AVTP/1722 Stream ID as applicable.</li>
+            <li>Make sure the recovery point can map all members to the same FRER recovery context.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>10.2 FRER</h3>
+          <ul>
+            <li>Choose where sequence encoding happens: talker or replication bridge.</li>
+            <li>Choose where replication happens and where recovery/elimination happens.</li>
+            <li>Ensure disjointness. Two copies through the same failure domain are not true protection.</li>
+            <li>Configure sequence history/window/reset logic to tolerate expected path skew but reject stale duplicates.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>10.3 Qci</h3>
+          <ul>
+            <li>Configure max SDU for the actual stream payload plus headers expected at that point.</li>
+            <li>Configure per-member stream meters, not just one aggregate meter, unless the design explicitly intends aggregate policing.</li>
+            <li>Map stream gate/internal priority metadata consistently to traffic classes.</li>
+            <li>Verify that Qci drops are observable and not silently counted only as generic ingress drops.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>10.4 TAS</h3>
+          <ul>
+            <li>Calculate each egress window from frame size, link speed, interference, guard band, and clock uncertainty.</li>
+            <li>Schedule redundant paths to avoid correlated congestion.</li>
+            <li>Ensure queueMaxSDU and guard-band assumptions match actual maximum frames.</li>
+            <li>Validate base-time and cycle-time alignment across bridges.</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3>10.5 A compact design recipe</h3>
+      <pre>For each critical stream S:
+  1. Identify S at the talker/ingress and assign stream handle.
+  2. Add FRER sequence encoding before path split.
+  3. Create member streams S.A and S.B with disjoint next hops.
+  4. On every ingress bridge port:
+       apply Qci max SDU + stream gate + flow meter for each member stream.
+  5. Map admitted frames to the intended internal priority / traffic class.
+  6. Queue on the egress port.
+  7. TAS opens the queue only in the planned cycle interval.
+  8. At merge/listener:
+       use FRER recovery to accept first copy and discard duplicates.
+  9. Monitor:
+       FRER duplicate/gap counters, Qci drop reasons, TAS queue/gate timing.</pre>
+    </section>
+
+    <section id="misconceptions" data-title="Misconceptions">
+      <h2>11. Misconceptions to correct during training</h2>
+      <div class="grid two">
+        <div class="card bad">
+          <h3>“FRER gives deterministic latency.”</h3>
+          <p>
+            No. FRER improves availability by redundant delivery. TAS and traffic-class scheduling are responsible for
+            deterministic egress timing.
+          </p>
+        </div>
+        <div class="card bad">
+          <h3>“Qci and TAS are both gates, so they are the same.”</h3>
+          <p>
+            No. Qci stream gates are ingress stream admission gates. TAS gates are egress queue transmission gates.
+          </p>
+        </div>
+        <div class="card bad">
+          <h3>“If the R-TAG sequence is valid, the frame is trustworthy.”</h3>
+          <p>
+            No. Sequence values are not authentication. Stream identification and security controls are still required.
+          </p>
+        </div>
+        <div class="card bad">
+          <h3>“Duplicate discards mean something is wrong.”</h3>
+          <p>
+            Not necessarily. In normal FRER, the second good copy is expected to be discarded by the recovery function.
+          </p>
+        </div>
+        <div class="card bad">
+          <h3>“TAS will fix a talker that sends too much.”</h3>
+          <p>
+            No. TAS will delay or block queue transmission according to time, but Qci policing is needed to enforce
+            stream rate and burst contracts.
+          </p>
+        </div>
+        <div class="card bad">
+          <h3>“Policing before replication is always enough.”</h3>
+          <p>
+            Not always. After replication, each member stream consumes resources on a different path. Member-stream
+            Qci is usually needed to protect every path.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="sources" data-title="Sources">
+      <h2>12. Standards and source anchors used</h2>
+      <p>
+        This material is written as training guidance, not as a replacement for the standards. Exact normative wording
+        must always be checked in the licensed standards used by your organization.
+      </p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Source</th><th>Used for</th></tr></thead>
+          <tbody>
+            <tr><td>IEEE Std 802.1CB-2017 and related public materials</td><td>FRER functions, stream replication/recovery concept, R-TAG sequence field.</td></tr>
+            <tr><td>IEEE Std 802.1Qci-2017 and later IEEE 802.1Q integration</td><td>Per-stream filtering and policing, stream filters, stream gates, flow meters, maximum SDU.</td></tr>
+            <tr><td>IEEE Std 802.1Qbv-2015 and later IEEE 802.1Q integration</td><td>Time-aware queue gates, gate control lists, cycle schedules, guard-band concept.</td></tr>
+            <tr><td>IEEE Std 802.1AS</td><td>Time synchronization dependency for scheduled Ethernet operation.</td></tr>
+            <tr><td>AUTOSAR Classic Platform R24-11 Ethernet Switch Driver, uploaded standards bundle</td><td>Configuration terminology used in automotive software stacks: stream handle, stream filter entry, max SDU, flow metering, stream gate, priority-to-traffic-class mapping, egress scheduler and queue concepts.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="footer">
+        Generated as a single-file dark themed HTML for offline use. The sticky context tracker at the top updates as
+        you scroll through the material.
+      </p>
+    </section>
+  </main>
+</div>
+
+<script>
+const sections = Array.from(document.querySelectorAll("main section"));
+const navLinks = Array.from(document.querySelectorAll("#toc a"));
+const currentContext = document.getElementById("currentContext");
+const progress = document.getElementById("progress");
+
+function setActive(id){
+  const sec = document.getElementById(id);
+  if(!sec) return;
+  currentContext.textContent = sec.dataset.title || sec.querySelector("h2")?.textContent || id;
+  navLinks.forEach(a => a.classList.toggle("active", a.getAttribute("href") === "#" + id));
+}
+const observer = new IntersectionObserver((entries)=>{
+  const visible = entries.filter(e=>e.isIntersecting).sort((a,b)=>b.intersectionRatio-a.intersectionRatio)[0];
+  if(visible) setActive(visible.target.id);
+},{rootMargin:"-18% 0px -65% 0px", threshold:[0.1,0.25,0.5,0.75]});
+sections.forEach(s=>observer.observe(s));
+window.addEventListener("scroll",()=>{
+  const h = document.documentElement;
+  const pct = (h.scrollTop / (h.scrollHeight - h.clientHeight)) * 100;
+  progress.style.width = Math.max(0, Math.min(100, pct)) + "%";
+});
+
+const scenarios = [
+  {
+    title:"Normal redundant delivery",
+    tag:"good",
+    html:`<h3>Normal redundant delivery</h3>
+      <p><span class="badge frer">FRER</span> Talker sends two copies with the same sequence number. The listener accepts the first and discards the second as a normal duplicate.</p>
+      <p><span class="badge qci">Qci</span> Each member stream is admitted only if it matches stream identity, size, gate, and meter contract.</p>
+      <p><span class="badge tas">TAS</span> Each egress queue transmits only in its configured open window.</p>
+      <div class="callout"><b>Teaching point:</b> A duplicate discard counter increasing can be healthy. It means the redundant copy arrived and was removed.</div>`,
+    rows:[
+      ["Talker","pass","seq=501"],
+      ["Path A Qci","pass","pass"],
+      ["Path A TAS","win","open"],
+      ["Path B Qci","pass","pass"],
+      ["Path B TAS","win","open"],
+      ["FRER merge","dup","A pass, B dup"]
+    ]
+  },
+  {
+    title:"Path A failure",
+    tag:"warn",
+    html:`<h3>Path A failure</h3>
+      <p><span class="badge frer">FRER</span> Copy A is lost. Copy B still arrives with the expected sequence number, so the listener can deliver the frame.</p>
+      <p><span class="badge qci">Qci</span> On Path B, Qci still enforces the normal contract. Redundancy is not a license to bypass policing.</p>
+      <p><span class="badge tas">TAS</span> If Path B's TAS window is correct, the application sees no loss. If Path B is also late, FRER cannot fix timing.</p>
+      <div class="callout"><b>Teaching point:</b> FRER masks one path loss only if the surviving copy is admitted and scheduled in time.</div>`,
+    rows:[
+      ["Talker","pass","seq=777"],
+      ["Path A","drop","link loss"],
+      ["Path B Qci","pass","pass"],
+      ["Path B TAS","win","open"],
+      ["FRER merge","pass","B accepted"],
+      ["App","pass","no loss"]
+    ]
+  },
+  {
+    title:"Rogue duplicate storm",
+    tag:"bad",
+    html:`<h3>Rogue duplicate storm</h3>
+      <p><span class="badge frer">FRER</span> Recovery can discard many repeated sequence values, but those frames still consume ingress parsing and recovery resources if not controlled.</p>
+      <p><span class="badge qci">Qci</span> Flow metering drops excess frames before they pollute queues or overload FRER recovery state.</p>
+      <p><span class="badge tas">TAS</span> TAS prevents admitted queue traffic from transmitting outside windows, but it is not a storm-control tool.</p>
+      <div class="callout"><b>Teaching point:</b> Qci is the protective membrane. FRER duplicate elimination is not a substitute for policing.</div>`,
+    rows:[
+      ["Rogue","drop","seq=910 x 50"],
+      ["Stream ID","pass","matches"],
+      ["Qci meter","drop","red/drop"],
+      ["Queue","drop","not enqueued"],
+      ["TAS","block","no pollution"],
+      ["FRER merge","dup","few duplicates only"]
+    ]
+  },
+  {
+    title:"Oversized member frame",
+    tag:"bad",
+    html:`<h3>Oversized member frame</h3>
+      <p><span class="badge qci">Qci</span> Max SDU catches the wrong-size frame at ingress. This is especially important before scheduled windows, because one oversized frame can consume time budget.</p>
+      <p><span class="badge frer">FRER</span> If the other member copy is correct, recovery still passes the stream.</p>
+      <p><span class="badge tas">TAS</span> Its scheduled window is preserved from an illegal long transmission.</p>
+      <div class="callout"><b>Teaching point:</b> Max SDU is not a cosmetic parameter. It protects timing calculations.</div>`,
+    rows:[
+      ["Member A","drop","900 B > 160 B"],
+      ["Qci Max SDU","drop","drop"],
+      ["Member B","pass","128 B"],
+      ["Path B TAS","win","fits"],
+      ["FRER merge","pass","B accepted"],
+      ["App","pass","one good frame"]
+    ]
+  },
+  {
+    title:"Bad TAS alignment",
+    tag:"warn",
+    html:`<h3>Bad TAS alignment across redundant paths</h3>
+      <p><span class="badge tas">TAS</span> Path B's egress window opens too late because base time, cycle time, or GCL offset is wrong.</p>
+      <p><span class="badge frer">FRER</span> A late but valid duplicate may be discarded as duplicate after Path A already delivered. If Path A also fails, the late B copy may miss the application deadline.</p>
+      <p><span class="badge qci">Qci</span> Qci may show clean pass counters, because the frame is valid. The fault is in egress scheduling.</p>
+      <div class="callout"><b>Teaching point:</b> Valid and admitted does not mean on-time.</div>`,
+    rows:[
+      ["Path A","pass","seq=1200"],
+      ["Path A TAS","win","on-time"],
+      ["Path B Qci","pass","valid"],
+      ["Path B TAS","block","late window"],
+      ["FRER merge","dup","late duplicate"],
+      ["Deadline","drop","miss risk if A fails"]
+    ]
+  },
+  {
+    title:"Talker sequence reset",
+    tag:"warn",
+    html:`<h3>Talker sequence reset or restart</h3>
+      <p><span class="badge frer">FRER</span> The recovery point may see a sudden jump backward in sequence values. Recovery reset/take-no-sequence behavior and timeout policy become important.</p>
+      <p><span class="badge qci">Qci</span> Continues enforcing rate and size while recovery re-synchronizes.</p>
+      <p><span class="badge tas">TAS</span> Continues time-gating admitted frames; it does not know the sequence state.</p>
+      <div class="callout"><b>Teaching point:</b> Sequence reset handling is a reliability configuration issue, not a TAS issue.</div>`,
+    rows:[
+      ["Before restart","pass","seq=4090"],
+      ["Restart","warn","seq=0"],
+      ["Qci","pass","contract ok"],
+      ["FRER recovery","warn","reset needed"],
+      ["TAS","win","still schedules"],
+      ["App","warn","short transient"]
+    ]
+  }
+];
+
+const tabs = document.getElementById("scenarioTabs");
+const narrative = document.getElementById("scenarioNarrative");
+const timeline = document.getElementById("scenarioTimeline");
+
+function renderScenario(i){
+  const s = scenarios[i];
+  tabs.querySelectorAll("button").forEach((b,idx)=>b.classList.toggle("active", idx===i));
+  narrative.innerHTML = s.html;
+  let html = `<h3 style="margin-top:0">${s.title}</h3><div class="timebar">`;
+  html += `<div class="timecell">Stage</div><div class="timecell">t0</div><div class="timecell">t1</div><div class="timecell">t2</div><div class="timecell">t3</div><div class="timecell">t4</div><div class="timecell">t5</div><div class="timecell">t6</div><div class="timecell">t7</div><div class="timecell">t8</div><div class="timecell">result</div>`;
+  s.rows.forEach((r,idx)=>{
+    html += `<div class="timecell">${r[0]}</div>`;
+    for(let j=0;j<9;j++){
+      let cls = (j===idx || (idx===0 && j===0)) ? r[1] : "";
+      let txt = (j===idx) ? r[2] : "";
+      html += `<div class="timecell ${cls}">${txt}</div>`;
+    }
+    html += `<div class="timecell ${r[1]}">${r[1]}</div>`;
+  });
+  html += `</div><div class="legend">
+      <span><i class="swatch" style="background:rgba(126,231,135,.16)"></i>pass/accepted</span>
+      <span><i class="swatch" style="background:rgba(255,180,92,.18)"></i>TAS open/window</span>
+      <span><i class="swatch" style="background:rgba(255,107,122,.22)"></i>drop/fail</span>
+      <span><i class="swatch" style="background:rgba(192,132,252,.18)"></i>duplicate/recovery event</span>
+    </div>`;
+  timeline.innerHTML = html;
+}
+scenarios.forEach((s,i)=>{
+  const b = document.createElement("button");
+  b.textContent = s.title;
+  b.addEventListener("click",()=>renderScenario(i));
+  tabs.appendChild(b);
+});
+renderScenario(0);
+setActive("mental-model");
+</script>
+</body>
+</html>

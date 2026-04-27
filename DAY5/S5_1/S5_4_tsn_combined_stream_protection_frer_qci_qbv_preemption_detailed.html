@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Training material on combined TSN stream protection with FRER, Qci, Qbv, and frame preemption</title>
+<style>
+:root{
+  --bg:#0b0f14;
+  --panel:#111827;
+  --panel2:#151f2c;
+  --card:#182230;
+  --text:#e8edf4;
+  --muted:#a7b1c2;
+  --line:#2c3a4e;
+  --accent:#ff5f46;
+  --accent2:#ff3621;
+  --accent3:#ffb86b;
+  --green:#55d98d;
+  --blue:#5ab0ff;
+  --purple:#b58cff;
+  --code:#0a0f16;
+  --shadow:0 18px 50px rgba(0,0,0,.38);
+  --radius:18px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;
+  background:
+    radial-gradient(circle at 20% 0%,rgba(255,95,70,.12),transparent 28%),
+    radial-gradient(circle at 75% 10%,rgba(90,176,255,.10),transparent 24%),
+    var(--bg);
+  color:var(--text);
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  line-height:1.65;
+}
+a{color:#ffd1c9;text-decoration:none;border-bottom:1px dotted rgba(255,209,201,.5)}
+a:hover{color:white;border-bottom-color:white}
+.topbar{position:sticky;top:0;z-index:1000;background:rgba(9,13,19,.88);backdrop-filter:blur(14px);border-bottom:1px solid rgba(255,95,70,.35);box-shadow:0 8px 30px rgba(0,0,0,.38)}
+.topbar-inner{display:flex;align-items:center;gap:16px;min-height:64px;padding:10px 26px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:.2px;white-space:nowrap}
+.brand-mark{width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,var(--accent2),#ff8d75);box-shadow:0 0 24px rgba(255,54,33,.42)}
+.context{flex:1;min-width:0;border-left:1px solid var(--line);padding-left:16px}
+.context small{display:block;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.16em}
+.context-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:14px;color:#fff}
+.progress{height:3px;background:linear-gradient(90deg,var(--accent2),var(--accent3));width:0%;transition:width .08s linear}
+.layout{display:grid;grid-template-columns:300px minmax(0,1fr);gap:28px;max-width:1500px;margin:0 auto;padding:28px 24px 80px}
+.sidebar{position:sticky;top:84px;height:calc(100vh - 104px);overflow:auto;align-self:start;background:rgba(17,24,39,.72);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px}
+.sidebar h3{margin:0 0 12px;font-size:13px;text-transform:uppercase;letter-spacing:.14em;color:#ffb8aa}
+.nav a{display:block;padding:8px 10px;margin:3px 0;border-radius:11px;color:var(--muted);border:0;font-size:13px;line-height:1.25}
+.nav a.active{background:linear-gradient(90deg,rgba(255,54,33,.25),rgba(255,95,70,.08));color:#fff;border-left:3px solid var(--accent2)}
+main{min-width:0}
+.hero{background:linear-gradient(135deg,rgba(255,54,33,.16),rgba(21,31,44,.88) 46%,rgba(90,176,255,.10));border:1px solid rgba(255,95,70,.28);border-radius:26px;padding:34px;box-shadow:var(--shadow);margin-bottom:26px}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;background:rgba(255,95,70,.12);border:1px solid rgba(255,95,70,.35);color:#ffd8d2;padding:6px 10px;border-radius:999px;font-size:12px;text-transform:uppercase;letter-spacing:.12em}
+.hero h1{font-size:clamp(28px,4vw,48px);line-height:1.08;margin:18px 0 12px}
+.hero p{max-width:1080px;color:#cdd6e4;font-size:18px}
+.section{scroll-margin-top:92px;background:rgba(17,24,39,.80);border:1px solid var(--line);border-radius:var(--radius);padding:30px;margin:24px 0;box-shadow:var(--shadow)}
+h2{margin:0 0 16px;font-size:30px;line-height:1.2}
+h3{margin:26px 0 10px;font-size:21px;color:#fff}
+h4{margin:22px 0 8px;font-size:17px;color:#ffd1c9}
+.lead{font-size:18px;color:#d6deeb}.muted{color:var(--muted)}
+.callout{border-left:4px solid var(--accent2);background:rgba(255,95,70,.10);padding:14px 16px;border-radius:12px;margin:16px 0}
+.good{border-left-color:var(--green);background:rgba(85,217,141,.10)}
+.warn{border-left-color:var(--accent3);background:rgba(255,184,107,.10)}
+.blue{border-left-color:var(--blue);background:rgba(90,176,255,.10)}
+.grid{display:grid;gap:16px}.grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}.grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}.grid.four{grid-template-columns:repeat(4,minmax(0,1fr))}
+.card{background:rgba(24,34,48,.88);border:1px solid var(--line);border-radius:16px;padding:18px}.card h4{margin-top:0}
+code,kbd{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace;color:#ffd1c9;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:6px;padding:1px 5px}
+pre{background:linear-gradient(180deg,#07111b,#090f16);border:1px solid #263244;border-radius:14px;padding:16px;overflow:auto;color:#e7eef9;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace;font-size:13px;line-height:1.55;box-shadow:inset 0 0 0 1px rgba(255,255,255,.02)}
+.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:14px;margin:14px 0}table{border-collapse:collapse;width:100%;min-width:760px;background:rgba(10,15,22,.35)}th,td{border-bottom:1px solid var(--line);padding:11px 12px;text-align:left;vertical-align:top}th{background:rgba(255,95,70,.10);color:#fff;font-size:13px;text-transform:uppercase;letter-spacing:.08em}td{color:#dbe5f3}tr:last-child td{border-bottom:0}
+.tag{display:inline-block;border:1px solid rgba(255,95,70,.35);background:rgba(255,95,70,.11);color:#ffd8d2;border-radius:999px;padding:3px 8px;font-size:12px;margin:2px}.pill{display:inline-block;padding:2px 8px;border-radius:999px;background:rgba(90,176,255,.14);border:1px solid rgba(90,176,255,.30);color:#d7ecff;font-size:12px}.ok{color:var(--green)}.bad{color:#ff9b8e}.amber{color:var(--accent3)}
+.diagram{background:#0a111a;border:1px solid #263244;border-radius:16px;padding:18px;margin:16px 0;overflow:auto}.ascii{white-space:pre;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace;font-size:13px;color:#e7eef9;line-height:1.45}
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}.legend span{font-size:12px;border-radius:999px;padding:3px 8px;border:1px solid var(--line);background:rgba(255,255,255,.04)}
+.bytebox{display:flex;flex-wrap:wrap;gap:4px;margin:12px 0}.byte{min-width:98px;flex:1;border:1px solid #34445b;background:#0b1420;border-radius:10px;padding:10px;text-align:center}.byte strong{display:block;color:#fff}.byte small{color:var(--muted)}
+.timeline{position:relative;margin:16px 0;padding-left:18px}.timeline:before{content:"";position:absolute;left:0;top:4px;bottom:4px;width:2px;background:linear-gradient(var(--accent2),var(--blue))}.step{position:relative;margin:0 0 14px 0;padding:12px 14px;background:rgba(24,34,48,.9);border:1px solid var(--line);border-radius:14px}.step:before{content:"";position:absolute;left:-23px;top:18px;width:11px;height:11px;border-radius:50%;background:var(--accent2);box-shadow:0 0 0 4px rgba(255,54,33,.18)}
+.footer{color:var(--muted);font-size:13px;margin-top:32px}.source-list li{margin-bottom:8px}
+@media(max-width:980px){.layout{grid-template-columns:1fr}.sidebar{position:relative;top:0;height:auto}.grid.two,.grid.three,.grid.four{grid-template-columns:1fr}.brand span{display:none}.hero{padding:24px}.topbar-inner{padding:10px 16px}}
+@media print{.topbar,.sidebar{display:none}.layout{display:block;max-width:none;padding:0}.section,.hero{box-shadow:none;break-inside:avoid}body{background:white;color:black}.section,.hero,.card{background:white;border-color:#ddd}pre,.diagram{background:#f6f6f6;color:black}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="brand"><div class="brand-mark"></div><span>Databricks-style TSN Training</span></div>
+    <div class="context"><small>Current context</small><div id="ctx" class="context-title">Combined stream protection</div></div>
+  </div>
+  <div id="progress" class="progress"></div>
+</div>
+<div class="layout">
+  <aside class="sidebar">
+    <h3>Context map</h3>
+    <nav class="nav" id="nav">
+      <a href="#sec1">1. Real systems problem</a>
+      <a href="#sec2">2. Combined protection pipeline</a>
+      <a href="#sec3">3. Header fields used for classification</a>
+      <a href="#sec4">4. Stream identification details</a>
+      <a href="#sec5">5. Qci PSFP internals</a>
+      <a href="#sec6">6. Qci examples and diagrams</a>
+      <a href="#sec7">7. FRER R-TAG and sequence fields</a>
+      <a href="#sec8">8. FRER replication and elimination</a>
+      <a href="#sec9">9. Qbv TAS fields and examples</a>
+      <a href="#sec10">10. Frame preemption details</a>
+      <a href="#sec11">11. Putting FRER + Qci + Qbv + preemption together</a>
+      <a href="#sec12">12. Failure observability and counters</a>
+      <a href="#sec13">13. Automotive design examples</a>
+      <a href="#sec14">14. Configuration checklist</a>
+      <a href="#sec15">15. Common wrong explanations</a>
+      <a href="#sec16">16. Summary</a>
+      <a href="#refs">References</a>
+    </nav>
+  </aside>
+  <main>
+    <section class="hero" id="top">
+      <span class="eyebrow">IEEE 802.1CB • 802.1Qci • 802.1Qbv • 802.1Qbu/802.3br</span>
+      <h1>Training material on combined TSN stream protection with implementation details, header fields, examples, and diagrams</h1>
+      <p>This page expands the earlier sketch into implementation-oriented material. It explains how stream classification, Per-Stream Filtering and Policing (PSFP), Frame Replication and Elimination for Reliability (FRER), Time-Aware Shaping (TAS), and frame preemption cooperate in a deterministic automotive Ethernet switch pipeline.</p>
+      <div class="legend"><span>Protocol header fields</span><span>Stream filter tables</span><span>FRER R-TAG</span><span>Qbv Gate Control List</span><span>MAC Merge preemption</span><span>Automotive examples</span></div>
+    </section>
+
+    <section class="section" id="sec1" data-title="1. Real systems problem">
+      <h2>1. Start with the real systems problem</h2>
+      <p class="lead">A deterministic Ethernet stream can fail in several different ways. It can be misclassified, sent on the wrong path, overrun its traffic contract, miss a scheduled transmission window, be blocked by a large lower-priority frame, or lose one redundant path while the application still appears healthy.</p>
+      <p>The important point is that no single Time-Sensitive Networking (TSN) mechanism solves all of these. <strong>IEEE 802.1CB FRER</strong> protects against path or component failure. <strong>IEEE 802.1Qci PSFP</strong> protects the network from bad or over-rate streams. <strong>IEEE 802.1Qbv TAS</strong> gives scheduled transmission windows. <strong>IEEE 802.1Qbu / IEEE 802.3br preemption</strong> reduces blocking from already-started lower-priority traffic.</p>
+      <div class="callout">
+        <strong>Correct framing:</strong> FRER is only one layer of stream protection. The complete implementation story needs classification, policing, scheduling, preemption, redundancy, recovery, and observability.
+      </div>
+      <div class="diagram"><div class="ascii">Failure mode                          Mechanism that mainly handles it
+────────────────────────────────────  ─────────────────────────────────────────
+Wrong stream recognized               Stream identification / classification
+Over-size or over-rate sender          IEEE 802.1Qci PSFP filter + gate + meter
+Late due to queueing interference      IEEE 802.1Qbv time-aware gates
+Blocked by large low-priority frame    IEEE 802.1Qbu / IEEE 802.3br preemption
+Link or bridge path failure            IEEE 802.1CB FRER
+Hidden degradation after one path loss FRER counters and management visibility</div></div>
+    </section>
+
+    <section class="section" id="sec2" data-title="2. Combined protection pipeline">
+      <h2>2. Combined protection pipeline inside a TSN bridge</h2>
+      <p>A useful implementation model is to walk a frame through the switch pipeline. The exact ordering can vary by silicon, but the logical responsibilities are stable.</p>
+      <div class="diagram"><div class="ascii">Ingress port
+   │
+   ▼
++----------------------+     Uses Ethernet/VLAN/IP/L4 fields
+| Parser               | ────────────────────────────────────────┐
++----------------------+                                         │
+   │                                                            │
+   ▼                                                            │
++----------------------+     Produces stream_handle / stream ID   │
+| Stream identification| ◄────────────────────────────────────────┘
++----------------------+
+   │
+   ▼
++----------------------+     Stream filter, stream gate, meter, max SDU
+| Qci PSFP             |     pass / drop / mark / count
++----------------------+
+   │ accepted frames only
+   ▼
++----------------------+     Sequence generation, R-TAG insertion,
+| 802.1CB FRER         |     replication into member streams
++----------------------+
+   │
+   ├──────── copy A ─────────► egress queue/path A
+   │
+   └──────── copy B ─────────► egress queue/path B
+                              │
+                              ▼
+                       +----------------------+
+                       | Qbv gate + scheduler |
+                       +----------------------+
+                              │
+                              ▼
+                       +----------------------+
+                       | MAC Merge preemption |
+                       +----------------------+
+                              │
+                              ▼
+                         Physical link</div></div>
+      <div class="grid two">
+        <div class="card"><h4>Ingress-side discipline</h4><p>Classification and Qci decide whether the frame is a valid member of a protected stream. This avoids replicating traffic that should have been blocked.</p></div>
+        <div class="card"><h4>Egress-side discipline</h4><p>Qbv and preemption determine whether each accepted FRER copy can leave at the intended time without being blocked by other traffic.</p></div>
+      </div>
+    </section>
+
+    <section class="section" id="sec3" data-title="3. Header fields used for classification">
+      <h2>3. Protocol header fields used for stream classification</h2>
+      <p class="lead">Qci and FRER do not operate on anonymous packets. A frame must first be recognized as part of a stream. That recognition is usually based on a rule over Ethernet, VLAN, IP, and transport-layer fields.</p>
+      <p>There is not always a new on-wire header for Qci or Qbv. These bridge functions often inspect existing packet headers and internal metadata. The protocol header details matter because the classifier must know exactly which bytes mean destination MAC, source MAC, VLAN identifier, Priority Code Point, EtherType, IP addresses, protocol, Differentiated Services Code Point, and transport ports.</p>
+
+      <h3>3.1 Ethernet frame with optional VLAN and R-TAG</h3>
+      <div class="diagram"><div class="ascii">Ethernet frame used by a protected TSN stream
+
++------------------+------------------+--------------------+-------------------+-------------------+-------------------+
+| Destination MAC  | Source MAC       | Optional VLAN tag  | Optional R-TAG    | EtherType/Payload | FCS               |
+| 6 bytes          | 6 bytes          | 4 bytes            | 6 bytes           | variable          | 4 bytes           |
++------------------+------------------+--------------------+-------------------+-------------------+-------------------+
+                                      ↑                    ↑
+                                      │                    └─ FRER sequence information
+                                      └─ VLAN ID and priority used by TSN classification</div></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Field</th><th>Size</th><th>Meaning in a TSN protected stream</th><th>Typical use</th></tr></thead>
+        <tbody>
+          <tr><td>Destination MAC address</td><td>48 bits</td><td>Layer-2 destination address. Can be unicast or multicast.</td><td>Often part of stream identification. May also be changed per member stream to force different paths.</td></tr>
+          <tr><td>Source MAC address</td><td>48 bits</td><td>Sender MAC address.</td><td>Used to distinguish streams from different talkers.</td></tr>
+          <tr><td>TPID</td><td>16 bits</td><td>Tag Protocol Identifier. For normal IEEE 802.1Q VLAN tag this is commonly <code>0x8100</code>.</td><td>Tells parser that the next 16 bits are VLAN Tag Control Information.</td></tr>
+          <tr><td>PCP</td><td>3 bits inside TCI</td><td>Priority Code Point.</td><td>Maps frame to internal priority and traffic class.</td></tr>
+          <tr><td>DEI</td><td>1 bit inside TCI</td><td>Drop Eligible Indicator.</td><td>Can be used by congestion or policing logic.</td></tr>
+          <tr><td>VID</td><td>12 bits inside TCI</td><td>VLAN Identifier.</td><td>Common stream classification and forwarding partition field.</td></tr>
+          <tr><td>R-TAG TPID</td><td>16 bits</td><td>FRER Redundancy Tag EtherType, <code>0xF1C1</code>.</td><td>Indicates presence of FRER sequence information.</td></tr>
+          <tr><td>R-TAG information</td><td>32 bits</td><td>Reserved field plus sequence number.</td><td>Used by sequence decode and recovery functions.</td></tr>
+          <tr><td>EtherType</td><td>16 bits</td><td>Payload protocol, such as IPv4, IPv6, AVTP, or another protocol.</td><td>Needed if stream identification uses Layer-3 or Layer-4 fields.</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>3.2 IPv4/IPv6 and transport fields often used by extended stream identification</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Header field</th><th>Why it matters</th><th>Example</th></tr></thead>
+        <tbody>
+          <tr><td>IP source address</td><td>Identifies the talker at Layer 3.</td><td>Camera ECU source IP.</td></tr>
+          <tr><td>IP destination address</td><td>Identifies listener group or endpoint.</td><td>ADAS fusion ECU multicast or unicast address.</td></tr>
+          <tr><td>DSCP</td><td>Differentiated Services Code Point. Can encode service class semantics.</td><td>High-priority sensor stream DSCP.</td></tr>
+          <tr><td>Next header / protocol</td><td>Identifies UDP, TCP, or another transport protocol.</td><td>UDP for SOME/IP or sensor datagrams.</td></tr>
+          <tr><td>UDP/TCP source port</td><td>Application-level stream selection.</td><td>Specific camera service port.</td></tr>
+          <tr><td>UDP/TCP destination port</td><td>Application-level stream selection.</td><td>Specific listener service port.</td></tr>
+        </tbody>
+      </table></div>
+      <div class="callout warn"><strong>Implementation warning:</strong> if an R-TAG is inserted before the original EtherType, a classifier that expects the IP EtherType at a fixed offset must be aware of the R-TAG. Otherwise IP-based stream recognition can fail.</div>
+    </section>
+
+    <section class="section" id="sec4" data-title="4. Stream identification details">
+      <h2>4. Stream identification details</h2>
+      <p>Stream identification maps a frame to a <code>stream_handle</code> or equivalent internal stream identity. That stream identity is then reused by FRER, Qci, and Quality of Service (QoS) functions.</p>
+      <div class="diagram"><div class="ascii">Example stream identification rule
+
+IF ingress_port     in {P1}
+AND destination_mac = 91:E0:F0:00:12:34
+AND VLAN ID         = 20
+AND PCP             = 5
+AND EtherType       = IPv4
+AND UDP dst port    = 30490
+THEN stream_handle  = "front_camera_critical_stream"
+     internal_priority = 5
+     FRER enabled = yes
+     Qci filter = 17</div></div>
+      <div class="grid three">
+        <div class="card"><h4>Why ingress port matters</h4><p>The same MAC/VLAN tuple may appear on more than one port in a large network. Ingress port prevents false matches and can express topology assumptions.</p></div>
+        <div class="card"><h4>Why VLAN/PCP matters</h4><p>VLAN Identifier and Priority Code Point often map the frame into a traffic class and a TSN service domain.</p></div>
+        <div class="card"><h4>Why IP/L4 fields matter</h4><p>In a zonal architecture, many services may share the same VLAN. Extended stream identification can select the exact critical flow.</p></div>
+      </div>
+    </section>
+
+    <section class="section" id="sec5" data-title="5. Qci PSFP internals">
+      <h2>5. IEEE 802.1Qci PSFP internals</h2>
+      <p class="lead"><strong>Per-Stream Filtering and Policing (PSFP)</strong> protects the bridge from frames that do not match the configured stream behavior. It can filter, gate, meter, mark, count, and discard frames before they damage the rest of the deterministic fabric.</p>
+      <p>Qci is not an on-wire protocol header. It is a bridge forwarding-process enhancement. It uses frame classification and managed tables.</p>
+
+      <h3>5.1 Qci pipeline</h3>
+      <div class="diagram"><div class="ascii">Classified frame with stream_handle
+          │
+          ▼
++--------------------------+
+| Stream Filter Instance   |
+| - stream_handle/priority |
+| - max SDU size           |
+| - stream gate ID         |
+| - flow meter ID          |
+| - counters/block flags   |
++--------------------------+
+          │
+          ├─ fail max SDU ─────► discard / optionally block stream
+          │
+          ▼
++--------------------------+
+| Stream Gate Instance     |
+| - open/closed state      |
+| - optional gate schedule |
+| - optional IPV override  |
++--------------------------+
+          │
+          ├─ closed ───────────► discard / count gate drop
+          │
+          ▼
++--------------------------+
+| Flow Meter Instance      |
+| - CIR/CBS style profile  |
+| - green/yellow/red state |
+| - mark or drop behavior  |
++--------------------------+
+          │
+          ├─ red/drop ─────────► discard / count red frames
+          │
+          ▼
+     accepted frame</div></div>
+
+      <h3>5.2 Stream Filter Instance fields</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Field / object</th><th>Meaning</th><th>Implementation effect</th><th>Training example</th></tr></thead>
+        <tbody>
+          <tr><td>Stream Filter Instance ID</td><td>Index of the configured stream filter.</td><td>Lets the bridge look up the filter row after stream identification.</td><td>Filter 17 handles front camera stream.</td></tr>
+          <tr><td>Stream handle or stream identifier</td><td>The stream identity to which this filter applies.</td><td>Associates the filter with a classified stream.</td><td><code>front_camera_critical_stream</code>.</td></tr>
+          <tr><td>Priority</td><td>Internal priority value or match condition.</td><td>Allows filtering by stream and priority combination.</td><td>Only PCP/internal priority 5 is valid.</td></tr>
+          <tr><td>Stream Gate Instance ID</td><td>Points to a stream gate row.</td><td>Frame must pass the selected gate.</td><td>Gate 30 opens only during expected camera intervals.</td></tr>
+          <tr><td>Maximum SDU size</td><td>Maximum allowed service data unit size for this stream.</td><td>Oversize frames fail the filter.</td><td>Camera frame fragment must be ≤ 1200 bytes.</td></tr>
+          <tr><td>Flow Meter Instance ID</td><td>Points to a policing meter.</td><td>Frame must conform to bandwidth/burst profile.</td><td>Meter 20 enforces 40 Mbit/s and burst limit.</td></tr>
+          <tr><td>Oversize blocking flag</td><td>Controls whether an oversize event blocks future stream frames.</td><td>Useful for fail-safe behavior when a sender malfunctions.</td><td>One oversize camera frame blocks the stream until management clears it.</td></tr>
+          <tr><td>Counters</td><td>Passed, dropped, oversize, red-frame, and related events.</td><td>Validation and health monitoring.</td><td>Rising oversize counter indicates sender or configuration defect.</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>5.3 Stream Gate fields</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Gate field</th><th>Meaning</th><th>Effect on frame</th></tr></thead>
+        <tbody>
+          <tr><td>Stream Gate Instance ID</td><td>Unique identifier of a gate row.</td><td>Referenced by one or more stream filters.</td></tr>
+          <tr><td>Administrative gate state</td><td>Configured desired state.</td><td>Used by management to set open/closed behavior.</td></tr>
+          <tr><td>Operational gate state</td><td>Actual current state.</td><td>If open, frames may pass. If closed, frames do not pass.</td></tr>
+          <tr><td>Gate control list</td><td>Optional schedule of open/closed intervals.</td><td>Allows per-stream admission windows independent of egress TAS.</td></tr>
+          <tr><td>Internal Priority Value (IPV)</td><td>Optional priority assignment/override.</td><td>Can assign an internal priority to frames passing the gate.</td></tr>
+          <tr><td>Invalid receive / octets exceeded flags</td><td>State flags that can close or block based on violation.</td><td>Useful for fault containment.</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>5.4 Flow Meter fields</h3>
+      <p>A Qci flow meter is typically configured using a bandwidth profile similar to a token bucket. Exact hardware terms differ, but the conceptual fields are stable.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Meter field</th><th>Meaning</th><th>What happens when violated</th></tr></thead>
+        <tbody>
+          <tr><td>Committed Information Rate (CIR)</td><td>Allowed long-term average rate.</td><td>Over-rate traffic eventually becomes non-conformant.</td></tr>
+          <tr><td>Committed Burst Size (CBS)</td><td>Allowed burst above average rate.</td><td>Burst beyond CBS may be marked or dropped.</td></tr>
+          <tr><td>Excess Information Rate / Burst Size</td><td>Optional additional profile for yellow traffic.</td><td>Can mark traffic as lower preference instead of immediately dropping.</td></tr>
+          <tr><td>Mark red enable</td><td>Whether non-conforming frames are marked rather than dropped.</td><td>Marked frames can be dropped later under congestion.</td></tr>
+          <tr><td>Drop on red</td><td>Whether red frames are discarded at the meter.</td><td>Protects downstream queues and FRER paths.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section class="section" id="sec6" data-title="6. Qci examples and diagrams">
+      <h2>6. Qci examples and packet walk-throughs</h2>
+      <h3>6.1 Correct frame passes Qci</h3>
+      <div class="timeline">
+        <div class="step"><strong>1. Parser:</strong> frame has VLAN ID 20, PCP 5, IPv4/UDP destination port 30490.</div>
+        <div class="step"><strong>2. Stream identification:</strong> rule matches <code>front_camera_critical_stream</code>.</div>
+        <div class="step"><strong>3. Stream filter:</strong> frame length is 900 bytes, below <code>max-sdu = 1200</code>.</div>
+        <div class="step"><strong>4. Stream gate:</strong> gate is open for the expected camera interval.</div>
+        <div class="step"><strong>5. Flow meter:</strong> stream is within rate and burst contract.</div>
+        <div class="step"><strong>6. Result:</strong> frame is accepted and can be passed to FRER sequencing/replication.</div>
+      </div>
+
+      <h3>6.2 Oversize frame is blocked before FRER amplification</h3>
+      <div class="diagram"><div class="ascii">Input frame: stream = front_camera_critical_stream, size = 1600 bytes
+Configured max-sdu = 1200 bytes
+
+Stream filter check:
+    1600 > 1200  →  fail Maximum SDU filter
+
+Result:
+    frame is discarded before FRER replication
+    oversize counter increments
+    optional stream-blocked flag may be set</div></div>
+      <div class="callout good"><strong>Why this matters:</strong> if the bridge replicated the oversize or over-rate frame first, a single bad sender could consume bandwidth on both redundant paths. Qci prevents invalid traffic from being redundantly amplified.</div>
+
+      <h3>6.3 Gate-closed frame</h3>
+      <div class="diagram"><div class="ascii">Expected stream behavior:
+    one frame every 1 ms, allowed arrival window = 100 µs
+
+Actual frame arrival:
+    arrives 500 µs outside the allowed window
+
+Qci stream gate:
+    state = CLOSED at this instant
+
+Result:
+    frame is discarded or counted as gate violation
+    FRER does not see this frame</div></div>
+    </section>
+
+    <section class="section" id="sec7" data-title="7. FRER R-TAG and sequence fields">
+      <h2>7. FRER R-TAG and sequence fields</h2>
+      <p class="lead">FRER must allow the receiver to recognize that two arriving frames are copies of the same original frame. The usual on-wire mechanism is the <strong>R-TAG</strong>, or Redundancy Tag.</p>
+      <p>For the 802.1CB R-TAG, the Tag Protocol Identifier uses EtherType <code>0xF1C1</code>. The tag information contains a 16-bit Reserved field and a 16-bit Sequence Number field. The sequence number carried in the R-TAG is the low-order 16 bits of the stream sequence number.</p>
+
+      <h3>7.1 R-TAG byte layout</h3>
+      <div class="bytebox">
+        <div class="byte"><strong>R-TAG TPID</strong><small>16 bits<br><code>0xF1C1</code></small></div>
+        <div class="byte"><strong>Reserved</strong><small>16 bits<br>transmit as zero</small></div>
+        <div class="byte"><strong>Sequence Number</strong><small>16 bits<br>low-order sequence bits</small></div>
+      </div>
+      <div class="diagram"><div class="ascii">R-TAG in an Ethernet frame
+
+Before FRER sequence encode:
++----------+----------+----------+-----------+---------+
+| Dest MAC | Src MAC  | VLAN tag | EtherType | Payload |
++----------+----------+----------+-----------+---------+
+
+After R-TAG insertion:
++----------+----------+----------+------------+----------+----------+-----------+---------+
+| Dest MAC | Src MAC  | VLAN tag | TPID F1C1  | Reserved | Seq Num  | EtherType | Payload |
++----------+----------+----------+------------+----------+----------+-----------+---------+</div></div>
+
+      <h3>7.2 R-TAG field meanings</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Field</th><th>Meaning</th><th>Transmitter behavior</th><th>Receiver behavior</th></tr></thead>
+        <tbody>
+          <tr><td>R-TAG TPID <code>0xF1C1</code></td><td>Identifies the Redundancy Tag.</td><td>Inserted by sequence encode function when R-TAG encoding is used.</td><td>Parser recognizes that FRER sequence information follows.</td></tr>
+          <tr><td>Reserved</td><td>Reserved 16-bit field.</td><td>Transmit as zero unless a future standard defines otherwise.</td><td>Normally ignored or checked according to implementation policy.</td></tr>
+          <tr><td>Sequence Number</td><td>16-bit value representing the low-order bits of the sequence number for this stream.</td><td>Same value is carried by every replica of the same original frame.</td><td>Used to accept the first valid copy and discard later duplicates.</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>7.3 Sequence numbering example</h3>
+      <div class="diagram"><div class="ascii">Original stream frames at talker:
+
+Frame A  → sequence = 100
+Frame B  → sequence = 101
+Frame C  → sequence = 102
+
+After replication:
+
+Path 1 carries: A(seq100), B(seq101), C(seq102)
+Path 2 carries: A(seq100), B(seq101), C(seq102)
+
+At receiver:
+
+First seq100 copy accepted
+Second seq100 copy discarded as duplicate
+First seq101 copy accepted
+Second seq101 copy discarded as duplicate</div></div>
+      <div class="callout warn"><strong>Important:</strong> the sequence number has meaning only after stream identification. Sequence number 100 in Stream A is unrelated to sequence number 100 in Stream B.</div>
+    </section>
+
+    <section class="section" id="sec8" data-title="8. FRER replication and elimination">
+      <h2>8. FRER replication and elimination</h2>
+      <h3>8.1 Replication function</h3>
+      <p>Replication takes one accepted stream frame and creates two or more member-stream copies. Those copies usually have the same payload and the same FRER sequence value, but they may be forwarded using different destination MAC addresses, VLANs, or explicit path-control state depending on the network design.</p>
+      <div class="diagram"><div class="ascii">One original protected stream frame
+          │
+          ▼
++--------------------------+
+| Sequence generation      |
+| seq = 0x038A             |
++--------------------------+
+          │
+          ▼
++--------------------------+
+| R-TAG encode             |
+| insert TPID F1C1, seq    |
++--------------------------+
+          │
+          ├──────────── member stream A ───────────► Path A
+          │
+          └──────────── member stream B ───────────► Path B</div></div>
+
+      <h3>8.2 Elimination / sequence recovery</h3>
+      <p>At a merge point or final receiver, sequence recovery uses the stream identity and sequence number to determine whether a frame is new, duplicate, rogue, too old, or out of order.</p>
+      <div class="diagram"><div class="ascii">Arrivals at receiver for one stream
+
+Time 10.000 ms: Path A, seq 200  → accepted, deliver upward
+Time 10.030 ms: Path B, seq 200  → duplicate, discard
+Time 11.000 ms: Path B, seq 201  → accepted, deliver upward
+Time 11.400 ms: Path A, seq 201  → duplicate, discard
+Time 12.000 ms: no seq 202 copy  → lost, if recovery window/timer confirms absence
+Time 13.000 ms: Path A, seq 203  → accepted, lost counter may account for seq 202</div></div>
+
+      <h3>8.3 Why elimination is not just byte comparison</h3>
+      <p>Byte comparison is not enough because copies can arrive at different times, may have link-local metadata differences, and can be slightly reordered. FRER needs sequence-aware state:</p>
+      <pre>per_stream_state = {
+    last_accepted_sequence,
+    recovery_window,
+    history_vector or match_window,
+    counters: passed, discarded, lost, rogue, out_of_order
+}</pre>
+      <p>The receiver should not accept a late duplicate just because it looks like a valid Ethernet frame. It must ask whether the sequence value is already inside the accepted history.</p>
+    </section>
+
+    <section class="section" id="sec9" data-title="9. Qbv TAS fields and examples">
+      <h2>9. IEEE 802.1Qbv TAS fields and examples</h2>
+      <p class="lead"><strong>Time-Aware Shaper (TAS)</strong> uses per-queue transmission gates. A closed gate makes a queue unavailable for transmission, even if frames are waiting. An open gate lets the queue participate in the normal transmission-selection process.</p>
+      <p>Qbv is not an on-wire packet header. It is a port schedule. The important protocol-facing fields are management/schedule fields such as gate state bitmasks, base time, cycle time, and Gate Control List entries.</p>
+
+      <h3>9.1 Gate states as an 8-bit traffic-class mask</h3>
+      <div class="diagram"><div class="ascii">Example gate state byte for 8 traffic classes
+
+Bit:       7 6 5 4 3 2 1 0
+TC:        7 6 5 4 3 2 1 0
+State:     0 0 1 0 0 0 0 1
+
+Meaning:
+    Traffic Class 5 gate is OPEN
+    Traffic Class 0 gate is OPEN
+    All other traffic-class gates are CLOSED</div></div>
+
+      <h3>9.2 Qbv management and GCL fields</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Field</th><th>Meaning</th><th>Implementation effect</th></tr></thead>
+        <tbody>
+          <tr><td>GateEnabled</td><td>Enables or disables scheduled traffic gating on the port.</td><td>If disabled, queues behave as if schedule gating is not active.</td></tr>
+          <tr><td>AdminGateStates</td><td>Administrative initial gate-state bitmask.</td><td>Defines intended default/open/closed states by traffic class.</td></tr>
+          <tr><td>OperGateStates</td><td>Operational current gate-state bitmask.</td><td>Shows what the port is actually using.</td></tr>
+          <tr><td>AdminBaseTime</td><td>Start time of the schedule in the synchronized time domain.</td><td>Aligns repeated cycles across bridges.</td></tr>
+          <tr><td>AdminCycleTime</td><td>Period of the repeating gate schedule.</td><td>Example: 1 ms cycle for a control loop.</td></tr>
+          <tr><td>AdminControlList</td><td>Ordered list of gate operations.</td><td>Each entry changes gate states for an interval.</td></tr>
+          <tr><td>operationName</td><td>Gate operation such as SetGateStates, Set-And-Hold-MAC, or Set-And-Release-MAC.</td><td>Can also coordinate preemption hold/release behavior.</td></tr>
+          <tr><td>gateStatesValue</td><td>Bitmask indicating which traffic-class gates are open.</td><td>Only open classes can compete for transmission.</td></tr>
+          <tr><td>timeIntervalValue</td><td>Duration of this GCL entry.</td><td>After this interval, the next GCL entry applies.</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>9.3 Example GCL for a critical FRER copy path</h3>
+      <div class="diagram"><div class="ascii">Cycle time = 1 ms
+Base time  = synchronized gPTP/PTP time T0
+
+Entry 0: 0–100 µs
+    gateStates = TC5 open only
+    purpose    = critical control / protected stream window
+
+Entry 1: 100–250 µs
+    gateStates = TC4 open
+    purpose    = time-sensitive but less critical traffic
+
+Entry 2: 250–1000 µs
+    gateStates = TC0, TC1, TC2 open
+    purpose    = best effort / diagnostics / service traffic</div></div>
+      <div class="callout blue"><strong>Key point:</strong> FRER does not bypass Qbv. Each replicated copy is still subject to the gate state and scheduler on every egress port it traverses.</div>
+    </section>
+
+    <section class="section" id="sec10" data-title="10. Frame preemption details">
+      <h2>10. Frame preemption details</h2>
+      <p class="lead">Frame preemption solves serialization blocking. Without preemption, once a large lower-priority frame starts transmission, a critical frame must wait until the whole frame is finished. With preemption, the lower-priority frame can be interrupted so an express frame can be sent sooner.</p>
+      <p>IEEE 802.1Qbu defines the bridge traffic-class selection aspect, while IEEE 802.3br defines the MAC Merge sublayer behavior. The MAC Merge sublayer separates traffic into an express MAC path and a preemptable MAC path.</p>
+
+      <h3>10.1 MAC Merge model</h3>
+      <div class="diagram"><div class="ascii">Higher bridge queues
+      │
+      ├──────── Express traffic classes ───────► eMAC ───┐
+      │                                                   │
+      └──────── Preemptable traffic classes ───► pMAC ───┤
+                                                          ▼
+                                                MAC Merge Sublayer
+                                                          │
+                                                          ▼
+                                                     Physical link</div></div>
+
+      <h3>10.2 What changes on the wire?</h3>
+      <p>The original Ethernet service interface remains Ethernet-like to higher layers, but at the MAC Merge layer preemptable frames may be transmitted as fragments. The Start mFrame Delimiter (SMD) identifies whether an mFrame is express, the start of a preemptable frame, or a continuation fragment of a preempted frame.</p>
+      <div class="diagram"><div class="ascii">Without preemption
+
+Large best-effort frame ────────────────────────────────►
+                             critical frame waits
+
+With preemption
+
+Preemptable fragment 1 ──┐
+                         ├─ Express critical frame ──►
+Preemptable continuation ┘</div></div>
+
+      <h3>10.3 Preemption fields and controls</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Object / field</th><th>Meaning</th><th>Why it matters</th></tr></thead>
+        <tbody>
+          <tr><td>Express / preemptable classification</td><td>Traffic classes are configured as express or preemptable.</td><td>Critical streams should use express classes; background traffic can be preemptable.</td></tr>
+          <tr><td>MAC Merge verification</td><td>Checks that the link partner supports preemption before enabling it.</td><td>Preemption should not be activated blindly.</td></tr>
+          <tr><td>SMD</td><td>Start mFrame Delimiter at MAC Merge level.</td><td>Tells receiver how to interpret express packets and preemptable fragments.</td></tr>
+          <tr><td>Fragment count / reassembly state</td><td>Tracks fragments of preempted preemptable frames.</td><td>Allows reconstruction of the original preemptable frame.</td></tr>
+          <tr><td>Set-And-Hold-MAC / Set-And-Release-MAC</td><td>Qbv operations that can coordinate preemptable MAC hold/release behavior.</td><td>Useful around scheduled windows to prevent preemptable interference.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section class="section" id="sec11" data-title="11. Putting FRER + Qci + Qbv + preemption together">
+      <h2>11. Putting FRER + Qci + Qbv + preemption together</h2>
+      <h3>11.1 End-to-end protected stream example</h3>
+      <div class="diagram"><div class="ascii">Talker / Sensor ECU       Switch SW1                 Switch SW2A / path A        Listener / Fusion ECU
+------------------        ----------                 -------------------        ----------------------
+Frame produced
+   │
+   ▼
+Stream classified
+Qci filter passes
+FRER seq = 501
+R-TAG inserted
+Replicate ───────────────► copy A queued ───────────► Qbv TC5 window ─────────► seq 501 accepted
+        └───────────────► copy B queued via SW2B ─────────────────────────────► seq 501 duplicate discarded</div></div>
+
+      <h3>11.2 Failure case: path A fails</h3>
+      <div class="diagram"><div class="ascii">seq 600:
+    copy A lost due to link failure
+    copy B arrives
+    receiver accepts seq 600
+    application sees no interruption
+
+Observability:
+    path A passed counter stops increasing
+    lost count may remain zero if path B still delivers
+    duplicate-discard pattern changes
+    management system must detect hidden degradation</div></div>
+
+      <h3>11.3 Bad-sender case: over-rate stream</h3>
+      <div class="diagram"><div class="ascii">Sensor ECU sends 3× configured rate
+        │
+        ▼
+Qci flow meter detects non-conforming traffic
+        │
+        ├─ drop red frames before FRER
+        │
+        └─ accepted conforming frames continue to FRER
+
+Result:
+    FRER protects valid traffic
+    network is not flooded with replicated invalid traffic</div></div>
+
+      <h3>11.4 Timing case: Qbv window and preemption</h3>
+      <div class="diagram"><div class="ascii">At egress port, TC5 critical stream window opens at 0 µs
+
+Without preemption:
+    a 1500-byte best-effort frame that started at -5 µs may block the TC5 frame.
+
+With preemption:
+    best-effort frame is sent through pMAC and can be fragmented.
+    TC5 express frame interrupts and enters the scheduled window with lower blocking.</div></div>
+      <div class="callout"><strong>Layered meaning:</strong> Qci decides whether the stream is valid, FRER protects against path failure, Qbv protects the time window, and preemption reduces blocking by lower-priority frames.</div>
+    </section>
+
+    <section class="section" id="sec12" data-title="12. Failure observability and counters">
+      <h2>12. Failure observability and counters</h2>
+      <p>FRER hides failures from the application by design. Therefore, management counters are essential. Otherwise a vehicle may continue working after one redundant path has failed, but it is no longer protected against the next fault.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Counter</th><th>Meaning</th><th>Healthy interpretation</th><th>Warning interpretation</th></tr></thead>
+        <tbody>
+          <tr><td>rx-passed-pkts</td><td>Frames accepted by sequence recovery.</td><td>Should increase with delivered stream frames.</td><td>Stops increasing when no valid copy arrives.</td></tr>
+          <tr><td>rx-discarded-pkts</td><td>Duplicates or invalid/rogue frames discarded.</td><td>Duplicate discards are normal in FRER.</td><td>Unexpected surge may indicate misrouting or sequence errors.</td></tr>
+          <tr><td>rx-lost-pkts</td><td>Sequence values not received on any ingress port.</td><td>Should remain zero or within validated limits.</td><td>Critical reliability problem.</td></tr>
+          <tr><td>rx-out-of-order-pkts</td><td>Frames arriving outside expected order.</td><td>Small amounts can occur with path skew.</td><td>Growth indicates excessive asymmetry or path issue.</td></tr>
+          <tr><td>rx-rogue-pkts</td><td>Unexpected sequence behavior or frame not acceptable to recovery.</td><td>Should normally be zero.</td><td>May indicate classification, routing, replay, or corruption issue.</td></tr>
+          <tr><td>encode-errored-pkts</td><td>Sequence encode/decode function could not process the metadata.</td><td>Should be zero.</td><td>Malformed R-TAG, parser problem, or interoperability issue.</td></tr>
+          <tr><td>generation-reset</td><td>Sequence generation reset event.</td><td>Expected only during controlled startup/reconfiguration.</td><td>Unexpected reset can disturb recovery windows.</td></tr>
+        </tbody>
+      </table></div>
+      <div class="callout warn"><strong>Important:</strong> duplicate discards are not automatically bad. In healthy 1+1 FRER, duplicate elimination is expected. The more important question is whether one path silently stopped contributing, whether lost packets are increasing, or whether rogue/out-of-order counters are trending upward.</div>
+    </section>
+
+    <section class="section" id="sec13" data-title="13. Automotive design examples">
+      <h2>13. Automotive design examples</h2>
+      <h3>13.1 Critical control stream</h3>
+      <div class="grid two">
+        <div class="card"><h4>Design goal</h4><p>A chassis or motion-control stream must arrive within a tight cycle and must survive one link failure without application-level switchover delay.</p></div>
+        <div class="card"><h4>Mechanism set</h4><p>Use stream identification, Qci max-SDU and meter checks, Qbv scheduled egress windows, express traffic class with preemption support, and FRER across disjoint paths.</p></div>
+      </div>
+      <div class="diagram"><div class="ascii">Central compute ── SW1 ── SW2A ── Actuator zone
+        │            │
+        │            └── SW2B ───── Actuator zone
+        │
+        └─ FRER copies use path A and path B
+
+Common-cause check:
+    Are SW2A and SW2B physically independent?
+    Do they share power?
+    Do they share the same harness segment?
+    Does the GCL reserve compatible windows on both paths?</div></div>
+
+      <h3>13.2 Camera or sensor stream</h3>
+      <div class="diagram"><div class="ascii">Camera stream problem:
+    high bandwidth, periodic bursts, strict latency requirement, possible path failure
+
+Recommended stack:
+    classification: camera MAC/VLAN/IP/UDP tuple
+    Qci: max SDU + meter to block malformed or over-rate bursts
+    Qbv: scheduled windows on bottleneck ports
+    preemption: protect windows from large background frames
+    FRER: duplicate only if reliability requirement justifies bandwidth cost</div></div>
+
+      <h3>13.3 Diagnostics and logging</h3>
+      <p>Diagnostics and logging usually should not consume FRER resources unless there is a specific safety or availability requirement. They may still use Qci policing and lower-priority scheduled or weighted service to avoid disturbing critical traffic.</p>
+    </section>
+
+    <section class="section" id="sec14" data-title="14. Configuration checklist">
+      <h2>14. Configuration checklist</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Question</th><th>Why it matters</th><th>Bad result if ignored</th></tr></thead>
+        <tbody>
+          <tr><td>What exact header fields identify the stream?</td><td>Classification drives Qci and FRER.</td><td>Wrong traffic protected, critical traffic unprotected.</td></tr>
+          <tr><td>What is the maximum SDU for the stream?</td><td>Qci needs an oversize rule.</td><td>Malformed frames can consume deterministic resources.</td></tr>
+          <tr><td>What rate and burst contract applies?</td><td>Qci meter protects bandwidth.</td><td>FRER may replicate a traffic storm.</td></tr>
+          <tr><td>Are the redundant paths sufficiently disjoint?</td><td>FRER only helps if failures are independent enough.</td><td>One common fault kills all copies.</td></tr>
+          <tr><td>Are Qbv windows available on every copy path?</td><td>Each FRER member stream still needs deterministic egress timing.</td><td>Copies arrive too late despite redundancy.</td></tr>
+          <tr><td>Is preemption enabled and verified where needed?</td><td>Reduces blocking around scheduled windows.</td><td>Large preemptable frames can still block express traffic.</td></tr>
+          <tr><td>Which counters prove that both paths are healthy?</td><td>FRER can hide one-path failures.</td><td>System appears healthy but has lost redundancy.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section class="section" id="sec15" data-title="15. Common wrong explanations">
+      <h2>15. Common wrong explanations</h2>
+      <div class="grid two">
+        <div class="card"><h4>Wrong: “FRER creates the redundant paths.”</h4><p>Correct: FRER uses multiple paths. Path construction is done by topology design, explicit path control, or centralized configuration.</p></div>
+        <div class="card"><h4>Wrong: “Qci is just a rate limiter.”</h4><p>Correct: Qci includes stream filters, stream gates, maximum SDU filtering, flow meters, priority assignment, blocking behavior, and counters.</p></div>
+        <div class="card"><h4>Wrong: “Qbv guarantees timing by itself.”</h4><p>Correct: Qbv controls queue eligibility by time. The frame must still fit the window, avoid blocking, and pass the local scheduler.</p></div>
+        <div class="card"><h4>Wrong: “Preemption is another priority queue.”</h4><p>Correct: preemption is a MAC Merge mechanism that allows express frames to interrupt preemptable frame transmission.</p></div>
+        <div class="card"><h4>Wrong: “Duplicate discards mean errors.”</h4><p>Correct: duplicate discards are normal in FRER. Lost, rogue, encode-error, or changed per-path patterns are more concerning.</p></div>
+        <div class="card"><h4>Wrong: “Enabling all standards automatically gives safety.”</h4><p>Correct: the standards are composable, but the safety and timing argument depends on correct configuration, validation, and monitoring.</p></div>
+      </div>
+    </section>
+
+    <section class="section" id="sec16" data-title="16. Summary">
+      <h2>16. Summary</h2>
+      <p>Combined TSN stream protection is a layered design. <strong>Stream identification</strong> decides which packets belong to the protected stream. <strong>Qci PSFP</strong> decides whether those packets are admissible according to size, gate, and meter rules. <strong>FRER</strong> adds sequence information, replicates frames over redundant paths, and eliminates duplicates. <strong>Qbv TAS</strong> controls when egress queues may transmit. <strong>Frame preemption</strong> reduces blocking by preemptable lower-priority frames. <strong>Management counters</strong> expose whether the protected stream is still redundant and healthy.</p>
+      <div class="diagram"><div class="ascii">One-sentence implementation memory aid
+
+Identify the stream → police the stream → replicate the valid stream → schedule each copy → preempt blockers → recover one clean stream → monitor hidden degradation.</div></div>
+    </section>
+
+    <section class="section" id="refs" data-title="References">
+      <h2>References and source notes</h2>
+      <ul class="source-list">
+        <li>Base content source: uploaded <code>S5_4.md</code>, which framed the combination of FRER, Qci, Qbv, preemption, and automotive stream protection.</li>
+        <li>IEEE 802.1CB-2017 public PDF excerpts used for FRER sequence generation, R-TAG format, and scope.</li>
+        <li>IEEE 802.1Qci-2017 public PDF excerpts used for PSFP stream filters, stream gates, maximum SDU filtering, and flow meter identifiers.</li>
+        <li>IEEE 802.1Qcw draft snippets used for Qbv/YANG field names such as <code>GateEnabled</code>, <code>AdminGateStates</code>, <code>AdminBaseTime</code>, <code>AdminCycleTime</code>, and <code>AdminControlList</code>.</li>
+        <li>IEEE 802.3br public tutorial material and verification slides used for MAC Merge, eMAC/pMAC, SMD, and verification concepts.</li>
+        <li>Vendor TSN configuration guides were used only as implementation examples for how these concepts appear in device configuration.</li>
+      </ul>
+      <p class="footer">Generated as standalone HTML. No external scripts or fonts are required.</p>
+    </section>
+  </main>
+</div>
+<script>
+const sections = [...document.querySelectorAll('.section')];
+const navLinks = [...document.querySelectorAll('#nav a')];
+const ctx = document.getElementById('ctx');
+const progress = document.getElementById('progress');
+const byId = Object.fromEntries(navLinks.map(a => [a.getAttribute('href').slice(1), a]));
+function update(){
+  let current = sections[0];
+  for(const sec of sections){
+    const rect = sec.getBoundingClientRect();
+    if(rect.top <= 120) current = sec;
+  }
+  navLinks.forEach(a => a.classList.remove('active'));
+  const active = byId[current.id];
+  if(active) active.classList.add('active');
+  ctx.textContent = current.dataset.title || current.querySelector('h2')?.textContent || 'Combined stream protection';
+  const scrollTop = window.scrollY || document.documentElement.scrollTop;
+  const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+  progress.style.width = (docHeight > 0 ? (scrollTop/docHeight)*100 : 0) + '%';
+}
+window.addEventListener('scroll', update, {passive:true});
+window.addEventListener('resize', update);
+update();
+</script>
+</body>
+</html>

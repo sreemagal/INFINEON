@@ -1,0 +1,3794 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IEEE 1722 / MSRP / CBS Switch Fabric Animator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* =========================================================================
+   IEEE 1722 / MSRP / CBS Switch Fabric Animator
+   Standards: IEEE 802.1Q-2022 (MSRP cl 35, CBS cl 8.6.8.2 + Annex L,
+              Stream Identification cl 6.6/8.6.5/Annex T, Forwarding cl 8.6/8.8)
+              IEEE 1722-2016 (AVTPDU cl 5.4/5.5)
+   Visual:    Databricks dark
+   ========================================================================= */
+
+:root{
+  --bg-deep:#0B1416;
+  --bg-base:#0E1B20;
+  --bg-panel:#102A30;
+  --bg-panel-2:#143840;
+  --bg-soft:#1B3139;
+  --line:#234650;
+  --line-soft:#1A3038;
+  --text:#EEEDE9;
+  --text-dim:#A6B4B6;
+  --text-mute:#6B7E82;
+  --accent:#FF3621;
+  --accent-soft:rgba(255,54,33,.18);
+  --ok:#00A972;
+  --ok-soft:rgba(0,169,114,.18);
+  --info:#1B98E0;
+  --info-soft:rgba(27,152,224,.16);
+  --warn:#FFAB00;
+  --warn-soft:rgba(255,171,0,.16);
+  --ctrl:#9C27B0;
+  --classA:#1B98E0;
+  --classB:#00A972;
+  --be:#6B7E82;
+  --grid:#16323A;
+  --shadow:0 4px 20px rgba(0,0,0,.5);
+  --r:6px;
+  --r-sm:4px;
+  --mono:'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+*{box-sizing:border-box; margin:0; padding:0;}
+html,body{height:100%; background:var(--bg-deep); color:var(--text); font-family:var(--sans); font-size:13px; line-height:1.4; overflow:hidden;}
+
+button, input, select, textarea{font-family:inherit; color:inherit;}
+
+/* ---------- Layout grid ---------- */
+.app{
+  display:grid;
+  grid-template-rows: 44px minmax(0, 1fr) 140px;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  grid-template-areas:
+    "topbar topbar"
+    "stage  inspector"
+    "log    log";
+  height:100vh; width:100vw;
+  background:var(--bg-deep);
+  border:1px solid var(--line);
+}
+.topbar{ grid-area:topbar; background:var(--bg-base); border-bottom:1px solid var(--line); display:flex; align-items:center; gap:12px; padding:0 12px; min-width:0; flex-wrap:nowrap; overflow-x:auto; }
+.stage{ grid-area:stage; position:relative; background:var(--bg-base); border-right:1px solid var(--line); overflow:hidden; min-width:0; min-height:0; }
+.inspector{ grid-area:inspector; background:var(--bg-panel); display:flex; flex-direction:column; min-width:0; min-height:0; overflow:hidden; }
+.logpane{ grid-area:log; background:var(--bg-base); border-top:1px solid var(--line); overflow-y:auto; font-family:var(--mono); font-size:11.5px; padding:6px 10px; min-height:0; }
+
+/* ---------- Topbar ---------- */
+.brand{ display:flex; flex-direction:column; line-height:1; }
+.brand .b1{ font-weight:700; font-size:13px; letter-spacing:.04em; }
+.brand .b2{ font-size:9.5px; color:var(--text-mute); margin-top:2px; letter-spacing:.08em; text-transform:uppercase; }
+
+.tb-sep{ width:1px; height:26px; background:var(--line); }
+
+.btn{
+  background:var(--bg-soft); color:var(--text); border:1px solid var(--line);
+  padding:6px 11px; border-radius:var(--r-sm); font-size:12px; cursor:pointer;
+  transition:background .12s, border-color .12s; user-select:none;
+  display:inline-flex; align-items:center; gap:6px;
+}
+.btn:hover{ background:var(--bg-panel-2); border-color:#2c5663; }
+.btn:active{ transform:translateY(1px); }
+.btn:disabled{ opacity:.4; cursor:not-allowed; }
+.btn.primary{ background:var(--accent); border-color:var(--accent); color:#fff; }
+.btn.primary:hover{ background:#e22d1a; border-color:#e22d1a; }
+.btn.ok{ background:var(--ok); border-color:var(--ok); color:#fff; }
+.btn.ok:hover{ background:#008f60; }
+.btn.ghost{ background:transparent; }
+.btn.tiny{ padding:3px 7px; font-size:11px; }
+
+.select{
+  background:var(--bg-soft); color:var(--text); border:1px solid var(--line);
+  padding:6px 8px; border-radius:var(--r-sm); font-size:12px; cursor:pointer;
+}
+
+.tb-spacer{ flex:1; }
+
+.scenario-box{ display:flex; align-items:center; gap:6px; }
+.scenario-box label{ color:var(--text-mute); font-size:11px; text-transform:uppercase; letter-spacing:.08em; }
+
+.speed-box{ display:flex; align-items:center; gap:6px; color:var(--text-mute); font-size:11px; }
+.speed-box input[type=range]{ width:90px; accent-color:var(--accent); }
+
+/* ---------- Stage / topology ---------- */
+#topo{ position:absolute; inset:0; width:100%; height:100%; display:block; }
+
+/* ---------- Inspector ---------- */
+.insp-head{ padding:10px 12px; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; }
+.insp-head h3{ font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--text-dim); font-weight:600; }
+.insp-tabs{ display:flex; border-bottom:1px solid var(--line); }
+.insp-tab{ flex:1; padding:8px; text-align:center; font-size:11px; cursor:pointer; color:var(--text-mute); border-bottom:2px solid transparent; text-transform:uppercase; letter-spacing:.06em; }
+.insp-tab.active{ color:var(--text); border-bottom-color:var(--accent); background:var(--bg-panel-2); }
+.insp-body{ flex:1; overflow-y:auto; padding:10px 12px; }
+
+.empty-msg{ color:var(--text-mute); font-style:italic; text-align:center; padding:24px 8px; font-size:11.5px; }
+
+/* Header byte map */
+.hdr-section{ margin-bottom:14px; }
+.hdr-title{ font-size:10.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--text-dim); margin-bottom:6px; padding-bottom:3px; border-bottom:1px solid var(--line-soft); display:flex; justify-content:space-between; }
+.hdr-title .ref{ color:var(--text-mute); font-family:var(--mono); font-size:9.5px; font-weight:400; }
+.hdr-grid{ display:grid; grid-template-columns: 50px 1fr; gap:0; font-family:var(--mono); font-size:10.5px; }
+.hdr-grid .row{ display:contents; }
+.hdr-grid .row > div{ padding:3px 6px; border-bottom:1px solid var(--line-soft); }
+.hdr-grid .o{ color:var(--text-mute); background:var(--bg-base); text-align:right; }
+.hdr-grid .v{ color:var(--text); }
+.hdr-grid .v .lbl{ color:var(--info); font-weight:500; }
+.hdr-grid .v .hex{ color:var(--accent); }
+.hdr-grid .v .note{ color:var(--text-mute); font-style:italic; font-size:10px; }
+
+/* Field tooltip rows */
+.kv{ display:grid; grid-template-columns: 110px 1fr; gap:0 6px; font-size:11.5px; margin-bottom:4px; }
+.kv .k{ color:var(--text-mute); }
+.kv .v{ color:var(--text); font-family:var(--mono); }
+
+table.tbl{ width:100%; border-collapse:collapse; font-size:11px; font-family:var(--mono); margin-bottom:10px; }
+table.tbl th, table.tbl td{ padding:4px 6px; text-align:left; border-bottom:1px solid var(--line-soft); }
+table.tbl th{ background:var(--bg-soft); color:var(--text-dim); font-size:10px; text-transform:uppercase; letter-spacing:.06em; font-weight:600; }
+table.tbl tr:hover td{ background:var(--bg-panel-2); }
+table.tbl td.ok{ color:var(--ok); }
+table.tbl td.fail{ color:var(--accent); }
+table.tbl td.warn{ color:var(--warn); }
+
+/* Pack visualization */
+.pack-vis{ background:var(--bg-base); border:1px solid var(--line-soft); border-radius:var(--r-sm); padding:8px; margin:6px 0; font-family:var(--mono); font-size:10.5px; }
+.pack-row{ display:flex; align-items:center; gap:6px; margin:3px 0; }
+.pack-cell{ background:var(--bg-soft); border:1px solid var(--line); padding:2px 6px; border-radius:3px; min-width:44px; text-align:center; }
+.pack-cell.ev{ background:var(--info-soft); border-color:var(--info); color:var(--info); }
+.pack-cell.res{ background:var(--accent-soft); border-color:var(--accent); color:var(--accent); }
+.pack-arrow{ color:var(--text-mute); }
+
+/* ---------- Log ---------- */
+.log-line{ white-space:pre-wrap; padding:1px 0; color:var(--text-dim); }
+.log-line .t{ color:var(--text-mute); }
+.log-line.info .t{ color:var(--info); }
+.log-line.ok{ color:#79e8c0; }
+.log-line.fail{ color:#ff8e7a; }
+.log-line.warn{ color:#ffd066; }
+.log-line .sw{ color:var(--info); font-weight:500; }
+.log-line .em{ color:var(--text); font-weight:500; }
+
+/* ---------- Modal ---------- */
+.modal-bg{
+  position:fixed; inset:0; background:rgba(0,0,0,.65); backdrop-filter:blur(2px);
+  display:none; align-items:center; justify-content:center; z-index:100;
+}
+.modal-bg.open{ display:flex; }
+.modal{
+  background:var(--bg-panel); border:1px solid var(--line); border-radius:var(--r);
+  width:min(880px, 92vw); max-height:88vh; display:flex; flex-direction:column;
+  box-shadow:var(--shadow);
+}
+.modal-head{ padding:12px 16px; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; }
+.modal-head h2{ font-size:14px; font-weight:600; }
+.modal-head .x{ background:transparent; border:none; color:var(--text-mute); font-size:18px; cursor:pointer; padding:0 6px; }
+.modal-head .x:hover{ color:var(--text); }
+.modal-tabs{ display:flex; border-bottom:1px solid var(--line); padding:0 16px; gap:14px; }
+.modal-tab{ padding:10px 0; font-size:12px; cursor:pointer; color:var(--text-mute); border-bottom:2px solid transparent; }
+.modal-tab.active{ color:var(--text); border-bottom-color:var(--accent); }
+.modal-body{ padding:16px; overflow-y:auto; }
+.modal-foot{ padding:10px 16px; border-top:1px solid var(--line); display:flex; justify-content:flex-end; gap:8px; }
+
+.form-grid{ display:grid; grid-template-columns: repeat(auto-fill, minmax(220px,1fr)); gap:10px 14px; }
+.field{ display:flex; flex-direction:column; gap:4px; }
+.field label{ font-size:10.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--text-mute); }
+.field input, .field select{
+  background:var(--bg-base); border:1px solid var(--line); border-radius:var(--r-sm);
+  padding:6px 8px; color:var(--text); font-family:var(--mono); font-size:12px;
+}
+.field input:focus, .field select:focus{ outline:none; border-color:var(--info); }
+.field .hint{ font-size:10px; color:var(--text-mute); }
+
+/* ---------- SVG bits ---------- */
+.node-talker, .node-listener{ cursor:pointer; }
+.switch{ cursor:pointer; }
+.switch:hover .switch-body{ filter:brightness(1.15); }
+.port{ cursor:pointer; }
+.port-label{ font-family:var(--mono); font-size:9px; fill:var(--text-mute); pointer-events:none; }
+.node-label{ font-family:var(--sans); font-size:11px; font-weight:600; fill:var(--text); pointer-events:none; }
+.node-sub{ font-family:var(--mono); font-size:9px; fill:var(--text-mute); pointer-events:none; }
+.gear-btn{ cursor:pointer; }
+.gear-btn:hover circle{ fill:var(--accent); }
+
+.link{ stroke:var(--line); stroke-width:2; fill:none; }
+.link.active{ stroke:#3a6373; }
+
+.packet{ pointer-events:none; }
+.cbs-bar-bg{ fill:var(--bg-base); stroke:var(--line-soft); }
+.cbs-bar-fill{ fill:var(--info); }
+.cbs-bar-fill.over{ fill:var(--accent); }
+.cbs-thresh{ stroke:var(--accent); stroke-width:1; stroke-dasharray:2,2; }
+
+/* Switch internal panel */
+.switch-internal{ pointer-events:none; }
+.queue-rect{ fill:var(--bg-soft); stroke:var(--line); }
+.queue-rect.has{ stroke:var(--info); }
+.queue-frame{ fill:var(--info); }
+.queue-frame.classA{ fill:var(--classA); }
+.queue-frame.classB{ fill:var(--classB); }
+.queue-frame.be{ fill:var(--be); }
+
+.banner-fail{
+  position:fixed; top:60px; left:50%; transform:translateX(-50%);
+  background:var(--accent); color:#fff; padding:8px 14px; border-radius:var(--r-sm);
+  z-index:200; font-size:12px; box-shadow:var(--shadow); display:none;
+}
+.banner-fail.show{ display:block; }
+
+.banner-info{
+  position:absolute; top:14px; left:50%; transform:translateX(-50%);
+  background:var(--bg-panel-2); border:1px solid var(--info);
+  color:var(--text); padding:8px 14px; border-radius:var(--r-sm);
+  font-size:12px; box-shadow:var(--shadow); max-width:70%;
+  pointer-events:none; opacity:0; transition:opacity .2s;
+}
+.banner-info.show{ opacity:1; }
+
+/* Conformance panel */
+.conf-panel{
+  position:absolute; bottom:8px; left:8px;
+  background:rgba(20,56,64,.85); border:1px solid var(--line);
+  padding:5px 9px; border-radius:var(--r-sm); font-size:9.5px;
+  color:var(--text-mute); max-width:280px;
+  font-family:var(--mono); line-height:1.45;
+  z-index:5; pointer-events:none;
+}
+.conf-panel .h{ color:var(--text); font-weight:600; margin-bottom:2px; font-family:var(--sans); font-size:9.5px; letter-spacing:.06em; text-transform:uppercase; }
+.conf-panel a{ color:var(--info); text-decoration:none; }
+
+/* Scrollbars */
+::-webkit-scrollbar{ width:8px; height:8px; }
+::-webkit-scrollbar-track{ background:var(--bg-base); }
+::-webkit-scrollbar-thumb{ background:var(--line); border-radius:4px; }
+::-webkit-scrollbar-thumb:hover{ background:#2e5563; }
+
+/* Section dividers in modal forms */
+.subhead{ font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.08em; margin:14px 0 8px; padding-bottom:4px; border-bottom:1px solid var(--line-soft); }
+
+/* Editable tables */
+table.edit-tbl{ width:100%; border-collapse:collapse; font-size:11.5px; font-family:var(--mono); }
+table.edit-tbl th, table.edit-tbl td{ padding:4px 6px; border:1px solid var(--line-soft); }
+table.edit-tbl th{ background:var(--bg-soft); color:var(--text-dim); font-size:10px; text-transform:uppercase; letter-spacing:.06em; font-weight:600; text-align:left; }
+table.edit-tbl input, table.edit-tbl select{
+  width:100%; background:transparent; border:none; color:var(--text); font-family:var(--mono); font-size:11.5px; padding:1px 2px;
+}
+table.edit-tbl input:focus{ background:var(--bg-base); outline:1px solid var(--info); }
+table.edit-tbl .del-btn{ background:transparent; border:none; color:var(--text-mute); cursor:pointer; padding:2px 6px; }
+table.edit-tbl .del-btn:hover{ color:var(--accent); }
+
+/* CBS strip chart in inspector */
+.cbs-chart{ background:var(--bg-base); border:1px solid var(--line-soft); border-radius:var(--r-sm); padding:6px; margin-bottom:8px; }
+
+/* Footer attribution */
+.foot-cite{
+  position:absolute; bottom:6px; right:10px;
+  font-family:var(--mono); font-size:9px; color:var(--text-mute);
+  letter-spacing:.06em; pointer-events:none; opacity:.6;
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- =================== TOPBAR =================== -->
+  <div class="topbar">
+    <div class="brand">
+      <div class="b1">TSN Switch Fabric Animator</div>
+      <div class="b2">IEEE 802.1Q-2022 / IEEE 1722-2016</div>
+    </div>
+    <div class="tb-sep"></div>
+
+    <button class="btn primary" id="btn-play" title="Play / Pause"><span id="play-ico">▶</span> <span id="play-lbl">Play</span></button>
+    <button class="btn" id="btn-step" title="Step one event">⏭ Step</button>
+    <button class="btn ghost" id="btn-reset" title="Reset to scenario start">⟲ Reset</button>
+
+    <div class="tb-sep"></div>
+
+    <div class="speed-box">
+      <span>Speed</span>
+      <input type="range" id="speed" min="1" max="10" value="5">
+    </div>
+
+    <div class="tb-sep"></div>
+
+    <div class="scenario-box">
+      <label>Scenario</label>
+      <select class="select" id="scenario">
+        <option value="S1">S1 — Single stream success</option>
+        <option value="S2">S2 — Admission fail (oversize)</option>
+        <option value="S3">S3 — Two same-priority, both fit</option>
+        <option value="S4">S4 — Two same-priority, second fails</option>
+        <option value="S5">S5 — Class A vs Class B (isolation)</option>
+        <option value="S6" selected>S6 — Rear-view: emergency rank preempts</option>
+        <option value="S7">S7 — Multicast partial fail</option>
+        <option value="S8">S8 — VID mismatch at listener</option>
+        <option value="S9">S9 — No FDB entry</option>
+        <option value="S10">S10 — Listener Asking Failed</option>
+      </select>
+    </div>
+
+    <div class="tb-spacer"></div>
+
+    <button class="btn ghost" id="btn-help" title="Conformance notes">Conformance</button>
+    <button class="btn ghost" id="btn-validate" title="Run validation harness">Validate</button>
+  </div>
+
+  <!-- =================== STAGE =================== -->
+  <div class="stage">
+    <svg id="topo" viewBox="0 0 1200 540" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#3a6373"/>
+        </marker>
+        <linearGradient id="sw-grad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#1f4855"/>
+          <stop offset="100%" stop-color="#143840"/>
+        </linearGradient>
+        <linearGradient id="endpoint-grad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#234650"/>
+          <stop offset="100%" stop-color="#102A30"/>
+        </linearGradient>
+        <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="3" result="b"/>
+          <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      <g id="g-links"></g>
+      <g id="g-nodes"></g>
+      <g id="g-internals"></g>
+      <g id="g-packets"></g>
+      <g id="g-overlays"></g>
+    </svg>
+    <div class="banner-info" id="banner-info"></div>
+    <div class="conf-panel">
+      <div class="h">Active Conformance</div>
+      MSRP: 802.1Q-2022 cl 35<br>
+      CBS:  802.1Q-2022 cl 8.6.8.2 + Annex L<br>
+      Stream-ID: cl 6.6, 8.6.5, Annex T<br>
+      AVTPDU: 1722-2016 cl 5.4–5.5
+    </div>
+    <div class="foot-cite">100 Mb/s links · CBS deltaBW 75% · WRR 4:3:2:1:1:1:1:1</div>
+  </div>
+
+  <!-- =================== INSPECTOR =================== -->
+  <div class="inspector">
+    <div class="insp-head">
+      <h3 id="insp-title">Inspector</h3>
+      <button class="btn tiny ghost" id="insp-clear">clear</button>
+    </div>
+    <div class="insp-tabs">
+      <div class="insp-tab active" data-tab="packet">Packet</div>
+      <div class="insp-tab" data-tab="switch">Switch</div>
+      <div class="insp-tab" data-tab="reservations">Reservations</div>
+    </div>
+    <div class="insp-body" id="insp-body">
+      <div class="empty-msg">Click a packet on the wire, or a switch, or a port to inspect.</div>
+    </div>
+  </div>
+
+  <!-- =================== LOG =================== -->
+  <div class="logpane" id="log"></div>
+</div>
+
+<!-- Banner for harness failure -->
+<div class="banner-fail" id="harness-fail"></div>
+
+<!-- Generic modal -->
+<div class="modal-bg" id="modal-bg">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="modal-title">Configure</h2>
+      <button class="x" id="modal-x">×</button>
+    </div>
+    <div class="modal-tabs" id="modal-tabs"></div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-foot">
+      <button class="btn ghost" id="modal-cancel">Cancel</button>
+      <button class="btn primary" id="modal-apply">Apply</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* =========================================================================
+   SECTION 1 — Standards-derived constants
+   ========================================================================= */
+
+const STD = {
+  // Ethertypes
+  AVTP_ETHERTYPE: 0x22F0,        // IEEE 1722-2016 cl 5.2
+  MSRP_ETHERTYPE: 0x22EA,        // IEEE 802.1Q-2022 cl 35.2.1
+  TPID_8021Q:     0x8100,
+
+  // MAC addresses (IEEE 802.1Q-2022 Table 8-1)
+  MSRP_DEST_MAC:  '01:80:C2:00:00:0E',  // Nearest non-TPMR Bridge group address (MMRP/MVRP/MSRP)
+
+  // CBS / SR class parameters (cl 34.3, 35.5, Annex L)
+  CLASS_A_INTERVAL_NS: 125000,   // 125 us
+  CLASS_B_INTERVAL_NS: 250000,   // 250 us
+  CLASS_A_PCP: 3,
+  CLASS_B_PCP: 2,
+  SR_DELTA_BW_CEILING: 0.75,     // 75% deltaBandwidth limit
+
+  // Per-port residence latency budget (ns)
+  PORT_TC_MAX_LATENCY_NS: 250000,
+
+  // L1+L2 overhead (octets) per Q-2022 cl 34.4 / Annex L
+  // preamble(7)+SFD(1)+DA(6)+SA(6)+VLAN_TAG(4)+EthType(2)+CRC(4)+IFG(12) - eth header part of MaxFrameSize
+  // So overhead added to MaxFrameSize for required-bandwidth calc:
+  //   preamble(7)+SFD(1)+IFG(12) = 20 octets (plus VLAN tag is already in frame size)
+  L1_OVERHEAD_OCTETS: 20,
+
+  // MSRPDU sizes (cl 35.2.2.7)
+  MSRPDU_TALKER_ADVERTISE_FIRSTVALUE_LEN: 25, // StreamID(8)+DataFrameParams(8)+TSpec(4)+PriRank(1)+AccLat(4)
+  MSRPDU_TALKER_FAILED_FIRSTVALUE_LEN:    34, // + BridgeID(8)+FailureCode(1)
+  MSRPDU_LISTENER_FIRSTVALUE_LEN:          8, // StreamID(8)
+  MSRPDU_DOMAIN_FIRSTVALUE_LEN:            4, // SRclassID(1)+SRclassPriority(1)+SRclassVID(2)
+
+  // 1722 AVTPDU
+  AVTPDU_COMMON_HEADER_LEN: 12,  // common header (4) + stream_id (8) for stream subtypes
+  AVTPDU_STREAM_HEADER_LEN: 24,  // common(12) + avtp_timestamp(4) + format-specific(4) + stream_data_length+protocol-specific(4)
+  AVTP_VERSION: 0,               // version 0 = IEEE 1722-2016
+
+  // AVTP subtypes (IEEE 1722-2016 Table 6)
+  AVTP_SUBTYPE: {
+    IEC61883: 0x00, MMA: 0x02, AAF: 0x03, CVF: 0x04, CRF: 0x05,
+    AECP: 0xFB, ACMP: 0xFC, MAAP: 0xFE, ADP: 0xFA
+  },
+
+  // MSRP AttributeType (cl 35.2.2.4)
+  MSRP_ATTR_TYPE: {
+    TalkerAdvertise: 1,
+    TalkerFailed:    2,
+    Listener:        3,
+    Domain:          4
+  },
+  MSRP_ATTR_TYPE_NAME: {1:'Talker Advertise',2:'Talker Failed',3:'Listener',4:'Domain'},
+
+  // MRP three-packed AttributeEvent (cl 10.8.1.5)
+  MRP_EVENT: { New:0, JoinIn:1, In:2, JoinMt:3, Mt:4, Lv:5 },
+  MRP_EVENT_NAME: {0:'New',1:'JoinIn',2:'In',3:'JoinMt',4:'Mt',5:'Lv'},
+
+  // MSRP Listener FourPackedEvent (cl 35.2.2.8.4)
+  MSRP_LISTENER_FOURPACK: { Ignore:0, AskingFailed:1, Ready:2, ReadyFailed:3 },
+  MSRP_LISTENER_FOURPACK_NAME: {0:'Ignore',1:'Asking Failed',2:'Ready',3:'Ready Failed'},
+
+  // MRP LeaveAllEvent (cl 10.8.1.4)
+  MRP_LEAVEALL: { NULL:0, LeaveAll:1 },
+
+  // MSRP Failure codes (cl 35.2.2.8.6, Table 35-7)
+  MSRP_FAILURE: {
+    1:  'Insufficient bandwidth',
+    2:  'Insufficient bridge resources',
+    3:  'Insufficient bandwidth for Traffic Class',
+    4:  'StreamID in use by another Talker',
+    5:  'Stream destination address already in use',
+    6:  'Stream preempted by higher rank',
+    7:  'Reported latency has changed',
+    8:  'Egress port is not AVB capable',
+    9:  'Use a different destination address',
+    10: 'Out of MSRP resources',
+    11: 'Out of MMRP resources',
+    12: 'Cannot store destination address',
+    13: 'Requested priority is not an SR class priority',
+    14: 'MaxFrameSize too large for media',
+    15: 'MaxFanInPorts limit has been reached',
+    16: 'Changes in FirstValue for a registered StreamID',
+    17: 'VLAN is blocked on this egress port (Registration Forbidden)',
+    18: 'VLAN tagging is disabled on this egress port (untagged set)',
+    19: 'SR class priority mismatch'
+  },
+
+  // MSRP Domain SR class id (cl 35.2.2.9)
+  MSRP_SR_CLASS_ID: { A:6, B:5 },
+
+  // Default WRR weights (PCP 0..7)
+  WRR_WEIGHTS: [1,1,1,1,1,1,3,4],   // PCP6/PCP7 heavier among non-CBS classes
+
+  // Port transmit rate
+  PORT_RATE_BPS: 100_000_000        // 100 Mb/s
+};
+
+/* MRP three-packed encoder/decoder (Q-2022 cl 10.8.1.5)
+   PackedValue = (E1 * 36) + (E2 * 6) + E3   where each Ei in [0..5]
+*/
+function threePack(e1, e2, e3){ return (e1*36) + (e2*6) + e3; }
+function threeUnpack(v){
+  const e1 = Math.floor(v/36);
+  const e2 = Math.floor((v - e1*36)/6);
+  const e3 = v - e1*36 - e2*6;
+  return [e1,e2,e3];
+}
+
+/* MSRP Listener four-packed encoder (cl 35.2.2.8.4)
+   PackedValue = (E1 * 64) + (E2 * 16) + (E3 * 4) + E4   where each Ei in [0..3]
+*/
+function fourPack(e1, e2, e3, e4){ return (e1*64) + (e2*16) + (e3*4) + e4; }
+function fourUnpack(v){
+  const e1 = Math.floor(v/64);
+  const e2 = Math.floor((v - e1*64)/16);
+  const e3 = Math.floor((v - e1*64 - e2*16)/4);
+  const e4 = v - e1*64 - e2*16 - e3*4;
+  return [e1,e2,e3,e4];
+}
+
+/* CBS algorithm (Q-2022 cl 8.6.8.2 + Annex L) */
+function sendSlope_bps(idleSlope_bps, portRate_bps){ return idleSlope_bps - portRate_bps; }
+function hiCredit_bits(maxInterferenceSize_bits, idleSlope_bps, portRate_bps){
+  // Annex L.2: hiCredit = maxInterferenceSize * idleSlope / portTransmitRate
+  return maxInterferenceSize_bits * idleSlope_bps / portRate_bps;
+}
+function loCredit_bits(maxFrameSize_bits, sendSlope_bps_v, portRate_bps){
+  // Annex L.2: loCredit = maxFrameSize * sendSlope / portTransmitRate  (negative)
+  return maxFrameSize_bits * sendSlope_bps_v / portRate_bps;
+}
+
+/* Required idleSlope (Annex L.1):
+   idleSlope = (MaxFrameSize_with_overhead_bits * MaxIntervalFrames) / classMeasurementInterval_s
+*/
+function requiredIdleSlope_bps(maxFrameSize_octets, maxIntervalFrames, intervalNs){
+  const totalOctets = maxFrameSize_octets + STD.L1_OVERHEAD_OCTETS;
+  const totalBits = totalOctets * 8;
+  const intervalSec = intervalNs / 1e9;
+  return (totalBits * maxIntervalFrames) / intervalSec;
+}
+
+/* Format helpers */
+function fmtBps(bps){
+  if (bps >= 1e9) return (bps/1e9).toFixed(2) + ' Gb/s';
+  if (bps >= 1e6) return (bps/1e6).toFixed(2) + ' Mb/s';
+  if (bps >= 1e3) return (bps/1e3).toFixed(2) + ' kb/s';
+  return bps.toFixed(0) + ' b/s';
+}
+function fmtNs(ns){
+  if (ns >= 1e6) return (ns/1e6).toFixed(2) + ' ms';
+  if (ns >= 1e3) return (ns/1e3).toFixed(2) + ' us';
+  return ns.toFixed(0) + ' ns';
+}
+function fmtMac(mac){ return mac; }
+function hex2(n){ return '0x' + n.toString(16).toUpperCase().padStart(2,'0'); }
+function hex4(n){ return '0x' + n.toString(16).toUpperCase().padStart(4,'0'); }
+function hex8(n){ return '0x' + n.toString(16).toUpperCase().padStart(8,'0'); }
+function bin8(n){ return n.toString(2).padStart(8,'0'); }
+function macFmt(macStr){
+  // accept "AA:BB:CC:DD:EE:FF" or "AA-BB-CC-DD-EE-FF"
+  return macStr.replace(/-/g,':').toUpperCase();
+}
+function streamIdStr(mac, uniq){
+  const m = mac.replace(/:/g,'-').toUpperCase();
+  const u = uniq.toString(16).toUpperCase().padStart(4,'0');
+  return `${m}:${u.slice(0,2)}-${u.slice(2,4)}`;
+}
+function streamIdHex64(mac, uniq){
+  const macHex = mac.replace(/:/g,'').toUpperCase();
+  return '0x' + macHex + uniq.toString(16).toUpperCase().padStart(4,'0');
+}
+/* =========================================================================
+   SECTION 2 — Topology and data models
+   ========================================================================= */
+
+/* Layout coordinates (SVG viewBox 1200 x 540) */
+const LAYOUT = {
+  T1: { x: 80,   y: 150, label:'T1 (IP Video)' },
+  T2: { x: 80,   y: 380, label:'T2 (Rear Cam)' },
+  SW1:{ x: 280,  y: 265, label:'SW1' },
+  SW2:{ x: 530,  y: 265, label:'SW2' },
+  SW3:{ x: 800,  y: 265, label:'SW3' },
+  L1: { x: 1060, y: 150, label:'L1 (Driver Display)' },
+  L2: { x: 1060, y: 380, label:'L2 (Recorder)' }
+};
+
+/* PortDef: per-switch port definitions
+   Direction is logical only — every port is bidirectional in real bridges; we
+   tag "ingress"/"egress" to make the typical traffic flow visible. */
+const TOPOLOGY = {
+  switches: {
+    SW1: {
+      ports: {
+        p1: { peer: ['T1','p1'],  side:'left',  yOff:-30, role:'ingress' },
+        p2: { peer: ['T2','p1'],  side:'left',  yOff:+30, role:'ingress' },
+        p3: { peer: ['SW2','p1'], side:'right', yOff: 0,  role:'egress'  }
+      }
+    },
+    SW2: {
+      ports: {
+        p1: { peer: ['SW1','p3'], side:'left',  yOff: 0, role:'ingress' },
+        p2: { peer: ['SW3','p1'], side:'right', yOff: 0, role:'egress'  }
+      }
+    },
+    SW3: {
+      ports: {
+        p1: { peer: ['SW2','p2'], side:'left',  yOff: 0,   role:'ingress' },
+        p2: { peer: ['L1','p1'],  side:'right', yOff:-30,  role:'egress'  },
+        p3: { peer: ['L2','p1'],  side:'right', yOff:+30,  role:'egress'  }
+      }
+    }
+  },
+  endpoints: {
+    T1: { kind:'talker',   ports: { p1: { peer: ['SW1','p1'] } } },
+    T2: { kind:'talker',   ports: { p1: { peer: ['SW1','p2'] } } },
+    L1: { kind:'listener', ports: { p1: { peer: ['SW3','p2'] } } },
+    L2: { kind:'listener', ports: { p1: { peer: ['SW3','p3'] } } }
+  }
+};
+
+/* Port wire endpoints in SVG coords */
+function portXY(nodeId, portId){
+  const def = (TOPOLOGY.switches[nodeId] || TOPOLOGY.endpoints[nodeId]);
+  const p = def.ports[portId];
+  const cx = LAYOUT[nodeId].x;
+  const cy = LAYOUT[nodeId].y;
+  const isSwitch = !!TOPOLOGY.switches[nodeId];
+  const halfW = isSwitch ? 60 : 50;
+  if (TOPOLOGY.switches[nodeId]) {
+    if (p.side==='left')  return { x: cx-halfW, y: cy + (p.yOff||0) };
+    if (p.side==='right') return { x: cx+halfW, y: cy + (p.yOff||0) };
+  } else {
+    // endpoints: connection on the side facing the topology
+    const isLeft = (nodeId==='T1'||nodeId==='T2');
+    return { x: cx + (isLeft? halfW : -halfW), y: cy };
+  }
+}
+
+/* ======== Runtime state model ======== */
+
+class PortState {
+  constructor(swId, portId, def){
+    this.switchId = swId;
+    this.portId = portId;
+    this.peer = def.peer;       // [peerNode, peerPort]
+    this.side = def.side;
+    this.yOff = def.yOff || 0;
+    this.role = def.role;
+    this.portRate_bps = STD.PORT_RATE_BPS;
+    this.tcMaxLatency_ns = STD.PORT_TC_MAX_LATENCY_NS;
+    // VLAN membership: which VIDs are admitted on this port
+    this.vlanMembership = new Set([2,3]); // SR domain VID 2; user can add
+    // Per-priority CBS class state — only PCP 2 (B) and PCP 3 (A) are CBS-shaped
+    this.cbs = {};  // pcp -> {idleSlope_bps, sendSlope_bps, hiCredit, loCredit, credit, reserved_bps, cap_bps, intervalNs}
+    // Initialize CBS for class A (PCP3) and B (PCP2)
+    this.initCbs(STD.CLASS_A_PCP, STD.CLASS_A_INTERVAL_NS);
+    this.initCbs(STD.CLASS_B_PCP, STD.CLASS_B_INTERVAL_NS);
+    // Per-PCP queue — array of frames waiting to TX
+    this.queues = [[],[],[],[],[],[],[],[]];
+    // WRR weights (configurable per-port)
+    this.wrrWeights = [...STD.WRR_WEIGHTS];
+    this.wrrCounters = [0,0,0,0,0,0,0,0];
+    // Active reservations on this port (stream_handle list per PCP)
+    this.reservations = []; // list of Reservation refs admitted on this egress port
+    // Discard counters
+    this.discards = { vlanMismatch:0, fdbMiss:0, streamIdMiss:0, qOverflow:0 };
+  }
+  initCbs(pcp, intervalNs){
+    const cap_bps = STD.SR_DELTA_BW_CEILING * this.portRate_bps;
+    this.cbs[pcp] = {
+      pcp, intervalNs, cap_bps,
+      idleSlope_bps: 0,  sendSlope_bps: -this.portRate_bps,
+      hiCredit: 0, loCredit: 0, credit: 0, reserved_bps: 0,
+      maxFrameSize_bits: 1500*8, maxInterferenceSize_bits: 1500*8
+    };
+  }
+  /* Recompute CBS bounds after a reservation change. cl 8.6.8.2 + Annex L */
+  recomputeCbs(pcp){
+    const c = this.cbs[pcp]; if (!c) return;
+    c.sendSlope_bps = sendSlope_bps(c.idleSlope_bps, this.portRate_bps);
+    c.hiCredit = hiCredit_bits(c.maxInterferenceSize_bits, c.idleSlope_bps, this.portRate_bps);
+    c.loCredit = loCredit_bits(c.maxFrameSize_bits, c.sendSlope_bps, this.portRate_bps);
+  }
+}
+
+class SwitchState {
+  constructor(swId, def){
+    this.id = swId;
+    this.ports = {};
+    for (const pid in def.ports){
+      this.ports[pid] = new PortState(swId, pid, def.ports[pid]);
+    }
+    /* FDB (cl 8.8.1) — list of {vid, mac, port_map[], type} */
+    this.fdb = [];
+    /* Stream Identification table (Active Destination MAC and VLAN, cl 6.6) */
+    /*   list of {dest_mac, vid, stream_handle, stream_id, in_facing_outputs[]} */
+    this.streamIdTable = [];
+    /* Reservation records keyed by stream_id "MAC:UNIQ" */
+    this.reservations = {};   // streamIdStr -> Reservation
+    /* PCP -> Traffic Class map (default: identity for our 8-class model) */
+    this.pcpToTc = [0,1,2,3,4,5,6,7];
+    /* Stats */
+    this.stats = { rx:0, tx:0, dropped:0 };
+  }
+  /* FDB lookup (cl 8.8) — returns port_map (array of port ids) or [] */
+  fdbLookup(vid, mac){
+    const e = this.fdb.find(x => x.vid===vid && x.mac.toUpperCase()===mac.toUpperCase());
+    return e ? [...e.port_map] : [];
+  }
+  /* Stream Identification (cl 6.6 Active DA+VLAN) — returns stream record or null */
+  streamIdLookup(vid, mac, ingressPort){
+    const e = this.streamIdTable.find(x =>
+      x.vid===vid &&
+      x.dest_mac.toUpperCase()===mac.toUpperCase() &&
+      (!x.in_facing_outputs || x.in_facing_outputs.length===0 || x.in_facing_outputs.includes(ingressPort))
+    );
+    return e || null;
+  }
+}
+
+class Reservation {
+  constructor(opts){
+    this.stream_id = opts.stream_id;          // string "MAC:UNIQ"
+    this.dest_mac  = opts.dest_mac;
+    this.vid       = opts.vid;
+    this.pcp       = opts.pcp;
+    this.rank      = opts.rank;               // 0=emergency, 1=non-emergency
+    this.tspec_max_frame_sz = opts.tspec_max_frame_sz;
+    this.tspec_max_interval_frames = opts.tspec_max_interval_frames;
+    this.accumulated_latency = opts.accumulated_latency || 0;
+    this.required_idleSlope_bps = opts.required_idleSlope_bps;
+    this.state = opts.state || 'AdvertiseRx';  // AdvertiseRx, AdvertisePropagated, ReservedTentative, Reserved, Failed
+    this.failure_code = opts.failure_code || 0;
+    this.ingress_port = opts.ingress_port;
+    this.egress_ports = opts.egress_ports || []; // array of port ids
+    this.talker = opts.talker;                  // "T1" / "T2"
+    this.preempted_by = null;
+  }
+}
+
+class Endpoint {
+  constructor(id, def){
+    this.id = id;
+    this.kind = def.kind; // 'talker' | 'listener'
+    this.ports = def.ports;
+    /* Stream config (talker) or subscription (listener) */
+    this.stream = null;  // for talker
+    this.subscriptions = []; // for listener: list of {stream_id, declarationType}
+    this.advertised = false;
+    this.dataActive = false;
+  }
+}
+
+/* ======== Default scenario configurations ======== */
+
+function defaultStream(opts){
+  // sensible default: Class B, non-emergency, 1500-octet frames, 1 frame per interval
+  return Object.assign({
+    talkerId: 'T1',
+    streamMac: '00:11:22:33:44:01',  // talker source MAC
+    uniqId: 0x0001,
+    destMac: '91:E0:F0:00:FE:01',   // 1722-style dynamic stream multicast (1722 cl 5.4 / IANA OUI 91:E0:F0)
+    vid: 2,
+    pcp: STD.CLASS_B_PCP,
+    rank: 1,
+    maxFrameSize: 1500,
+    maxIntervalFrames: 1,
+    intervalNs: STD.CLASS_B_INTERVAL_NS,
+    avtpSubtype: STD.AVTP_SUBTYPE.CVF
+  }, opts || {});
+}
+
+/* Scenario presets — each returns a fresh Network and a script. Scripts are
+   sequences of high-level user actions (advertise, subscribe, trigger, etc.).
+*/
+const SCENARIOS = {};
+/* =========================================================================
+   SECTION 3 — Network construction and default static config
+   ========================================================================= */
+
+class Network {
+  constructor(){
+    this.switches = {};
+    this.endpoints = {};
+    for (const sw in TOPOLOGY.switches) this.switches[sw] = new SwitchState(sw, TOPOLOGY.switches[sw]);
+    for (const ep in TOPOLOGY.endpoints) this.endpoints[ep] = new Endpoint(ep, TOPOLOGY.endpoints[ep]);
+    this.installDefaultFdbs();
+    this.installDefaultStreamIdTables();
+    this.streams = {}; // stream_id -> {definition} - global list for tracking
+  }
+
+  /* Default static FDB entries:
+     We pre-install entries that the *typical* default scenario needs. A user
+     can edit them via the per-switch configure modal. The keys map each
+     stream destination MAC to the egress port toward each known listener.
+
+     Default streams in the catalog:
+       Stream "T1->L1":  91:E0:F0:00:FE:01, VID=2  -> path T1.p1 SW1.p3 SW2.p2 SW3.p2 L1.p1
+       Stream "T2->L2":  91:E0:F0:00:FE:02, VID=2  -> path T2.p1 SW1.p3 SW2.p2 SW3.p3 L2.p1
+       Stream "T1->{L1,L2}" multicast: 91:E0:F0:00:FE:03, VID=2 -> SW3 forwards to both p2 and p3
+       Stream "T2->L1" (rear cam to driver display): 91:E0:F0:00:FE:04, VID=2 -> SW1.p3 SW2.p2 SW3.p2
+  */
+  installDefaultFdbs(){
+    // SW1 always forwards stream multicasts to p3 (uplink to SW2)
+    const sw1 = this.switches.SW1;
+    ['91:E0:F0:00:FE:01','91:E0:F0:00:FE:02','91:E0:F0:00:FE:03','91:E0:F0:00:FE:04'].forEach(da => {
+      sw1.fdb.push({ vid:2, mac:da, port_map:['p3'], type:'Static' });
+    });
+    // SW2 always forwards to p2
+    const sw2 = this.switches.SW2;
+    ['91:E0:F0:00:FE:01','91:E0:F0:00:FE:02','91:E0:F0:00:FE:03','91:E0:F0:00:FE:04'].forEach(da => {
+      sw2.fdb.push({ vid:2, mac:da, port_map:['p2'], type:'Static' });
+    });
+    // SW3 forwards based on listener:
+    //  FE:01 (T1->L1) -> p2
+    //  FE:02 (T2->L2) -> p3
+    //  FE:03 (multicast) -> p2,p3
+    //  FE:04 (T2->L1)   -> p2
+    const sw3 = this.switches.SW3;
+    sw3.fdb.push({ vid:2, mac:'91:E0:F0:00:FE:01', port_map:['p2'], type:'Static' });
+    sw3.fdb.push({ vid:2, mac:'91:E0:F0:00:FE:02', port_map:['p3'], type:'Static' });
+    sw3.fdb.push({ vid:2, mac:'91:E0:F0:00:FE:03', port_map:['p2','p3'], type:'Static' });
+    sw3.fdb.push({ vid:2, mac:'91:E0:F0:00:FE:04', port_map:['p2'], type:'Static' });
+  }
+
+  /* Default Stream Identification table entries — Active DA + VLAN
+     (cl 6.6). stream_handle is a local 32-bit integer. We pre-bind a handle
+     for each {DA, VID} so successful reservations install matching handles
+     across all switches (in real systems these are populated dynamically). */
+  installDefaultStreamIdTables(){
+    let h = 0x10001;
+    const dasByStream = [
+      { stream_id:'00-11-22-33-44-01:00-01', mac:'91:E0:F0:00:FE:01' },
+      { stream_id:'00-11-22-33-44-02:00-01', mac:'91:E0:F0:00:FE:02' },
+      { stream_id:'00-11-22-33-44-01:00-02', mac:'91:E0:F0:00:FE:03' },
+      { stream_id:'00-11-22-33-44-02:00-02', mac:'91:E0:F0:00:FE:04' }
+    ];
+    for (const swId of ['SW1','SW2','SW3']){
+      const sw = this.switches[swId];
+      for (const s of dasByStream){
+        sw.streamIdTable.push({
+          vid: 2, dest_mac: s.mac,
+          stream_handle: h++,
+          stream_id: s.stream_id,
+          in_facing_outputs: []  // empty = applies on all ingress ports
+        });
+      }
+    }
+  }
+}
+/* =========================================================================
+   SECTION 4 — Header codecs
+     - Ethernet + 802.1Q tag
+     - IEEE 1722-2016 AVTPDU
+     - IEEE 802.1Q-2022 MSRPDU (FirstValue, ThreePackedEvent, FourPackedEvent)
+   All "encoded" forms are descriptive byte arrays + structured JS for display.
+   ========================================================================= */
+
+/* Build the byte view (array of {offset, name, value, hex, note, group}) for
+   an Ethernet + Q-tag wrapped frame. */
+function buildEthBytes(frame){
+  const b = [];
+  let o = 0;
+  function add(len, name, val, hex, note, group){
+    b.push({offset:o, len, name, value:val, hex, note, group:group||'Ethernet'});
+    o += len;
+  }
+  add(6, 'DA', frame.da, frame.da.replace(/:/g,''),
+      'Destination MAC address (Q-2022 cl 6.5)');
+  add(6, 'SA', frame.sa, frame.sa.replace(/:/g,''),
+      'Source MAC address');
+  add(2, 'TPID', '0x8100', '8100',
+      '802.1Q VLAN tag protocol identifier');
+  // TCI: PCP(3) + DEI(1) + VID(12)
+  const tci = (frame.pcp & 0x7) << 13 | (frame.dei?1:0) << 12 | (frame.vid & 0xFFF);
+  add(2, 'TCI', `PCP=${frame.pcp} DEI=${frame.dei?1:0} VID=${frame.vid}`,
+      tci.toString(16).toUpperCase().padStart(4,'0'),
+      'Tag Control Information');
+  const et = frame.etherType;
+  add(2, 'EtherType', et===STD.AVTP_ETHERTYPE ? 'IEEE 1722 (AVTP)' : et===STD.MSRP_ETHERTYPE ? 'MSRP' : hex4(et),
+      et.toString(16).toUpperCase().padStart(4,'0'),
+      'Carried protocol');
+  return { bytes:b, payloadOffset:o };
+}
+
+/* IEEE 1722-2016 AVTPDU common header (cl 5.4) + common stream header (cl 5.5)
+   For stream subtypes (cd=0, e.g. CVF/AAF): bit layout
+     octet 0:  subtype (8b)
+     octet 1:  sv(1) | version(3) | mr(1) | r(1) | gv(1) | tv(1)
+     octet 2:  sequence_num (8b)
+     octet 3:  reserved(7) | tu(1)
+     octet 4-11: stream_id (64b)
+     octet 12-15: avtp_timestamp (32b)
+     octet 16-19: format_specific_data (32b)
+     octet 20-21: stream_data_length (16b)
+     octet 22-23: protocol-specific (16b, format dependent)
+*/
+function buildAvtpduBytes(avtp, startOffset){
+  const b = [];
+  let o = startOffset;
+  function add(len, name, val, hex, note){
+    b.push({offset:o, len, name, value:val, hex, note, group:'AVTPDU (IEEE 1722-2016)'});
+    o += len;
+  }
+  add(1, 'subtype', avtp.subtype === STD.AVTP_SUBTYPE.CVF ? 'CVF (Compressed Video Format)' : avtp.subtype===STD.AVTP_SUBTYPE.AAF ? 'AAF (AVTP Audio Format)' : hex2(avtp.subtype),
+    hex2(avtp.subtype).slice(2),
+    'cl 5.4.2 Table 6');
+  // Build octet 1: sv(1) | version(3) | mr(1) | r(1) | gv(1) | tv(1)
+  const o1 = ((avtp.sv&1)<<7) | ((avtp.version&7)<<4) | ((avtp.mr&1)<<3) | ((avtp.r&1)<<2) | ((avtp.gv&1)<<1) | (avtp.tv&1);
+  add(1, 'sv|ver|mr|r|gv|tv',
+      `sv=${avtp.sv} ver=${avtp.version} mr=${avtp.mr} gv=${avtp.gv} tv=${avtp.tv}`,
+      hex2(o1).slice(2),
+      'cl 5.4.2.2..2.7');
+  add(1, 'sequence_num', avtp.sequence_num,
+      hex2(avtp.sequence_num & 0xFF).slice(2),
+      'Per-stream sequence (mod 256)');
+  // octet 3: reserved(7) | tu(1)
+  const o3 = (avtp.tu & 1);
+  add(1, 'reserved|tu', `tu=${avtp.tu}`, hex2(o3).slice(2),
+      'cl 5.4.2.8 timestamp uncertain bit');
+  add(8, 'stream_id', streamIdHex64Of(avtp.streamMac, avtp.uniqId),
+      streamIdHex64Of(avtp.streamMac, avtp.uniqId).slice(2),
+      'Q-2022 cl 46.3: 8-octet StreamID = MAC(6):UniqueID(2)');
+  add(4, 'avtp_timestamp', avtp.timestamp,
+      avtp.timestamp.toString(16).toUpperCase().padStart(8,'0'),
+      'gPTP-derived presentation time (ns)');
+  add(4, 'format_specific_data', '0x' + (avtp.format_specific>>>0).toString(16).toUpperCase().padStart(8,'0'),
+      (avtp.format_specific>>>0).toString(16).toUpperCase().padStart(8,'0'),
+      'Subtype-specific (cl 5.5)');
+  add(2, 'stream_data_length', avtp.stream_data_length,
+      avtp.stream_data_length.toString(16).toUpperCase().padStart(4,'0'),
+      'Length (octets) of payload');
+  add(2, 'protocol_specific', '0x' + (avtp.protocol_specific>>>0).toString(16).toUpperCase().padStart(4,'0'),
+      (avtp.protocol_specific>>>0).toString(16).toUpperCase().padStart(4,'0'),
+      'Subtype-defined');
+  return b;
+}
+function streamIdHex64Of(mac, uniq){
+  const macHex = mac.replace(/:/g,'').toUpperCase();
+  return '0x' + macHex + uniq.toString(16).toUpperCase().padStart(4,'0');
+}
+
+/* MSRPDU (Q-2022 cl 35.2.2) — full structure with packed events */
+function buildMsrpduBytes(msrp, startOffset){
+  const b = [];
+  let o = startOffset;
+  function add(len, name, val, hex, note, group){
+    b.push({offset:o, len, name, value:val, hex, note, group:group||'MSRPDU (802.1Q-2022 cl 35.2)'});
+    o += len;
+  }
+  // ProtocolVersion (1 octet) — cl 35.2.2.2
+  add(1, 'ProtocolVersion', msrp.protocolVersion, hex2(msrp.protocolVersion).slice(2), 'MSRP version');
+  // For each Message:
+  for (const m of msrp.messages){
+    const grp = `Message: ${STD.MSRP_ATTR_TYPE_NAME[m.attributeType]}`;
+    add(1, 'AttributeType', `${m.attributeType} (${STD.MSRP_ATTR_TYPE_NAME[m.attributeType]})`,
+        hex2(m.attributeType).slice(2),
+        'cl 35.2.2.4: 1=TalkerAdv 2=TalkerFail 3=Listener 4=Domain', grp);
+    add(1, 'AttributeLength', m.attributeLength, hex2(m.attributeLength).slice(2),
+        'Length of FirstValue in octets', grp);
+    add(2, 'AttributeListLength', m.attributeListLength,
+        m.attributeListLength.toString(16).toUpperCase().padStart(4,'0'),
+        'Length of VectorAttribute list (excluding EndMark)', grp);
+    // For each VectorAttribute
+    for (const va of m.vectorAttributes){
+      // VectorHeader: LeaveAllEvent(3b) | NumberOfValues(13b)
+      const vh = ((va.leaveAllEvent & 0x7) << 13) | (va.numberOfValues & 0x1FFF);
+      add(2, 'VectorHeader',
+          `LA=${va.leaveAllEvent} (${va.leaveAllEvent?'LeaveAll':'Null'}) NumValues=${va.numberOfValues}`,
+          vh.toString(16).toUpperCase().padStart(4,'0'),
+          'cl 10.8.1.4: LeaveAllEvent(3) | NumberOfValues(13)', grp);
+      // FirstValue
+      const fv = encodeFirstValue(m.attributeType, va.firstValue);
+      for (const fvField of fv){
+        b.push({offset:o, len:fvField.len, name:fvField.name, value:fvField.value, hex:fvField.hex, note:fvField.note, group:grp+' / FirstValue'});
+        o += fvField.len;
+      }
+      // Vector (packed events)
+      const veBytes = encodeVector(m.attributeType, va);
+      for (const ve of veBytes){
+        b.push({offset:o, len:1, name:ve.name, value:ve.value, hex:ve.hex, note:ve.note, group:grp+' / Vector (packed events)'});
+        o += 1;
+      }
+    }
+    // EndMark per message
+    add(2, 'EndMark', '0x0000', '0000', 'cl 10.8.1.4 — terminates vector list', grp);
+  }
+  add(2, 'EndMark (PDU)', '0x0000', '0000', 'cl 10.8.1.4 — terminates message list');
+  return b;
+}
+
+/* FirstValue encoders per AttributeType (cl 35.2.2.8) */
+function encodeFirstValue(attrType, fv){
+  const out = [];
+  if (attrType === STD.MSRP_ATTR_TYPE.TalkerAdvertise || attrType === STD.MSRP_ATTR_TYPE.TalkerFailed){
+    // StreamID (8) — cl 35.2.2.8.2 a)
+    out.push({ len:8, name:'StreamID', value: fv.streamId,
+      hex: fv.streamId.replace(/[-:]/g,'').toUpperCase().slice(0,16),
+      note:'cl 35.2.2.8.2 a)' });
+    // DataFrameParameters: DestMAC(6) + VlanID(2) — cl 35.2.2.8.2 b)
+    out.push({ len:6, name:'  DestinationMAC', value: fv.destMac,
+      hex: fv.destMac.replace(/:/g,'').toUpperCase(),
+      note:'cl 35.2.2.8.2 b) — multicast destination' });
+    out.push({ len:2, name:'  VlanID', value: fv.vid,
+      hex: fv.vid.toString(16).toUpperCase().padStart(4,'0'),
+      note:'cl 35.2.2.8.2 b) — VLAN ID for the stream' });
+    // TSpec: MaxFrameSize(2) + MaxIntervalFrames(2) — cl 35.2.2.8.2 c)
+    out.push({ len:2, name:'TSpec.MaxFrameSize', value: fv.maxFrameSize,
+      hex: fv.maxFrameSize.toString(16).toUpperCase().padStart(4,'0'),
+      note:'cl 35.2.2.8.2 c) — MTU per frame (octets)' });
+    out.push({ len:2, name:'TSpec.MaxIntervalFrames', value: fv.maxIntervalFrames,
+      hex: fv.maxIntervalFrames.toString(16).toUpperCase().padStart(4,'0'),
+      note:'cl 35.2.2.8.2 c) — frames per class measurement interval' });
+    // PriorityAndRank (1) — cl 35.2.2.8.2 d)
+    // bits: DataFramePriority(3) | Reserved(1) | Rank(1) | Reserved(3)
+    const pr = ((fv.pcp & 0x7) << 5) | ((fv.rank & 1) << 3);
+    out.push({ len:1, name:'PriorityAndRank', value:`PCP=${fv.pcp} Rank=${fv.rank} (${fv.rank?'non-emerg':'emergency'})`,
+      hex: hex2(pr).slice(2),
+      note:'cl 35.2.2.8.2 d) — DataFramePriority(3)|Rsv(1)|Rank(1)|Rsv(3)' });
+    // AccumulatedLatency (4) — cl 35.2.2.8.2 e)
+    out.push({ len:4, name:'AccumulatedLatency', value: `${fv.accumulatedLatency} ns`,
+      hex: (fv.accumulatedLatency>>>0).toString(16).toUpperCase().padStart(8,'0'),
+      note:'cl 35.2.2.8.2 e) — accumulated worst-case latency (ns)' });
+    if (attrType === STD.MSRP_ATTR_TYPE.TalkerFailed){
+      // FailureInformation: BridgeID(8) + FailureCode(1) — cl 35.2.2.8.3
+      out.push({ len:8, name:'FailureBridgeID', value: fv.failureBridgeId || '00:00:00:00:00:00:00:00',
+        hex: (fv.failureBridgeId || '00:00:00:00:00:00:00:00').replace(/:/g,'').toUpperCase(),
+        note:'cl 35.2.2.8.3 — Bridge nearest the talker that failed admission' });
+      out.push({ len:1, name:'FailureCode', value: `${fv.failureCode} (${STD.MSRP_FAILURE[fv.failureCode]||'?'})`,
+        hex: hex2(fv.failureCode||0).slice(2),
+        note:'cl 35.2.2.8.6 — Table 35-7' });
+    }
+  } else if (attrType === STD.MSRP_ATTR_TYPE.Listener){
+    out.push({ len:8, name:'StreamID', value: fv.streamId,
+      hex: fv.streamId.replace(/[-:]/g,'').toUpperCase().slice(0,16),
+      note:'cl 35.2.2.8.4' });
+  } else if (attrType === STD.MSRP_ATTR_TYPE.Domain){
+    out.push({ len:1, name:'SRclassID', value:`${fv.srClassId} (${fv.srClassId===6?'A':fv.srClassId===5?'B':'?'})`,
+      hex: hex2(fv.srClassId).slice(2),
+      note:'cl 35.2.2.9.1' });
+    out.push({ len:1, name:'SRclassPriority', value: fv.srClassPriority,
+      hex: hex2(fv.srClassPriority).slice(2),
+      note:'cl 35.2.2.9.2' });
+    out.push({ len:2, name:'SRclassVID', value: fv.srClassVid,
+      hex: fv.srClassVid.toString(16).toUpperCase().padStart(4,'0'),
+      note:'cl 35.2.2.9.3' });
+  }
+  return out;
+}
+
+/* Vector encoder — packs events into octets per cl 10.8.1.5 / 35.2.2.8.4 */
+function encodeVector(attrType, va){
+  const out = [];
+  const events = va.events || []; // for Talker types
+  const declarations = va.declarations || []; // for Listener type
+  if (attrType === STD.MSRP_ATTR_TYPE.Listener){
+    // Two parallel streams of packed values:
+    //  - ThreePackedEvent for AttributeEvent (one per value)
+    //  - FourPackedEvent for declaration types (Ignore/AskFail/Ready/RdyFail)
+    // We emit them in sequence: first all 3-packed events, then all 4-packed
+    // declaration types (this matches Wireshark / mrpd dissection)
+    const N = va.numberOfValues;
+    for (let i=0; i<N; i+=3){
+      const e1 = events[i]   ?? STD.MRP_EVENT.Mt;
+      const e2 = events[i+1] ?? STD.MRP_EVENT.Mt;
+      const e3 = events[i+2] ?? STD.MRP_EVENT.Mt;
+      const v = threePack(e1,e2,e3);
+      out.push({ name:`3PackedEvent[${i}..${i+2}]`,
+        value:`${STD.MRP_EVENT_NAME[e1]}, ${STD.MRP_EVENT_NAME[e2]}, ${STD.MRP_EVENT_NAME[e3]}`,
+        hex: hex2(v).slice(2),
+        note:`= ${e1}*36 + ${e2}*6 + ${e3} = ${v}` });
+    }
+    for (let i=0; i<N; i+=4){
+      const d1 = declarations[i]   ?? 0;
+      const d2 = declarations[i+1] ?? 0;
+      const d3 = declarations[i+2] ?? 0;
+      const d4 = declarations[i+3] ?? 0;
+      const v = fourPack(d1,d2,d3,d4);
+      out.push({ name:`4PackedDecl[${i}..${i+3}]`,
+        value:`${STD.MSRP_LISTENER_FOURPACK_NAME[d1]}, ${STD.MSRP_LISTENER_FOURPACK_NAME[d2]}, ${STD.MSRP_LISTENER_FOURPACK_NAME[d3]}, ${STD.MSRP_LISTENER_FOURPACK_NAME[d4]}`,
+        hex: hex2(v).slice(2),
+        note:`= ${d1}*64 + ${d2}*16 + ${d3}*4 + ${d4} = ${v}` });
+    }
+  } else {
+    const N = va.numberOfValues;
+    for (let i=0; i<N; i+=3){
+      const e1 = events[i]   ?? STD.MRP_EVENT.Mt;
+      const e2 = events[i+1] ?? STD.MRP_EVENT.Mt;
+      const e3 = events[i+2] ?? STD.MRP_EVENT.Mt;
+      const v = threePack(e1,e2,e3);
+      out.push({ name:`3PackedEvent[${i}..${i+2}]`,
+        value:`${STD.MRP_EVENT_NAME[e1]}, ${STD.MRP_EVENT_NAME[e2]}, ${STD.MRP_EVENT_NAME[e3]}`,
+        hex: hex2(v).slice(2),
+        note:`= ${e1}*36 + ${e2}*6 + ${e3} = ${v}` });
+    }
+  }
+  return out;
+}
+
+/* Convenience: build a complete frame structure */
+function makeMsrpFrame(opts){
+  // opts: { srcMac, attributeType, firstValue, event, declaration }
+  const va = {
+    leaveAllEvent: STD.MRP_LEAVEALL.NULL,
+    numberOfValues: 1,
+    firstValue: opts.firstValue,
+    events: [opts.event ?? STD.MRP_EVENT.JoinIn]
+  };
+  if (opts.attributeType === STD.MSRP_ATTR_TYPE.Listener){
+    va.declarations = [opts.declaration ?? STD.MSRP_LISTENER_FOURPACK.Ready];
+  }
+  const attrLen = (opts.attributeType === STD.MSRP_ATTR_TYPE.TalkerAdvertise) ? 25
+                : (opts.attributeType === STD.MSRP_ATTR_TYPE.TalkerFailed) ? 34
+                : (opts.attributeType === STD.MSRP_ATTR_TYPE.Listener) ? 8 : 4;
+  // AttributeListLength = VectorHeader(2) + FirstValue(attrLen) + Vector(packed bytes)
+  const vectorBytesPerValue = (opts.attributeType === STD.MSRP_ATTR_TYPE.Listener) ? 2 : 1;
+  // (1 three-packed event + optionally 1 four-packed declaration per value group of 3 or 4)
+  // Using the Wireshark convention shown above we emit ceil(N/3) + (Listener? ceil(N/4):0) octets
+  const vecLen = Math.ceil(1/3) + (opts.attributeType === STD.MSRP_ATTR_TYPE.Listener ? Math.ceil(1/4) : 0);
+  const message = {
+    attributeType: opts.attributeType,
+    attributeLength: attrLen,
+    attributeListLength: 2 + attrLen + vecLen,
+    vectorAttributes: [va]
+  };
+  const msrp = { protocolVersion:0, messages:[message] };
+  const eth = {
+    da: STD.MSRP_DEST_MAC, sa: opts.srcMac,
+    pcp: 7, dei:0, vid: opts.vid || 2,
+    etherType: STD.MSRP_ETHERTYPE
+  };
+  return { kind:'msrp', eth, msrp, opts };
+}
+
+function makeAvtpFrame(stream){
+  const eth = {
+    da: stream.destMac, sa: stream.streamMac,
+    pcp: stream.pcp, dei:0, vid: stream.vid,
+    etherType: STD.AVTP_ETHERTYPE
+  };
+  const avtp = {
+    subtype: stream.avtpSubtype || STD.AVTP_SUBTYPE.CVF,
+    sv: 1, version: STD.AVTP_VERSION,
+    mr: 0, r: 0, gv: 0, tv: 1,
+    sequence_num: (stream._seq = (stream._seq||0)+1) & 0xFF,
+    tu: 0,
+    streamMac: stream.streamMac, uniqId: stream.uniqId,
+    timestamp: ((Date.now()*1000) & 0xFFFFFFFF) >>> 0,
+    format_specific: 0,
+    stream_data_length: stream.maxFrameSize - 30, // rough payload
+    protocol_specific: 0
+  };
+  return { kind:'avtp', eth, avtp, stream };
+}
+/* =========================================================================
+   SECTION 5 — Validation harness
+   Asserts standards-derived constants and codec invariants at load time.
+   ========================================================================= */
+
+const HARNESS = { failures: [], pass: 0 };
+
+function assert(cond, label, clause){
+  if (cond){ HARNESS.pass++; }
+  else { HARNESS.failures.push({ label, clause }); console.error('[HARNESS FAIL]', label, clause||''); }
+}
+
+function runValidationHarness(){
+  HARNESS.failures = []; HARNESS.pass = 0;
+
+  // EtherTypes
+  assert(STD.AVTP_ETHERTYPE === 0x22F0,        'AVTP EtherType 0x22F0',  'IEEE 1722-2016 cl 5.2');
+  assert(STD.MSRP_ETHERTYPE === 0x22EA,        'MSRP EtherType 0x22EA',  '802.1Q-2022 cl 35.2.1');
+  assert(STD.TPID_8021Q === 0x8100,            'TPID 0x8100',            '802.1Q-2022 cl 9.5');
+
+  // MAC
+  assert(STD.MSRP_DEST_MAC === '01:80:C2:00:00:0E',
+                                              'MSRP/MMRP/MVRP group MAC',  '802.1Q-2022 Table 8-1');
+
+  // MSRP FirstValue lengths
+  assert(STD.MSRPDU_TALKER_ADVERTISE_FIRSTVALUE_LEN === 25, 'TalkerAdvertise FirstValue = 25 octets', 'cl 35.2.2.8.2');
+  assert(STD.MSRPDU_TALKER_FAILED_FIRSTVALUE_LEN === 34,    'TalkerFailed FirstValue = 34 octets',    'cl 35.2.2.8.3');
+  assert(STD.MSRPDU_LISTENER_FIRSTVALUE_LEN === 8,          'Listener FirstValue = 8 octets',         'cl 35.2.2.8.4');
+  assert(STD.MSRPDU_DOMAIN_FIRSTVALUE_LEN === 4,            'Domain FirstValue = 4 octets',           'cl 35.2.2.9');
+
+  // ThreePackedEvent
+  assert(threePack(0,0,0) === 0,             'threePack(0,0,0)=0',          'cl 10.8.1.5');
+  assert(threePack(5,5,5) === 5*36+5*6+5,    'threePack(5,5,5)=215',        'cl 10.8.1.5');
+  assert(threePack(0,1,2) === 0*36+1*6+2,    'threePack(New,JoinIn,In)=8',  'cl 10.8.1.5');
+  // round-trip
+  for (let i=0;i<6;i++) for (let j=0;j<6;j++) for (let k=0;k<6;k++){
+    const v = threePack(i,j,k); const u = threeUnpack(v);
+    if (u[0]!==i || u[1]!==j || u[2]!==k){
+      assert(false, `threePack roundtrip failed (${i},${j},${k})`, 'cl 10.8.1.5'); return;
+    }
+  }
+  assert(true, 'threePack roundtrip 216 cases', 'cl 10.8.1.5');
+
+  // FourPackedEvent
+  assert(fourPack(0,0,0,0) === 0,            'fourPack(0,0,0,0)=0',         'cl 35.2.2.8.4');
+  assert(fourPack(3,3,3,3) === 3*64+3*16+3*4+3, 'fourPack(3,3,3,3)=255',    'cl 35.2.2.8.4');
+  assert(fourPack(2,0,2,2) === 2*64+0*16+2*4+2, 'fourPack(Ready,Ign,Ready,Ready)=138', 'cl 35.2.2.8.4');
+  for (let i=0;i<4;i++) for (let j=0;j<4;j++) for (let k=0;k<4;k++) for (let l=0;l<4;l++){
+    const v = fourPack(i,j,k,l); const u = fourUnpack(v);
+    if (u[0]!==i || u[1]!==j || u[2]!==k || u[3]!==l){
+      assert(false, `fourPack roundtrip failed (${i},${j},${k},${l})`, 'cl 35.2.2.8.4'); return;
+    }
+  }
+  assert(true, 'fourPack roundtrip 256 cases', 'cl 35.2.2.8.4');
+
+  // CBS: classMeasurementInterval (cl 35.5)
+  assert(STD.CLASS_A_INTERVAL_NS === 125000, 'Class A interval = 125us',  'cl 35.5');
+  assert(STD.CLASS_B_INTERVAL_NS === 250000, 'Class B interval = 250us',  'cl 35.5');
+  assert(STD.SR_DELTA_BW_CEILING === 0.75,   'deltaBandwidth ceiling 75%','cl 35.5');
+
+  // CBS Annex L equations
+  const idle = 20_000_000, ptr = 100_000_000;
+  const mfs = 1500*8, mis = 1500*8;
+  const ss = sendSlope_bps(idle, ptr);
+  assert(ss === idle - ptr,                  'sendSlope = idleSlope - portRate', 'Annex L.2');
+  assert(hiCredit_bits(mis, idle, ptr) === mis*idle/ptr,
+                                              'hiCredit formula', 'Annex L.2');
+  assert(loCredit_bits(mfs, ss, ptr) === mfs*ss/ptr,
+                                              'loCredit formula', 'Annex L.2');
+
+  // Required idleSlope: e.g., 1500 octets, 1 frame per 250us
+  // = (1520*8) / (250e-6) = 48,640,000 bps
+  const reqB = requiredIdleSlope_bps(1500, 1, STD.CLASS_B_INTERVAL_NS);
+  assert(Math.abs(reqB - (1520*8/(250e-6))) < 1, 'Required idleSlope (Annex L.1)', 'Annex L.1');
+  // Class A: 1 frame per 125us doubles it
+  const reqA = requiredIdleSlope_bps(1500, 1, STD.CLASS_A_INTERVAL_NS);
+  assert(Math.abs(reqA - (1520*8/(125e-6))) < 1, 'Class A required idleSlope', 'Annex L.1');
+
+  // 1722
+  assert(STD.AVTPDU_COMMON_HEADER_LEN === 12, 'AVTPDU common stream header through stream_id = 12 octets', '1722-2016 cl 5.4');
+  assert(STD.AVTP_VERSION === 0,             'AVTP version = 0',          '1722-2016 cl 5.4.2.3');
+
+  // AVTP subtypes
+  assert(STD.AVTP_SUBTYPE.IEC61883 === 0x00, 'IEC61883 subtype', '1722-2016 Table 6');
+  assert(STD.AVTP_SUBTYPE.AAF      === 0x03, 'AAF subtype',      '1722-2016 Table 6');
+  assert(STD.AVTP_SUBTYPE.CVF      === 0x04, 'CVF subtype',      '1722-2016 Table 6');
+  assert(STD.AVTP_SUBTYPE.CRF      === 0x05, 'CRF subtype',      '1722-2016 Table 6');
+
+  // SR class IDs (cl 35.2.2.9.1)
+  assert(STD.MSRP_SR_CLASS_ID.A === 6,        'SR class A id = 6', 'cl 35.2.2.9.1');
+  assert(STD.MSRP_SR_CLASS_ID.B === 5,        'SR class B id = 5', 'cl 35.2.2.9.1');
+
+  // Failure code table sample
+  assert(STD.MSRP_FAILURE[1] && STD.MSRP_FAILURE[1].includes('Insufficient bandwidth'),
+                                              'FailureCode 1 = Insufficient bandwidth', 'Table 35-7');
+  assert(STD.MSRP_FAILURE[6] && STD.MSRP_FAILURE[6].includes('preempted'),
+                                              'FailureCode 6 = Stream preempted by higher rank', 'Table 35-7');
+
+  return HARNESS;
+}
+/* =========================================================================
+   SECTION 6 — MSRP propagation, admission, and rank-based preemption
+   Reference: 802.1Q-2022 cl 35.2.4 (MAP rules), cl 35.2.4.4.5 (rank override)
+   ========================================================================= */
+
+class MsrpEngine {
+  constructor(net, log){
+    this.net = net;
+    this.log = log;
+  }
+
+  /* Handle a Talker Advertise arriving at switch swId on ingress port pIn.
+     Returns: { admitted:bool, egressPorts:[], failureCode:int|null,
+                propagateAdvertise:[port], propagateFailed:[port],
+                bumpedReservations:[Reservation] }
+  */
+  handleTalkerAdvertise(swId, pIn, advertise){
+    const sw = this.net.switches[swId];
+    const fv = advertise.firstValue;
+    const result = { admitted:true, egressPorts:[], failureCode:null,
+                     propagateAdvertise:[], propagateFailed:[], bumped:[] };
+
+    // 1. FDB lookup {VID, DA}
+    const portMap = sw.fdbLookup(fv.vid, fv.destMac);
+    if (portMap.length === 0){
+      // No FDB entry. Note: in a conformant bridge, MSRP itself installs a
+      // dynamic FDB entry (cl 8.8.4) when processing a Talker Advertise, so
+      // this case rarely arises in deployment. 802.1Q-2022 Table 35-7 does
+      // not define an "FDB lookup miss" failure code; we surface code 12
+      // as the closest-fitting standards-defined value (it covers the
+      // bridge's inability to maintain forwarding state for the DA),
+      // accompanied by a plain-English explanation of what actually
+      // happened.
+      result.admitted = false;
+      result.failureCode = 12;
+      this.log({lvl:'fail', text:`${swId}: no FDB entry for {VID=${fv.vid}, DA=${fv.destMac}} — bridge cannot determine an egress port for this stream. Emitting Talker Failed with FailureCode=12 (closest standards-defined match; Table 35-7 has no dedicated "lookup miss" code).`, sw:swId});
+      return result;
+    }
+    result.egressPorts = portMap;
+
+    // 2. For each egress port — admission via CBS budget
+    for (const pid of portMap){
+      const port = sw.ports[pid];
+      if (!port){
+        result.admitted = false; result.failureCode = 8;
+        this.log({lvl:'fail', text:`${swId}: egress port ${pid} not present — Talker Failed code 8`, sw:swId});
+        return result;
+      }
+      // Check VLAN membership
+      if (!port.vlanMembership.has(fv.vid)){
+        result.admitted = false; result.failureCode = 17;
+        this.log({lvl:'fail', text:`${swId}.${pid}: VID ${fv.vid} not in egress port membership — Talker Failed code 17`, sw:swId});
+        return result;
+      }
+      // CBS class for this PCP
+      const cbs = port.cbs[fv.pcp];
+      if (!cbs){
+        result.admitted = false; result.failureCode = 13;
+        this.log({lvl:'fail', text:`${swId}.${pid}: PCP ${fv.pcp} is not an SR class — Talker Failed code 13`, sw:swId});
+        return result;
+      }
+      // Compute required bandwidth
+      const requiredBps = requiredIdleSlope_bps(fv.maxFrameSize, fv.maxIntervalFrames,
+                            fv.pcp===STD.CLASS_A_PCP ? STD.CLASS_A_INTERVAL_NS : STD.CLASS_B_INTERVAL_NS);
+      const headroom = cbs.cap_bps - cbs.reserved_bps;
+      this.log({lvl:'info', text:`${swId}.${pid} CBS PCP${fv.pcp}: required=${fmtBps(requiredBps)} headroom=${fmtBps(headroom)} cap=${fmtBps(cbs.cap_bps)}`, sw:swId});
+
+      if (requiredBps <= headroom){
+        // Fits — tentative reserve
+        result.admitted = true;
+        // (We commit when Listener Ready returns; here we just earmark tentatively.)
+        advertise._tentative = advertise._tentative || {};
+        advertise._tentative[swId+'.'+pid] = { requiredBps, pcp: fv.pcp };
+        continue;
+      }
+
+      // Doesn't fit — check rank-based preemption (cl 35.2.4.4.5)
+      if (fv.rank === 0){
+        // Emergency advertise — try to bump non-emergency reservations on same class
+        const candidates = port.reservations
+          .filter(r => r.pcp === fv.pcp && r.rank === 1)
+          .sort((a,b) => b.required_idleSlope_bps - a.required_idleSlope_bps);
+        let freed = 0;
+        const bumped = [];
+        for (const r of candidates){
+          bumped.push(r); freed += r.required_idleSlope_bps;
+          if (freed >= (requiredBps - headroom)) break;
+        }
+        if (freed >= (requiredBps - headroom)){
+          // Sufficient — perform bump
+          for (const r of bumped){
+            this.log({lvl:'warn', text:`${swId}.${pid}: PREEMPT — invalidating ${r.stream_id} (${fmtBps(r.required_idleSlope_bps)}, rank=non-emerg) to make room for emergency ${fv.streamId}`, sw:swId});
+            this.releaseReservationOnPort(sw, port, r);
+            r.preempted_by = fv.streamId;
+            r.state = 'Failed';
+            r.failure_code = 6;  // "Stream preempted by higher rank"
+            // Also deactivate the bumped talker's data flow at the *source*
+            // (real MSRP would propagate a Talker Failed back to the talker
+            // along the original path; we model it directly).
+            const bumpedTalker = (r.talker || '').toString();
+            if (bumpedTalker && this._sim){
+              const ep = this._sim.net.endpoints[bumpedTalker];
+              if (ep){
+                ep.dataActive = false;
+                this.log({lvl:'fail', text:`${bumpedTalker}: stream ${r.stream_id} preempted (FailureCode=6) — data flow DEACTIVATED`});
+              }
+            }
+          }
+          result.bumped = bumped;
+          result.admitted = true;
+          advertise._tentative = advertise._tentative || {};
+          advertise._tentative[swId+'.'+pid] = { requiredBps, pcp: fv.pcp };
+          continue;
+        }
+      }
+
+      // Genuine failure
+      result.admitted = false;
+      result.failureCode = 1; // Insufficient bandwidth
+      this.log({lvl:'fail', text:`${swId}.${pid}: insufficient SR bandwidth on PCP ${fv.pcp} — Talker Failed code 1`, sw:swId});
+      return result;
+    }
+
+    return result;
+  }
+
+  /* Commit a reservation on a port (called when Listener Ready returns) */
+  commitReservationOnPort(sw, port, advertise, ingressPort){
+    const fv = advertise.firstValue;
+    const requiredBps = requiredIdleSlope_bps(fv.maxFrameSize, fv.maxIntervalFrames,
+                          fv.pcp===STD.CLASS_A_PCP ? STD.CLASS_A_INTERVAL_NS : STD.CLASS_B_INTERVAL_NS);
+    // Check if already exists (idempotency)
+    let r = sw.reservations[fv.streamId];
+    if (!r){
+      r = new Reservation({
+        stream_id: fv.streamId, dest_mac: fv.destMac, vid: fv.vid,
+        pcp: fv.pcp, rank: fv.rank,
+        tspec_max_frame_sz: fv.maxFrameSize,
+        tspec_max_interval_frames: fv.maxIntervalFrames,
+        accumulated_latency: fv.accumulatedLatency,
+        required_idleSlope_bps: requiredBps,
+        state: 'Reserved',
+        ingress_port: ingressPort,
+        egress_ports: [port.portId],
+        talker: advertise._talker
+      });
+      sw.reservations[fv.streamId] = r;
+    } else {
+      if (!r.egress_ports.includes(port.portId)) r.egress_ports.push(port.portId);
+      r.state = 'Reserved';
+    }
+    if (!port.reservations.includes(r)) port.reservations.push(r);
+    // Update CBS class
+    const cbs = port.cbs[fv.pcp];
+    cbs.reserved_bps += requiredBps;
+    cbs.idleSlope_bps = cbs.reserved_bps;
+    // maxFrameSize / maxInterference for credit bounds
+    const candidateMfs_bits = fv.maxFrameSize * 8;
+    if (candidateMfs_bits > cbs.maxFrameSize_bits) cbs.maxFrameSize_bits = candidateMfs_bits;
+    // maxInterference: largest non-reserved frame that can intrude (worst case 1500-byte BE)
+    cbs.maxInterferenceSize_bits = 1518 * 8;
+    port.recomputeCbs(fv.pcp);
+    this.log({lvl:'ok', text:`${sw.id}.${port.portId}: COMMIT reservation ${fv.streamId} idleSlope=${fmtBps(requiredBps)} totalReserved=${fmtBps(cbs.reserved_bps)} (cap ${fmtBps(cbs.cap_bps)})`, sw:sw.id});
+  }
+
+  releaseReservationOnPort(sw, port, reservation){
+    const idx = port.reservations.indexOf(reservation);
+    if (idx >= 0) port.reservations.splice(idx,1);
+    const cbs = port.cbs[reservation.pcp];
+    if (cbs){
+      cbs.reserved_bps = Math.max(0, cbs.reserved_bps - reservation.required_idleSlope_bps);
+      cbs.idleSlope_bps = cbs.reserved_bps;
+      port.recomputeCbs(reservation.pcp);
+    }
+    // Remove the entire reservation from switch-level table if no more egress ports
+    const stillUsed = Object.values(sw.ports).some(p => p.reservations.includes(reservation));
+    if (!stillUsed) delete sw.reservations[reservation.stream_id];
+  }
+}
+/* =========================================================================
+   SECTION 7 — Forwarding pipeline and transmission selection
+   Reference: 802.1Q-2022 cl 8.6 (Forwarding Process), cl 8.6.5 (Stream Identification),
+              cl 8.6.8 (Transmission Selection), cl 8.6.8.2 (CBS)
+   ========================================================================= */
+
+class ForwardingEngine {
+  constructor(net, log){
+    this.net = net;
+    this.log = log;
+  }
+
+  /* Process a data (AVTP) frame entering switch swId on port pIn.
+     Returns { egressPorts:[], dropped:false, reason:'', stages:[] } */
+  forwardDataFrame(swId, pIn, frame){
+    const sw = this.net.switches[swId];
+    const stages = [];
+    const eth = frame.eth;
+
+    // 1. Frame parsing — already in frame.eth
+    stages.push({ stage:'parse', detail:`DA=${eth.da} VID=${eth.vid} PCP=${eth.pcp} EthType=${hex4(eth.etherType)}` });
+
+    // 2. Active topology (always forwarding here) — skipped
+
+    // 3. Stream Identification (Active DA + VLAN)
+    const sIdent = sw.streamIdLookup(eth.vid, eth.da, pIn);
+    if (sIdent){
+      stages.push({ stage:'streamIdent', detail:`HIT — handle=${hex8(sIdent.stream_handle)} StreamID=${sIdent.stream_id}`, ok:true });
+    } else {
+      stages.push({ stage:'streamIdent', detail:'MISS — frame treated as best-effort', ok:false });
+    }
+
+    // 4. Ingress filtering (VID present on ingress port?)
+    const portIn = sw.ports[pIn];
+    if (portIn && !portIn.vlanMembership.has(eth.vid)){
+      sw.ports[pIn].discards.vlanMismatch++;
+      stages.push({ stage:'ingress-filter', detail:`VID ${eth.vid} not member of ${pIn} — DROPPED`, ok:false });
+      return { egressPorts:[], dropped:true, reason:'VLAN mismatch', stages };
+    }
+    stages.push({ stage:'ingress-filter', detail:`VID ${eth.vid} OK on ${pIn}`, ok:true });
+
+    // 5. FDB lookup
+    const portMap = sw.fdbLookup(eth.vid, eth.da);
+    if (portMap.length === 0){
+      sw.ports[pIn].discards.fdbMiss++;
+      stages.push({ stage:'fdb', detail:`No FDB entry for {VID=${eth.vid}, DA=${eth.da}} — DROPPED`, ok:false });
+      return { egressPorts:[], dropped:true, reason:'FDB miss', stages };
+    }
+    stages.push({ stage:'fdb', detail:`Egress port_map = [${portMap.join(', ')}]`, ok:true });
+
+    // 6. For each egress: VID egress filter, PCP->TC enqueue
+    const egress = [];
+    for (const pid of portMap){
+      const p = sw.ports[pid];
+      if (!p.vlanMembership.has(eth.vid)){
+        p.discards.vlanMismatch++;
+        stages.push({ stage:'egress-filter', detail:`${pid}: VID ${eth.vid} not in egress membership — drop`, ok:false });
+        continue;
+      }
+      // For SR-classified streams, check that a Reservation exists; otherwise
+      // policy: best-effort if streamIdent miss, drop if streamIdent hit but
+      // no commit (configurable; we go BE).
+      // PCP -> TC mapping (identity)
+      const tc = sw.pcpToTc[eth.pcp];
+      stages.push({ stage:'enqueue', detail:`${pid}: enqueue in PCP ${eth.pcp} (TC ${tc})`, ok:true });
+      egress.push({ pid, tc });
+    }
+
+    return { egressPorts: egress, dropped: egress.length === 0, stages, streamIdent: sIdent };
+  }
+
+  /* Forward an MSRPDU — control plane: not bridged, terminates at MSRP application */
+  forwardControlFrame(swId, pIn, frame){
+    return { stages:[{ stage:'control', detail:'MSRPDU consumed by MSRP application (cl 35.2.4)', ok:true }] };
+  }
+}
+/* =========================================================================
+   SECTION 8 — Animation event scheduler / simulation engine
+   The animator runs as a discrete sequence of "Steps". Each Step is a
+   self-contained animation chunk that:
+     (a) updates state (FDB, reservations, queues, CBS credits),
+     (b) schedules visual transitions (packet move, switch internals, log),
+     (c) returns when the visual transitions complete.
+   ========================================================================= */
+
+class Sim {
+  constructor(net, log){
+    this.net = net;
+    this.log = log;
+    this.msrp = new MsrpEngine(net, log);
+    this.msrp._sim = this;
+    this.fwd  = new ForwardingEngine(net, log);
+    this.steps = [];          // list of step descriptors
+    this.cursor = 0;
+    this.playing = false;
+    this.speed = 1.0;         // 1.0 = normal
+    this.activePackets = [];  // currently animating
+    this.subscribers = [];    // change listeners for UI
+    this.scenarioName = '';
+    this.tNs = 0;             // simulated time
+  }
+  on(fn){ this.subscribers.push(fn); }
+  notify(){ for (const fn of this.subscribers) try { fn(this); } catch(e){ console.error(e); } }
+
+  reset(scenarioName){
+    this.steps = [];
+    this.cursor = 0;
+    this.playing = false;
+    this.activePackets = [];
+    this.scenarioName = scenarioName;
+    this.tNs = 0;
+  }
+
+  /* Plan steps from a high-level script.
+     A script is an array of action records:
+       { kind:'configure-talker',  id:'T1', stream:{...} }
+       { kind:'configure-listener', id:'L1', subscribe:[{stream_id, decl}] }
+       { kind:'advertise',  talkerId:'T1' }
+       { kind:'subscribe',  listenerId:'L1', streamId:'...' , decl:'Ready' }
+       { kind:'data-burst', talkerId:'T1', count:3 }
+       { kind:'leave',      talkerId:'T1' }    // talker withdraws stream
+       { kind:'message',    text:'...' }       // banner / annotation
+     During plan, we maintain a script-time view of talker streams so that
+     advertise/data-burst can reference the correct stream (live state is
+     mutated only at step execution time).
+  */
+  planFromScript(script){
+    const planTimeTalkers = {};  // talkerId -> stream
+    for (const action of script){
+      if (action.kind === 'configure-talker'){
+        planTimeTalkers[action.id] = action.stream;
+        this.steps.push({ kind:'configure-talker', payload: action });
+      } else if (action.kind === 'configure-listener'){
+        this.steps.push({ kind:'configure-listener', payload: action });
+      } else if (action.kind === 'advertise'){
+        const stream = planTimeTalkers[action.talkerId];
+        if (!stream){
+          this.steps.push({ kind:'message', payload:{ text:`No stream configured on ${action.talkerId} at advertise time`, lvl:'fail' }});
+          continue;
+        }
+        this.planAdvertiseFlow(action, stream);
+      } else if (action.kind === 'subscribe'){
+        this.planListenerReadyFlow(action);
+      } else if (action.kind === 'data-burst'){
+        const stream = planTimeTalkers[action.talkerId];
+        if (!stream){
+          this.steps.push({ kind:'message', payload:{ text:`No stream configured on ${action.talkerId} for data-burst`, lvl:'fail' }});
+          continue;
+        }
+        this.planDataBurst(action, stream);
+      } else if (action.kind === 'parallel-burst'){
+        // Multiple talkers emit concurrently. Visually demonstrates CBS
+        // gating and queue contention at shared egress ports.
+        const emissions = (action.emissions || []).filter(e => planTimeTalkers[e.talkerId]);
+        if (emissions.length === 0){
+          this.steps.push({ kind:'message', payload:{ text:'parallel-burst: no valid talkers configured', lvl:'fail' }});
+          continue;
+        }
+        this.planParallelBurst(emissions.map(e => ({ ...e, stream: planTimeTalkers[e.talkerId] })));
+      } else if (action.kind === 'leave'){
+        this.planLeave(action);
+      } else if (action.kind === 'message'){
+        this.steps.push({ kind:'message', payload: action });
+      }
+    }
+  }
+
+  /* ----- Plan Talker Advertise propagation T -> SW1 -> SW2 -> SW3 -> Listener -----
+     Path is determined by FDB lookups at each switch (FDB is static at plan
+     time so this is safe). */
+  planAdvertiseFlow(action, stream){
+    // Build the Talker Advertise FirstValue
+    const fv = {
+      streamId: streamIdStr(stream.streamMac, stream.uniqId),
+      destMac: stream.destMac, vid: stream.vid,
+      maxFrameSize: stream.maxFrameSize,
+      maxIntervalFrames: stream.maxIntervalFrames,
+      pcp: stream.pcp, rank: stream.rank,
+      accumulatedLatency: 0
+    };
+    const advertise = { _talker: action.talkerId, firstValue: fv, _path:[] };
+    this.steps.push({ kind:'advertise-emit', payload: { talkerId: action.talkerId, advertise } });
+    const path = this.computePath(action.talkerId, stream.destMac, stream.vid);
+    for (const hop of path){
+      this.steps.push({ kind:'advertise-hop', payload: { swId: hop.swId, pIn: hop.pIn, advertise } });
+    }
+  }
+
+  /* Compute hop sequence from talker through switches following FDB lookups.
+     Returns [{swId, pIn, egressPorts:[]}, ...] */
+  computePath(talkerId, destMac, vid){
+    const path = [];
+    const tep = this.net.endpoints[talkerId];
+    // First peer is the switch the talker is attached to
+    let [curSw, curIngress] = tep.ports.p1.peer;
+    const visited = new Set();
+    while (this.net.switches[curSw] && !visited.has(curSw)){
+      visited.add(curSw);
+      const sw = this.net.switches[curSw];
+      const map = sw.fdbLookup(vid, destMac);
+      path.push({ swId: curSw, pIn: curIngress, egressPorts: map });
+      if (map.length === 0) break;
+      // Follow the first egress port that's not back to ingress to find next hop
+      // (multicast handled by branching only at the final SW3)
+      let nextHop = null;
+      for (const eg of map){
+        const port = sw.ports[eg];
+        if (!port) continue;
+        const [peerNode, peerPort] = port.peer;
+        if (this.net.switches[peerNode]){
+          nextHop = [peerNode, peerPort];
+          break;
+        }
+      }
+      if (!nextHop) break;
+      [curSw, curIngress] = nextHop;
+    }
+    return path;
+  }
+
+  /* ----- Plan Listener Ready propagation back along same path ----- */
+  planListenerReadyFlow(action){
+    // Listener emits a Ready (or Asking Failed) for streamId
+    this.steps.push({ kind:'listener-emit', payload: action });
+    // Walk path back from listener to talker via FDB-determined route
+    // Find which talker advertised this stream
+    const ad = this.findAdvertise(action.streamId);
+    if (!ad) return;
+    const path = this.computePath(ad.talkerId, ad.destMac, ad.vid);
+    // reverse path, with listener->switch first
+    const revPath = path.slice().reverse();
+    // The listener's adjacent switch is the last element of the forward path,
+    // and the ingress for the Listener Ready is the egress that delivered to
+    // the listener. We track this when the Talker Advertise reached the listener.
+    for (const hop of revPath){
+      this.steps.push({ kind:'listener-hop', payload: { swId: hop.swId, declaration: action.decl, streamId: action.streamId, ad } });
+    }
+    // Finally, the talker receives Listener Ready
+    this.steps.push({ kind:'listener-arrive-talker', payload: { talkerId: ad.talkerId, streamId: action.streamId, decl: action.decl } });
+  }
+
+  findAdvertise(streamId){
+    // Look in current talker definitions
+    for (const tid of ['T1','T2']){
+      const t = this.net.endpoints[tid];
+      if (!t.stream) continue;
+      const sId = streamIdStr(t.stream.streamMac, t.stream.uniqId);
+      if (sId === streamId) return { talkerId: tid, destMac: t.stream.destMac, vid: t.stream.vid, pcp: t.stream.pcp, stream: t.stream };
+    }
+    return null;
+  }
+
+  /* ----- Plan a burst of N data frames T->...->L. We don't gate on
+     dataActive at plan time — the data-emit step itself checks at run time. */
+  planDataBurst(action, stream){
+    const path = this.computePath(action.talkerId, stream.destMac, stream.vid);
+    for (let i=0;i<(action.count||1);i++){
+      this.steps.push({ kind:'data-emit', payload:{ talkerId: action.talkerId, seq:i+1 }});
+      for (const hop of path){
+        this.steps.push({ kind:'data-hop', payload:{ swId: hop.swId, pIn: hop.pIn, talkerId: action.talkerId }});
+      }
+      this.steps.push({ kind:'data-deliver', payload:{ talkerId: action.talkerId, seq:i+1 }});
+    }
+  }
+
+  /* ----- Plan a parallel burst from multiple talkers.
+     Layout per round (i in 0..max(count)-1):
+       1) Each talker emits frame i concurrently to its first switch (ingress queue).
+       2) At each shared egress port, an "arbitrate" step picks frames in order
+          (CBS gating for SR classes; WRR among other PCPs) and animates the
+          chosen frame leaving on the wire while losers wait in the queue.
+       3) Frames continue to next hop, arbitrating again on each shared link.
+       4) Finally each frame is delivered to its listener.
+     This produces a visible queueing/shaping/scheduling effect at SW1.p3
+     (the uplink shared by T1 and T2) and onward. */
+  planParallelBurst(emissions){
+    const rounds = Math.max(...emissions.map(e => e.count || 1));
+    // Pre-compute paths
+    const paths = {};
+    for (const e of emissions){
+      paths[e.talkerId] = this.computePath(e.talkerId, e.stream.destMac, e.stream.vid);
+    }
+    for (let round = 0; round < rounds; round++){
+      // Phase 1: concurrent emission to first switch (T1 and T2 emit "at the
+      // same time"; visually we still do them sequentially but tag them so
+      // they share a round)
+      const roundFrames = [];
+      for (const e of emissions){
+        if (round >= (e.count || 1)) continue;
+        roundFrames.push({ talkerId: e.talkerId, seq: round + 1, stream: e.stream, path: paths[e.talkerId] });
+      }
+      if (roundFrames.length === 0) continue;
+      // Round banner
+      this.steps.push({ kind:'parallel-round-start', payload: { round: round + 1, frames: roundFrames }});
+      // Concurrent emit to first switch (animated in parallel via Promise.all in executor)
+      this.steps.push({ kind:'parallel-emit', payload: { frames: roundFrames }});
+      // Per-hop arbitration: walk the longest path. At each switch, gather the
+      // frames that have arrived and arbitrate them on the egress port.
+      const maxHops = Math.max(...roundFrames.map(f => f.path.length));
+      for (let h = 0; h < maxHops; h++){
+        const hopFrames = roundFrames.filter(f => h < f.path.length).map(f => ({
+          frame: f, hop: f.path[h]
+        }));
+        // Group frames by switch (typically same switch in our linear topology)
+        const bySwitch = {};
+        for (const hf of hopFrames){
+          if (!bySwitch[hf.hop.swId]) bySwitch[hf.hop.swId] = [];
+          bySwitch[hf.hop.swId].push(hf);
+        }
+        for (const swId in bySwitch){
+          this.steps.push({ kind:'parallel-arbitrate', payload: { swId, hopFrames: bySwitch[swId] }});
+        }
+      }
+      // Delivery
+      this.steps.push({ kind:'parallel-deliver', payload: { frames: roundFrames }});
+    }
+  }
+
+  /* ----- Plan a Leave (MSRP Lv event) ----- */
+  planLeave(action){
+    this.steps.push({ kind:'leave', payload: action });
+  }
+
+  /* ============================================================
+     Step execution
+     ============================================================ */
+
+  async step(){
+    if (this.cursor >= this.steps.length) return false;
+    const s = this.steps[this.cursor++];
+    await this.executeStep(s);
+    this.notify();
+    return this.cursor < this.steps.length;
+  }
+
+  async play(){
+    this.playing = true;
+    while (this.playing && this.cursor < this.steps.length){
+      const more = await this.step();
+      if (!more) break;
+      await new Promise(r => setTimeout(r, 50/this.speed));
+    }
+    this.playing = false;
+    this.notify();
+  }
+
+  pause(){ this.playing = false; }
+
+  /* Execute one step. Returns when visual is settled. */
+  async executeStep(step){
+    switch(step.kind){
+      case 'configure-talker':  return this._exConfigureTalker(step.payload);
+      case 'configure-listener':return this._exConfigureListener(step.payload);
+      case 'advertise-emit':    return this._exAdvertiseEmit(step.payload);
+      case 'advertise-hop':     return this._exAdvertiseHop(step.payload);
+      case 'listener-emit':     return this._exListenerEmit(step.payload);
+      case 'listener-hop':      return this._exListenerHop(step.payload);
+      case 'listener-arrive-talker': return this._exListenerArriveTalker(step.payload);
+      case 'data-emit':         return this._exDataEmit(step.payload);
+      case 'data-hop':          return this._exDataHop(step.payload);
+      case 'data-deliver':      return this._exDataDeliver(step.payload);
+      case 'parallel-round-start':return this._exParallelRoundStart(step.payload);
+      case 'parallel-emit':     return this._exParallelEmit(step.payload);
+      case 'parallel-arbitrate':return this._exParallelArbitrate(step.payload);
+      case 'parallel-deliver':  return this._exParallelDeliver(step.payload);
+      case 'leave':             return this._exLeave(step.payload);
+      case 'message':           return this._exMessage(step.payload);
+    }
+  }
+
+  _exConfigureTalker(p){
+    const t = this.net.endpoints[p.id];
+    t.stream = p.stream;
+    t.advertised = false;
+    t.dataActive = false;
+    this.log({lvl:'info', text:`${p.id} configured: stream ${streamIdStr(p.stream.streamMac, p.stream.uniqId)} DA=${p.stream.destMac} VID=${p.stream.vid} PCP=${p.stream.pcp} Rank=${p.stream.rank} (${p.stream.rank?'non-emergency':'EMERGENCY'}) MFS=${p.stream.maxFrameSize} MIF=${p.stream.maxIntervalFrames}`});
+  }
+
+  _exConfigureListener(p){
+    const l = this.net.endpoints[p.id];
+    l.subscriptions = p.subscribe || [];
+    this.log({lvl:'info', text:`${p.id} configured to subscribe: ${l.subscriptions.map(s=>`${s.stream_id} as ${s.decl}`).join(', ')}`});
+  }
+
+  async _exAdvertiseEmit(p){
+    const t = this.net.endpoints[p.talkerId];
+    t.advertised = true;
+    const stream = t.stream;
+    // Build the actual MSRPDU for inspector
+    const msrpFrame = makeMsrpFrame({
+      srcMac: stream.streamMac,
+      attributeType: STD.MSRP_ATTR_TYPE.TalkerAdvertise,
+      firstValue: p.advertise.firstValue,
+      event: STD.MRP_EVENT.JoinIn,
+      vid: 2 // SRP domain VLAN — typically VID 2 for class A/B
+    });
+    msrpFrame._talker = p.talkerId;
+    msrpFrame._advertise = p.advertise;
+    this.log({lvl:'info', text:`${p.talkerId} → SW1: TALKER ADVERTISE for ${p.advertise.firstValue.streamId} (PCP=${p.advertise.firstValue.pcp}, Rank=${p.advertise.firstValue.rank})`});
+    // Animate packet from talker to SW1
+    const [swId, pIn] = t.ports.p1.peer;
+    await animatePacket(p.talkerId, 'p1', swId, pIn, msrpFrame, 'msrp', this.speed);
+  }
+
+  async _exAdvertiseHop(p){
+    const sw = this.net.switches[p.swId];
+    const adv = p.advertise;
+    const fv = adv.firstValue;
+    // Run admission
+    const r = this.msrp.handleTalkerAdvertise(p.swId, p.pIn, adv);
+    adv._path.push({swId: p.swId, pIn: p.pIn, result: r});
+    if (!r.admitted){
+      // Talker Failed: emit toward Talker on the ingress port path
+      const failedFv = Object.assign({}, fv, { failureCode: r.failureCode, failureBridgeId: bridgeIdOf(p.swId) });
+      const failedFrame = makeMsrpFrame({
+        srcMac: bridgeMacOf(p.swId),
+        attributeType: STD.MSRP_ATTR_TYPE.TalkerFailed,
+        firstValue: failedFv,
+        event: STD.MRP_EVENT.New
+      });
+      failedFrame._failedAt = p.swId;
+      // Walk back to talker
+      this.log({lvl:'fail', text:`${p.swId}: emits TALKER FAILED for ${fv.streamId} code=${r.failureCode} (${STD.MSRP_FAILURE[r.failureCode]||'?'})`, sw:p.swId});
+      // Animate failure back to talker
+      await this.animateFailureBack(p.swId, p.pIn, failedFrame, adv);
+      // Halt further propagation by clearing remaining advertise-hop steps for this advertise
+      this.removeFutureStepsFor(adv);
+      // Notify talker
+      const t = this.net.endpoints[adv._talker];
+      t.advertised = false;
+      this.log({lvl:'fail', text:`${adv._talker}: received Talker Failed — reservation NOT established`});
+      return;
+    }
+    // Admitted (possibly via preemption) — accumulate latency, propagate Advertise out egress
+    fv.accumulatedLatency += sw.ports[r.egressPorts[0]].tcMaxLatency_ns;
+    // For each egress port, animate the Advertise leaving toward the next node
+    for (const pid of r.egressPorts){
+      const port = sw.ports[pid];
+      const [peerNode, peerPort] = port.peer;
+      const advFrame = makeMsrpFrame({
+        srcMac: bridgeMacOf(p.swId),
+        attributeType: STD.MSRP_ATTR_TYPE.TalkerAdvertise,
+        firstValue: fv,
+        event: STD.MRP_EVENT.JoinIn
+      });
+      advFrame._talker = adv._talker;
+      advFrame._advertise = adv;
+      await animatePacket(p.swId, pid, peerNode, peerPort, advFrame, 'msrp', this.speed);
+      this.log({lvl:'info', text:`${p.swId}.${pid} → ${peerNode}.${peerPort}: TALKER ADVERTISE (accum_lat=${fmtNs(fv.accumulatedLatency)})`, sw:p.swId});
+      // If peer is a listener, deliver and auto-trigger Listener Ready/AskingFailed depending on subscription
+      if (this.net.endpoints[peerNode] && this.net.endpoints[peerNode].kind === 'listener'){
+        const l = this.net.endpoints[peerNode];
+        const sub = l.subscriptions.find(s => s.stream_id === fv.streamId);
+        if (sub){
+          this.log({lvl:'info', text:`${peerNode}: received Talker Advertise for subscribed stream ${fv.streamId} — emitting Listener ${sub.decl}`});
+          // Inject a listener flow back through the path
+          // We schedule the Listener Ready/AskingFailed propagation as immediate next steps
+          // via a synthetic insertion:
+          this.injectListenerReadyFlow({
+            listenerId: peerNode, streamId: fv.streamId, decl: sub.decl, ad: { talkerId: adv._talker, destMac: fv.destMac, vid: fv.vid, advertise: adv }, ingressFromPort: peerPort
+          });
+        } else {
+          this.log({lvl:'warn', text:`${peerNode}: not subscribed to ${fv.streamId} — no Listener attribute generated`});
+        }
+      }
+    }
+  }
+
+  async animateFailureBack(swId, ingressPort, failedFrame, adv){
+    // Walk hops back to talker, re-using path entries
+    const reversePath = adv._path.slice(0, -1).reverse(); // exclude the failing switch (we start there)
+    // First hop: from current switch's ingress port back to peer
+    let [peerNode, peerPort] = this.net.switches[swId].ports[ingressPort].peer;
+    await animatePacket(swId, ingressPort, peerNode, peerPort, failedFrame, 'msrp', this.speed);
+    // Continue if peer is a switch (not the talker)
+    while (this.net.switches[peerNode] && reversePath.length > 0){
+      const hop = reversePath.shift();
+      const sw = this.net.switches[hop.swId];
+      const port = sw.ports[hop.pIn];
+      const [pn2, pp2] = port.peer;
+      await animatePacket(hop.swId, hop.pIn, pn2, pp2, failedFrame, 'msrp', this.speed);
+      [peerNode, peerPort] = [pn2, pp2];
+    }
+  }
+
+  removeFutureStepsFor(advertise){
+    this.steps = this.steps.filter((s, i) => {
+      if (i < this.cursor) return true;
+      if (s.kind === 'advertise-hop' && s.payload.advertise === advertise) return false;
+      if (s.kind === 'listener-hop' && s.payload.ad && s.payload.ad.advertise === advertise) return false;
+      if (s.kind === 'listener-emit' && s.payload.ad && s.payload.ad.advertise === advertise) return false;
+      if (s.kind === 'listener-arrive-talker' && s.payload._adv === advertise) return false;
+      return true;
+    });
+  }
+
+  injectListenerReadyFlow({listenerId, streamId, decl, ad, ingressFromPort}){
+    // Insert listener-hop steps right after current cursor (executing them next)
+    const ladv = ad.advertise;
+    const path = ladv._path.slice().reverse();
+    const insertions = [];
+    insertions.push({ kind:'listener-emit', payload:{ listenerId, streamId, decl }});
+    for (const hop of path){
+      insertions.push({ kind:'listener-hop', payload:{
+        swId: hop.swId,
+        declaration: decl,
+        streamId,
+        ad,
+        admittedHop: hop
+      }});
+    }
+    insertions.push({ kind:'listener-arrive-talker', payload:{ talkerId: ad.talkerId, streamId, decl }});
+    this.steps.splice(this.cursor, 0, ...insertions);
+  }
+
+  async _exListenerEmit(p){
+    const l = this.net.endpoints[p.listenerId];
+    const declCode = (p.decl === 'Ready') ? STD.MSRP_LISTENER_FOURPACK.Ready
+                   : (p.decl === 'AskingFailed') ? STD.MSRP_LISTENER_FOURPACK.AskingFailed
+                   : (p.decl === 'ReadyFailed') ? STD.MSRP_LISTENER_FOURPACK.ReadyFailed
+                   : STD.MSRP_LISTENER_FOURPACK.Ignore;
+    const fv = { streamId: p.streamId };
+    const lFrame = makeMsrpFrame({
+      srcMac: '00:0E:0E:0E:0E:01', // listener MAC (synthetic)
+      attributeType: STD.MSRP_ATTR_TYPE.Listener,
+      firstValue: fv,
+      event: STD.MRP_EVENT.JoinIn,
+      declaration: declCode
+    });
+    this.log({lvl:'info', text:`${p.listenerId} emits LISTENER ${p.decl} for ${p.streamId}`});
+    const [swId, pIn] = l.ports.p1.peer;
+    await animatePacket(p.listenerId, 'p1', swId, pIn, lFrame, 'msrp', this.speed);
+  }
+
+  async _exListenerHop(p){
+    const sw = this.net.switches[p.swId];
+    const ad = p.ad;
+    const ladv = ad.advertise;
+    // The hop we're at — find admittedHop ingress and propagate to its predecessor
+    const admHop = p.admittedHop;
+    // Commit reservation on the egress ports that propagated the Advertise
+    if (p.declaration === 'Ready'){
+      for (const eg of admHop.result.egressPorts){
+        this.msrp.commitReservationOnPort(sw, sw.ports[eg], ladv, admHop.pIn);
+        // Install Stream Identification table entry already exists from defaults;
+        // mark it as bound to a committed reservation
+      }
+    } else if (p.declaration === 'AskingFailed' || p.declaration === 'ReadyFailed'){
+      this.log({lvl:'fail', text:`${p.swId}: Listener declaration ${p.declaration} — no reservation commit`, sw:p.swId});
+    }
+    // Animate listener attribute leaving via ingress port back toward talker
+    const [peerNode, peerPort] = sw.ports[admHop.pIn].peer;
+    const lFrame = makeMsrpFrame({
+      srcMac: bridgeMacOf(p.swId),
+      attributeType: STD.MSRP_ATTR_TYPE.Listener,
+      firstValue: { streamId: p.streamId },
+      event: STD.MRP_EVENT.JoinIn,
+      declaration: p.declaration === 'Ready' ? STD.MSRP_LISTENER_FOURPACK.Ready
+                 : p.declaration === 'AskingFailed' ? STD.MSRP_LISTENER_FOURPACK.AskingFailed
+                 : p.declaration === 'ReadyFailed' ? STD.MSRP_LISTENER_FOURPACK.ReadyFailed
+                 : STD.MSRP_LISTENER_FOURPACK.Ignore
+    });
+    await animatePacket(p.swId, admHop.pIn, peerNode, peerPort, lFrame, 'msrp', this.speed);
+  }
+
+  async _exListenerArriveTalker(p){
+    const t = this.net.endpoints[p.talkerId];
+    if (p.decl === 'Ready'){
+      t.dataActive = true;
+      this.log({lvl:'ok', text:`${p.talkerId}: received LISTENER READY for ${p.streamId} — reservation committed end-to-end. Data flow ENABLED.`});
+    } else {
+      t.dataActive = false;
+      this.log({lvl:'fail', text:`${p.talkerId}: received LISTENER ${p.decl} for ${p.streamId} — no data flow.`});
+    }
+  }
+
+  async _exDataEmit(p){
+    const t = this.net.endpoints[p.talkerId];
+    if (!t || !t.stream){ return; }
+    if (!t.dataActive){
+      // Reservation not committed — log once per burst start (seq=1)
+      if (p.seq === 1){
+        this.log({lvl:'warn', text:`${p.talkerId}: data-burst skipped — reservation not active for ${streamIdStr(t.stream.streamMac, t.stream.uniqId)}`});
+      }
+      return;
+    }
+    const stream = t.stream;
+    const dataFrame = makeAvtpFrame(stream);
+    dataFrame._talker = p.talkerId;
+    dataFrame._seq = p.seq;
+    this.log({lvl:'info', text:`${p.talkerId} → SW1: AVTP frame seq=${p.seq} subtype=${stream.avtpSubtype===STD.AVTP_SUBTYPE.CVF?'CVF':stream.avtpSubtype===STD.AVTP_SUBTYPE.AAF?'AAF':hex2(stream.avtpSubtype)} stream=${streamIdStr(stream.streamMac, stream.uniqId)} PCP=${stream.pcp}`});
+    const [swId, pIn] = t.ports.p1.peer;
+    await animatePacket(p.talkerId, 'p1', swId, pIn, dataFrame, 'avtp', this.speed, p.talkerId);
+  }
+
+  async _exDataHop(p){
+    const sw = this.net.switches[p.swId];
+    const t = this.net.endpoints[p.talkerId];
+    if (!t || !t.stream || !t.dataActive) return;
+    // Reconstruct a representative frame for forwarding-pipeline display.
+    // We do NOT call makeAvtpFrame() (it would bump the talker's sequence
+    // counter on every hop). Instead build a frame structure manually with
+    // the current sequence value.
+    const stream = t.stream;
+    const seq = (stream._seq || 0);
+    const dataFrame = {
+      kind:'avtp',
+      eth: { da: stream.destMac, sa: stream.streamMac, pcp: stream.pcp, dei:0, vid: stream.vid, etherType: STD.AVTP_ETHERTYPE },
+      avtp: {
+        subtype: stream.avtpSubtype || STD.AVTP_SUBTYPE.CVF,
+        sv:1, version: STD.AVTP_VERSION, mr:0, r:0, gv:0, tv:1,
+        sequence_num: seq & 0xFF,
+        tu:0, streamMac: stream.streamMac, uniqId: stream.uniqId,
+        timestamp: ((Date.now()*1000) & 0xFFFFFFFF) >>> 0,
+        format_specific: 0,
+        stream_data_length: stream.maxFrameSize - 30,
+        protocol_specific: 0
+      },
+      stream
+    };
+    dataFrame._talker = p.talkerId;
+    const result = this.fwd.forwardDataFrame(p.swId, p.pIn, dataFrame);
+    for (const stage of result.stages){
+      this.log({lvl: stage.ok===false?'fail':'info', text:`${p.swId} pipeline [${stage.stage}]: ${stage.detail}`, sw:p.swId});
+    }
+    if (result.dropped){ return; }
+    // Animate frame on each egress port:
+    //  1) Frame arrives in the egress PCP queue (visible block)
+    //  2) Queue drains as transmission selection picks it (CBS for PCP 2/3, WRR otherwise)
+    //  3) Packet flies to the next hop
+    for (const eg of result.egressPorts){
+      const port = sw.ports[eg.pid];
+      const [peerNode, peerPort] = port.peer;
+      const cbs = port.cbs[stream.pcp];
+      // 1+2: Show the frame in the PCP queue with a brief hold-and-drain
+      await flashQueue(p.swId, stream.pcp, p.talkerId, this.speed);
+      // CBS credit accounting (Q-2022 cl 8.6.8.2):
+      // While transmitting at line rate, credit drains at sendSlope (idleSlope - portRate).
+      // Between transmissions, credit accrues at idleSlope. We model the dip here.
+      if (cbs){
+        const frameBits = stream.maxFrameSize * 8;
+        // Credit dips by (frameBits * sendSlope/portRate) — bounded below by loCredit
+        const dip = frameBits * (cbs.sendSlope_bps / port.portRate_bps);
+        cbs.credit = Math.max(cbs.loCredit, cbs.credit + dip);
+        pulseCbsCredit(p.swId, stream.pcp);
+      }
+      // 3: Frame leaves on the wire
+      await animatePacket(p.swId, eg.pid, peerNode, peerPort, dataFrame, 'avtp', this.speed, p.talkerId);
+      // Credit recovers at idleSlope while frame is in flight (we approximate
+      // a small recovery between hops)
+      if (cbs){
+        const recovBits = stream.maxFrameSize * 8 * (cbs.idleSlope_bps / port.portRate_bps);
+        cbs.credit = Math.min(cbs.hiCredit, cbs.credit + recovBits);
+      }
+    }
+  }
+
+  async _exDataDeliver(p){
+    const t = this.net.endpoints[p.talkerId];
+    if (!t || !t.dataActive) return;
+    this.log({lvl:'ok', text:`Data frame seq=${p.seq} from ${p.talkerId} delivered to listener(s)`});
+  }
+
+  /* =========================================================================
+     Parallel-burst executors — interleaved emission with CBS gating + WRR.
+
+     The critical educational moment is the arbitrate step. At a shared egress
+     port (e.g. SW1.p3 with frames from both T1 and T2), the transmission
+     selection algorithm runs:
+       - For each Traffic Class with frames waiting:
+           * If the TC is CBS-shaped (Class A / Class B): the queue is eligible
+             only if credit >= 0 (Q-2022 cl 8.6.8.2 "transmit allowed" predicate).
+             While transmitting, credit drops at sendSlope; while waiting (or
+             while another class is sending), credit accrues at idleSlope (Annex L).
+           * Otherwise: WRR with configured weights.
+       - Strict priority resolves ties between classes (higher PCP wins among
+         eligible queues; CBS A > CBS B > BE-WRR is the typical ordering).
+     We model these visually by serializing the actual SVG packet animations
+     while showing the *waiting* frames sitting in their queue cells.
+     ========================================================================= */
+
+  async _exParallelRoundStart(p){
+    const names = p.frames.map(f => `${f.talkerId}#${f.seq}`).join(', ');
+    this.log({lvl:'em', text:`── Round ${p.round}: concurrent frames {${names}} ──`});
+  }
+
+  async _exParallelEmit(p){
+    // All talkers emit their frame to their first switch concurrently.
+    const promises = [];
+    for (const f of p.frames){
+      const t = this.net.endpoints[f.talkerId];
+      if (!t || !t.stream || !t.dataActive) continue;
+      const stream = f.stream;
+      // Build a frame structure for the wire animation
+      const dataFrame = makeAvtpFrame(stream);
+      dataFrame._talker = f.talkerId;
+      dataFrame._seq = f.seq;
+      this.log({lvl:'info', text:`${f.talkerId} → SW1: AVTP frame seq=${f.seq} stream=${streamIdStr(stream.streamMac, stream.uniqId)} PCP=${stream.pcp} (concurrent)`});
+      const [swId, pIn] = t.ports.p1.peer;
+      promises.push(animatePacket(f.talkerId, 'p1', swId, pIn, dataFrame, 'avtp', this.speed, f.talkerId));
+    }
+    await Promise.all(promises);
+  }
+
+  async _exParallelArbitrate(p){
+    const sw = this.net.switches[p.swId];
+    if (!sw) return;
+    // Filter to frames whose talkers are still active
+    const active = p.hopFrames.filter(hf => {
+      const t = this.net.endpoints[hf.frame.talkerId];
+      return t && t.stream && t.dataActive;
+    });
+    if (active.length === 0) return;
+
+    // Pipeline-process each frame's forwarding to determine egress ports.
+    // (In our linear topology the egress port is the same for all frames at
+    // SW1/SW2; differences appear only at SW3 for multicast.)
+    const frameInfos = [];
+    for (const hf of active){
+      const f = hf.frame;
+      const stream = f.stream;
+      const seq = (stream._seq || 0);
+      const dataFrame = {
+        kind:'avtp',
+        eth: { da: stream.destMac, sa: stream.streamMac, pcp: stream.pcp, dei:0, vid: stream.vid, etherType: STD.AVTP_ETHERTYPE },
+        avtp: {
+          subtype: stream.avtpSubtype || STD.AVTP_SUBTYPE.CVF,
+          sv:1, version: STD.AVTP_VERSION, mr:0, r:0, gv:0, tv:1,
+          sequence_num: seq & 0xFF,
+          tu:0, streamMac: stream.streamMac, uniqId: stream.uniqId,
+          timestamp: ((Date.now()*1000) & 0xFFFFFFFF) >>> 0,
+          format_specific: 0,
+          stream_data_length: stream.maxFrameSize - 30,
+          protocol_specific: 0
+        },
+        stream
+      };
+      dataFrame._talker = f.talkerId;
+      const result = this.fwd.forwardDataFrame(p.swId, hf.hop.pIn, dataFrame);
+      // Don't log every pipeline stage during parallel arbitration (would
+      // flood the log) — log a one-liner per frame.
+      if (result.dropped){
+        this.log({lvl:'fail', text:`${p.swId}: frame from ${f.talkerId} seq=${f.seq} DROPPED (${result.reason || 'pipeline drop'})`, sw:p.swId});
+        continue;
+      }
+      frameInfos.push({ frame: f, dataFrame, egress: result.egressPorts, hop: hf.hop });
+    }
+    if (frameInfos.length === 0) return;
+
+    // Phase A: All frames concurrently land in their egress PCP queue.
+    // Visually: each frame's queue cell gets occupied at the same moment.
+    // We hold the queues populated for a brief moment to make contention obvious.
+    const allQueueFlashes = [];
+    const queueOccupants = {};   // egress port -> [frameInfo, ...]
+    for (const fi of frameInfos){
+      for (const eg of fi.egress){
+        const key = `${p.swId}.${eg.pid}`;
+        if (!queueOccupants[key]) queueOccupants[key] = [];
+        queueOccupants[key].push({ fi, pcp: fi.frame.stream.pcp });
+      }
+    }
+    // Render persistent occupation indicators, holding while we arbitrate
+    const occupationGroup = svg('g', { id:`occ-${p.swId}-${Date.now()}` });
+    document.getElementById('g-packets').appendChild(occupationGroup);
+    const occupationRects = [];
+    for (const key in queueOccupants){
+      const [, portId] = key.split('.');  // not used directly; queue is per-PCP, not per-port
+      for (const occ of queueOccupants[key]){
+        const pcp = occ.pcp;
+        const L = LAYOUT[p.swId];
+        if (!L) continue;
+        const qx = L.x + (-50 + pcp*13);
+        const qy = L.y + 0;
+        // Shrink the rect slightly so multiple frames can stack visibly per round
+        const idxInPcp = occupationRects.filter(r => r.pcp === pcp).length;
+        const stackOffset = idxInPcp * 3;
+        const fillColor = occ.fi.frame.talkerId === 'T1' ? '#1B98E0' : '#FF3621';
+        const fr = svg('rect', {
+          x: qx + 1.5, y: qy + 2 + stackOffset, width: 8, height: Math.max(3, 14 - stackOffset*2), rx: 1,
+          fill: fillColor, opacity: 0.9
+        });
+        occupationGroup.appendChild(fr);
+        occupationRects.push({ rect: fr, pcp, fi: occ.fi });
+        // Also color the queue cell stroke
+        const q = document.getElementById(`q-${p.swId}-${pcp}`);
+        if (q && typeof q.setAttribute === 'function'){
+          q.setAttribute('stroke', '#FFFFFF');
+          q.setAttribute('stroke-width', '1.5');
+        }
+      }
+    }
+    // Hold so the user can SEE the queues populated
+    const holdMs = 350 / this.speed;
+    await new Promise(r => setTimeout(r, holdMs));
+
+    // Phase B: Transmission selection.
+    // Arbitration order:
+    //   1) Highest-PCP CBS-eligible class (credit >= 0)
+    //   2) Within a class, FIFO (frame arrival order); we use frameInfos order.
+    //   3) Among non-CBS classes, WRR by weight (we just use FIFO here for
+    //      simplicity since our scenarios don't exercise non-CBS data flows).
+    // We pick one frame at a time, animate its transmission on the wire,
+    // adjust CBS credit, remove its queue indicator, and continue.
+
+    // Sort frameInfos by selection priority. Within CBS class: frames with
+    // higher PCP go first (Strict Priority among CBS classes via cl 8.6.8.4),
+    // ties broken by FIFO.
+    const sorted = [...frameInfos].sort((a, b) => {
+      const pa = a.frame.stream.pcp, pb = b.frame.stream.pcp;
+      if (pa !== pb) return pb - pa;  // higher PCP first
+      return 0;
+    });
+
+    for (const fi of sorted){
+      const stream = fi.frame.stream;
+      // For each egress, gate via CBS and animate
+      for (const eg of fi.egress){
+        const port = sw.ports[eg.pid];
+        if (!port) continue;
+        const cbs = port.cbs[stream.pcp];
+        // CBS gate check (Q-2022 cl 8.6.8.2): "transmit allowed" if credit >= 0
+        if (cbs && cbs.idleSlope_bps > 0){
+          if (cbs.credit < 0){
+            // Wait for credit to recover. We model the wait visually as a
+            // pause and credit accrual.
+            const deficit_bits = -cbs.credit;
+            const recover_s = deficit_bits / cbs.idleSlope_bps;  // (sec)
+            this.log({lvl:'warn', text:`${p.swId}.${eg.pid} CBS PCP${stream.pcp}: credit ${cbs.credit.toFixed(0)}b < 0 — frame from ${fi.frame.talkerId} WAITS for credit (≈${(recover_s*1e6).toFixed(0)}us at idleSlope=${fmtBps(cbs.idleSlope_bps)})`, sw:p.swId});
+            // Visual pause
+            await new Promise(r => setTimeout(r, 250 / this.speed));
+            cbs.credit = 0;
+            pulseCbsCredit(p.swId, stream.pcp);
+          }
+          // Drain credit at sendSlope during transmission
+          const frameBits = stream.maxFrameSize * 8;
+          const dip = frameBits * (cbs.sendSlope_bps / port.portRate_bps);
+          cbs.credit = Math.max(cbs.loCredit, cbs.credit + dip);
+          this.log({lvl:'info', text:`${p.swId}.${eg.pid} CBS PCP${stream.pcp}: TX frame ${fi.frame.talkerId}#${fi.frame.seq} (drain=${dip.toFixed(0)}b at sendSlope=${fmtBps(cbs.sendSlope_bps)}; credit→${cbs.credit.toFixed(0)}b)`, sw:p.swId});
+          pulseCbsCredit(p.swId, stream.pcp);
+        }
+        // Remove this frame's occupation indicator (drain)
+        const occIdx = occupationRects.findIndex(or => or.fi === fi && or.pcp === stream.pcp);
+        if (occIdx >= 0){
+          const or = occupationRects[occIdx];
+          if (or.rect.parentNode) or.rect.parentNode.removeChild(or.rect);
+          occupationRects.splice(occIdx, 1);
+        }
+        // Animate the actual wire transmission
+        const [peerNode, peerPort] = port.peer;
+        await animatePacket(p.swId, eg.pid, peerNode, peerPort, fi.dataFrame, 'avtp', this.speed, fi.frame.talkerId);
+        // Credit recovers between sends (idle period at idleSlope)
+        if (cbs && cbs.idleSlope_bps > 0){
+          const idleBits = stream.maxFrameSize * 8 * 0.3;  // small idle period between back-to-back frames
+          cbs.credit = Math.min(cbs.hiCredit, cbs.credit + idleBits);
+          pulseCbsCredit(p.swId, stream.pcp);
+        }
+      }
+    }
+
+    // Phase C: Reset queue cell strokes; clean up any residual occupation rects
+    for (const or of occupationRects){
+      if (or.rect.parentNode) or.rect.parentNode.removeChild(or.rect);
+    }
+    if (occupationGroup.parentNode) occupationGroup.parentNode.removeChild(occupationGroup);
+    for (const pcp of new Set(frameInfos.map(fi => fi.frame.stream.pcp))){
+      const q = document.getElementById(`q-${p.swId}-${pcp}`);
+      if (q && typeof q.setAttribute === 'function'){
+        // Restore class-color border
+        if (pcp === STD.CLASS_A_PCP) q.setAttribute('stroke', '#1B98E0');
+        else if (pcp === STD.CLASS_B_PCP) q.setAttribute('stroke', '#00A972');
+        else q.setAttribute('stroke', '#234650');
+        if (typeof q.removeAttribute === 'function') q.removeAttribute('stroke-width');
+      }
+    }
+  }
+
+  async _exParallelDeliver(p){
+    for (const f of p.frames){
+      const t = this.net.endpoints[f.talkerId];
+      if (!t || !t.dataActive) continue;
+      this.log({lvl:'ok', text:`Data frame seq=${f.seq} from ${f.talkerId} delivered to listener(s)`});
+    }
+  }
+
+  async _exLeave(p){
+    const t = this.net.endpoints[p.talkerId];
+    if (!t || !t.stream) return;
+    const sId = streamIdStr(t.stream.streamMac, t.stream.uniqId);
+    // Walk path and release reservations
+    const path = this.computePath(p.talkerId, t.stream.destMac, t.stream.vid);
+    for (const hop of path){
+      const sw = this.net.switches[hop.swId];
+      const r = sw.reservations[sId];
+      if (r){
+        for (const pid of r.egress_ports){
+          this.msrp.releaseReservationOnPort(sw, sw.ports[pid], r);
+        }
+        delete sw.reservations[sId];
+      }
+    }
+    t.advertised = false;
+    t.dataActive = false;
+    this.log({lvl:'warn', text:`${p.talkerId}: LEAVE (Lv) for ${sId} — reservations released along path`});
+  }
+
+  async _exMessage(p){
+    if (p.banner) showInfoBanner(p.text, p.lvl);
+    this.log({lvl: p.lvl||'info', text: p.text});
+  }
+}
+
+/* Helpers */
+function bridgeIdOf(swId){
+  // 8-octet BridgeID per 802.1Q cl 8.13.5: 2 octets bridge priority (0x8000 default) ||
+  // 6 octets bridge MAC
+  const macTail = ({SW1:'00:01:5C:01:00:00', SW2:'00:01:5C:02:00:00', SW3:'00:01:5C:03:00:00'})[swId]
+                || '00:01:5C:00:00:00';
+  return '80:00:' + macTail;
+}
+function bridgeMacOf(swId){
+  return ({SW1:'00:01:5C:01:00:00', SW2:'00:01:5C:02:00:00', SW3:'00:01:5C:03:00:00'})[swId];
+}
+/* =========================================================================
+   SECTION 9 — SVG renderer: topology, switches, ports, queue/CBS internals
+   ========================================================================= */
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+function svg(tag, attrs={}){
+  const el = document.createElementNS(SVG_NS, tag);
+  for (const k in attrs) el.setAttribute(k, attrs[k]);
+  return el;
+}
+
+class Renderer {
+  constructor(net, sim){
+    this.net = net;
+    this.sim = sim;
+    this.gLinks = document.getElementById('g-links');
+    this.gNodes = document.getElementById('g-nodes');
+    this.gInternals = document.getElementById('g-internals');
+    this.gPackets = document.getElementById('g-packets');
+    this.gOverlays = document.getElementById('g-overlays');
+    this.selectedSwitch = null;
+    this.drawAll();
+  }
+
+  drawAll(){
+    this.gLinks.innerHTML = '';
+    this.gNodes.innerHTML = '';
+    this.gInternals.innerHTML = '';
+    // Links
+    this.drawLinks();
+    // Nodes
+    for (const [sid, sw] of Object.entries(this.net.switches)) this.drawSwitch(sid, sw);
+    for (const [eid, ep] of Object.entries(this.net.endpoints)) this.drawEndpoint(eid, ep);
+    // Internal panels (initially hidden, expand on click)
+    this.drawSwitchInternals();
+  }
+
+  drawLinks(){
+    const drawn = new Set();
+    for (const sId in this.net.switches){
+      const sw = this.net.switches[sId];
+      for (const pid in sw.ports){
+        const p = sw.ports[pid];
+        const a = portXY(sId, pid);
+        const [peerNode, peerPort] = p.peer;
+        const key = [sId+'.'+pid, peerNode+'.'+peerPort].sort().join('|');
+        if (drawn.has(key)) continue;
+        drawn.add(key);
+        const b = portXY(peerNode, peerPort);
+        const path = svg('line', {
+          x1:a.x, y1:a.y, x2:b.x, y2:b.y,
+          class:'link', 'data-link':key
+        });
+        this.gLinks.appendChild(path);
+      }
+    }
+  }
+
+  drawSwitch(sId, sw){
+    const L = LAYOUT[sId];
+    const g = svg('g', { class:'switch', 'data-sw':sId, transform:`translate(${L.x},${L.y})` });
+    // Body
+    const body = svg('rect', {
+      class:'switch-body', x:-60, y:-50, width:120, height:100,
+      rx:6, fill:'url(#sw-grad)', stroke:'#2a5563', 'stroke-width':1.5
+    });
+    g.appendChild(body);
+    // Label
+    const label = svg('text', { class:'node-label', x:0, y:-26, 'text-anchor':'middle' });
+    label.textContent = L.label;
+    g.appendChild(label);
+    const sub = svg('text', { class:'node-sub', x:0, y:-12, 'text-anchor':'middle' });
+    sub.textContent = '8Q · CBS · WRR';
+    g.appendChild(sub);
+    // Visual: stack of 8 mini-queues
+    for (let i=0;i<8;i++){
+      const qy = 0;
+      const qx = -50 + i*13;
+      const q = svg('rect', { x:qx, y:qy, width:11, height:18, rx:1, fill:'#143840', stroke:'#234650' });
+      q.setAttribute('data-q', `${sId}.${i}`);
+      q.setAttribute('id', `q-${sId}-${i}`);
+      // CBS-shaped queues get colored borders
+      if (i === STD.CLASS_A_PCP) q.setAttribute('stroke', '#1B98E0');
+      else if (i === STD.CLASS_B_PCP) q.setAttribute('stroke', '#00A972');
+      g.appendChild(q);
+      // PCP label
+      const t = svg('text', { x: qx+5.5, y: qy+30, 'text-anchor':'middle', 'font-family':'JetBrains Mono', 'font-size':'8', fill:'#6B7E82' });
+      t.textContent = i;
+      // Mark CBS classes
+      if (i === STD.CLASS_A_PCP){ t.setAttribute('fill','#1B98E0'); t.textContent = `${i}·A`; t.setAttribute('font-size','7'); }
+      else if (i === STD.CLASS_B_PCP){ t.setAttribute('fill','#00A972'); t.textContent = `${i}·B`; t.setAttribute('font-size','7'); }
+      g.appendChild(t);
+    }
+    // Configure gear
+    const gear = svg('g', { class:'gear-btn', 'data-cfg':sId, transform:'translate(46,-38)' });
+    const gc = svg('circle', { cx:0, cy:0, r:9, fill:'#234650', stroke:'#3a6373' });
+    const gp = svg('text', { x:0, y:3, 'text-anchor':'middle', 'font-family':'JetBrains Mono', 'font-size':'10', fill:'#fff' });
+    gp.textContent = '⚙';
+    gear.appendChild(gc);
+    gear.appendChild(gp);
+    g.appendChild(gear);
+    // Port labels
+    for (const pid in sw.ports){
+      const p = sw.ports[pid];
+      const xy = portXY(sId, pid);
+      const localX = xy.x - L.x, localY = xy.y - L.y;
+      const lbl = svg('text', {
+        class:'port-label',
+        x: localX + (p.side==='left'? -10 : 10),
+        y: localY + 3,
+        'text-anchor': p.side==='left'? 'end':'start'
+      });
+      lbl.textContent = pid;
+      g.appendChild(lbl);
+      // Port dot
+      const dot = svg('circle', { cx:localX, cy:localY, r:3, fill:'#3a6373', class:'port', 'data-port':`${sId}.${pid}` });
+      g.appendChild(dot);
+    }
+    g.addEventListener('click', (e)=>{
+      const cfg = e.target.closest('.gear-btn');
+      if (cfg){ openSwitchConfig(sId); return; }
+      // Otherwise, focus inspector on switch
+      this.selectedSwitch = sId;
+      showSwitchInInspector(sId);
+    });
+    this.gNodes.appendChild(g);
+  }
+
+  drawEndpoint(eId, ep){
+    const L = LAYOUT[eId];
+    const isTalker = ep.kind === 'talker';
+    const g = svg('g', { class: isTalker?'node-talker':'node-listener', 'data-ep':eId, transform:`translate(${L.x},${L.y})` });
+    const body = svg('rect', {
+      x:-50, y:-32, width:100, height:64, rx:4,
+      fill:'url(#endpoint-grad)', stroke:'#2a5563', 'stroke-width':1.5
+    });
+    g.appendChild(body);
+    const ico = svg('text', { x:0, y:-8, 'text-anchor':'middle', 'font-family':'JetBrains Mono', 'font-size':'14', fill:'#FF3621' });
+    ico.textContent = isTalker?'▶':'◀';
+    g.appendChild(ico);
+    const lbl = svg('text', { class:'node-label', x:0, y:8, 'text-anchor':'middle', 'font-size':'10' });
+    lbl.textContent = L.label;
+    g.appendChild(lbl);
+    const sub = svg('text', { class:'node-sub', x:0, y:22, 'text-anchor':'middle' });
+    sub.textContent = isTalker?'Talker':'Listener';
+    g.appendChild(sub);
+    // Configure gear
+    const gear = svg('g', { class:'gear-btn', 'data-cfg-ep':eId, transform: isTalker? 'translate(36,-22)' : 'translate(-36,-22)' });
+    const gc = svg('circle', { cx:0, cy:0, r:8, fill:'#234650', stroke:'#3a6373' });
+    const gp = svg('text', { x:0, y:3, 'text-anchor':'middle', 'font-family':'JetBrains Mono', 'font-size':'9', fill:'#fff' });
+    gp.textContent = '⚙';
+    gear.appendChild(gc);
+    gear.appendChild(gp);
+    g.appendChild(gear);
+    g.addEventListener('click',(e)=>{
+      const cfg = e.target.closest('.gear-btn');
+      if (cfg){ if (isTalker) openTalkerConfig(eId); else openListenerConfig(eId); return; }
+      showEndpointInInspector(eId);
+    });
+    this.gNodes.appendChild(g);
+  }
+
+  drawSwitchInternals(){
+    // Per-switch CBS strip charts shown next to each switch (small)
+    this.gInternals.innerHTML='';
+    for (const sId in this.net.switches){
+      const sw = this.net.switches[sId];
+      const L = LAYOUT[sId];
+      const g = svg('g', { class:'switch-internal', transform:`translate(${L.x-60}, ${L.y+58})` });
+      // Find primary egress port for chart
+      const egress = Object.values(sw.ports).find(p => p.role==='egress');
+      if (!egress) continue;
+      const cbsA = egress.cbs[STD.CLASS_A_PCP];
+      const cbsB = egress.cbs[STD.CLASS_B_PCP];
+      const w = 120, h = 7;
+      // Class A reservation %
+      const ratioA = cbsA.cap_bps>0 ? Math.min(1, cbsA.reserved_bps/cbsA.cap_bps) : 0;
+      const ratioB = cbsB.cap_bps>0 ? Math.min(1, cbsB.reserved_bps/cbsB.cap_bps) : 0;
+      const lblA = svg('text', { x:0, y:-2, 'font-family':'JetBrains Mono', 'font-size':'7.5', fill:'#A6B4B6' });
+      lblA.textContent = `${egress.portId}·A ${(ratioA*100).toFixed(0)}% rsv | credit ${cbsA.credit.toFixed(0)}b`;
+      g.appendChild(lblA);
+      const bgA = svg('rect', { x:0, y:2, width:w, height:h, fill:'#0E1B20', stroke:'#234650' });
+      g.appendChild(bgA);
+      const fillA = svg('rect', { x:0, y:2, width: w*ratioA, height:h, fill:'#1B98E0' });
+      g.appendChild(fillA);
+      // Credit position marker for Class A: maps [loCredit, hiCredit] -> [0, w]
+      if (cbsA.idleSlope_bps > 0){
+        const range = cbsA.hiCredit - cbsA.loCredit;
+        const norm = range > 0 ? (cbsA.credit - cbsA.loCredit) / range : 0.5;
+        const cx = Math.max(0, Math.min(w, w * norm));
+        const tri = svg('polygon', { points:`${cx-3},${2+h+1} ${cx+3},${2+h+1} ${cx},${2+h-2}`, fill:'#FFFFFF' });
+        g.appendChild(tri);
+      }
+      // Class B reservation %
+      const lblB = svg('text', { x:0, y:23, 'font-family':'JetBrains Mono', 'font-size':'7.5', fill:'#A6B4B6' });
+      lblB.textContent = `${egress.portId}·B ${(ratioB*100).toFixed(0)}% rsv | credit ${cbsB.credit.toFixed(0)}b`;
+      g.appendChild(lblB);
+      const bgB = svg('rect', { x:0, y:27, width:w, height:h, fill:'#0E1B20', stroke:'#234650' });
+      g.appendChild(bgB);
+      const fillB = svg('rect', { x:0, y:27, width: w*ratioB, height:h, fill:'#00A972' });
+      g.appendChild(fillB);
+      if (cbsB.idleSlope_bps > 0){
+        const range = cbsB.hiCredit - cbsB.loCredit;
+        const norm = range > 0 ? (cbsB.credit - cbsB.loCredit) / range : 0.5;
+        const cx = Math.max(0, Math.min(w, w * norm));
+        const tri = svg('polygon', { points:`${cx-3},${27+h+1} ${cx+3},${27+h+1} ${cx},${27+h-2}`, fill:'#FFFFFF' });
+        g.appendChild(tri);
+      }
+      this.gInternals.appendChild(g);
+    }
+  }
+
+  refresh(){
+    this.drawSwitchInternals();
+  }
+}
+
+/* =========================================================================
+   Queue visualization helpers
+   ========================================================================= */
+
+/* Show a frame momentarily occupying a switch's PCP queue, then drain it.
+   Returns a promise that resolves after the queue holds the frame for `holdMs`. */
+async function flashQueue(swId, pcp, talkerId, speed=1.0){
+  const q = document.getElementById(`q-${swId}-${pcp}`);
+  if (!q || typeof q.getAttribute !== 'function') return;
+  const layer = document.getElementById('g-packets');
+  const L = LAYOUT[swId];
+  if (!L) return;
+  // Queue local coords: x = -50 + pcp*13, y = 0, w=11, h=18 inside the switch g
+  const qx = L.x + (-50 + pcp*13);
+  const qy = L.y + 0;
+  // Highlight the queue cell (border thickens, fills with class color)
+  const origFill = q.getAttribute('fill');
+  const origStroke = q.getAttribute('stroke');
+  const origSw = q.getAttribute('stroke-width');
+  const fillColor = pcp===STD.CLASS_A_PCP ? '#1B98E0'
+                  : pcp===STD.CLASS_B_PCP ? '#00A972'
+                  : (talkerId==='T1' ? '#1B98E0' : talkerId==='T2' ? '#FF3621' : '#6B7E82');
+  q.setAttribute('fill', fillColor);
+  q.setAttribute('stroke', '#FFFFFF');
+  q.setAttribute('stroke-width', '1.5');
+  // Drop a small "frame" indicator on top that shrinks (drains) over time
+  const fr = svg('rect', {
+    x: qx + 1.5, y: qy + 2, width: 8, height: 14, rx: 1,
+    fill: '#FFFFFF', opacity: 0.85
+  });
+  layer.appendChild(fr);
+  // Hold then drain
+  const holdMs = 220 / speed;
+  const drainMs = 160 / speed;
+  await new Promise(r => setTimeout(r, holdMs));
+  // Drain animation: shrink height from top
+  const dStart = performance.now();
+  await new Promise(resolve => {
+    function tick(now){
+      const t = Math.min(1, (now - dStart) / drainMs);
+      const h = 14 * (1 - t);
+      const y = qy + 2 + 14 - h;
+      fr.setAttribute('y', y);
+      fr.setAttribute('height', Math.max(0.1, h));
+      if (t < 1) requestAnimationFrame(tick);
+      else resolve();
+    }
+    requestAnimationFrame(tick);
+  });
+  // Cleanup
+  if (fr.parentNode) fr.parentNode.removeChild(fr);
+  q.setAttribute('fill', origFill);
+  q.setAttribute('stroke', origStroke);
+  if (origSw) q.setAttribute('stroke-width', origSw);
+  else q.removeAttribute('stroke-width');
+}
+
+/* Pulse the CBS credit bar for the given switch egress port and PCP class.
+   Updates the small bar drawn by drawSwitchInternals to reflect a transient
+   credit dip during the frame transmission. */
+function pulseCbsCredit(swId, pcp){
+  // Force redraw of the strip bars (they read from cbs.reserved_bps which
+  // doesn't change during a single frame send, but we visually flash to cue
+  // that credit is dipping below hiCredit).
+  if (RENDERER) RENDERER.refresh();
+}
+
+/* =========================================================================
+   Packet animation
+   ========================================================================= */
+
+async function animatePacket(srcNode, srcPort, dstNode, dstPort, frame, kind, speed=1.0, talkerId=null){
+  const a = portXY(srcNode, srcPort);
+  const b = portXY(dstNode, dstPort);
+  const layer = document.getElementById('g-packets');
+  const g = svg('g', { class:'packet' });
+  // Color by frame kind
+  const fill = kind==='avtp' ? (talkerId==='T1'?'#1B98E0':'#FF3621') : '#FFAB00';
+  const stroke = '#fff';
+  const w = 18, h = 11;
+  const r = svg('rect', { x:-w/2, y:-h/2, width:w, height:h, rx:2, fill:fill, stroke:stroke, 'stroke-width':1, filter:'url(#glow)' });
+  g.appendChild(r);
+  const txt = svg('text', { x:0, y:3, 'text-anchor':'middle', 'font-family':'JetBrains Mono', 'font-size':'8', 'font-weight':'700', fill:'#0B1416' });
+  txt.textContent = kind==='avtp' ? '1722' : (frame.opts && frame.opts.attributeType===1 ? 'Adv'
+                : frame.opts && frame.opts.attributeType===2 ? 'Fail'
+                : frame.opts && frame.opts.attributeType===3 ? 'Lst' : 'MSRP');
+  g.appendChild(txt);
+  layer.appendChild(g);
+  // Click handler shows packet in inspector
+  g.style.pointerEvents = 'auto';
+  g.style.cursor = 'pointer';
+  g.addEventListener('click', () => showPacketInInspector(frame, kind));
+  // Animate
+  const dur = 600/speed;
+  const tStart = performance.now();
+  return new Promise(resolve => {
+    function tick(now){
+      const t = Math.min(1, (now - tStart)/dur);
+      const x = a.x + (b.x - a.x)*t;
+      const y = a.y + (b.y - a.y)*t;
+      g.setAttribute('transform', `translate(${x},${y})`);
+      if (t < 1) requestAnimationFrame(tick);
+      else {
+        // Briefly hold at destination, then remove
+        setTimeout(()=>{
+          // store last packet for inspection
+          window._lastPacket = { frame, kind };
+          if (g.parentNode) g.parentNode.removeChild(g);
+          resolve();
+        }, 80/speed);
+      }
+    }
+    requestAnimationFrame(tick);
+  });
+}
+
+/* =========================================================================
+   Banner
+   ========================================================================= */
+function showInfoBanner(text, lvl){
+  const b = document.getElementById('banner-info');
+  b.textContent = text;
+  b.classList.add('show');
+  if (lvl==='fail') b.style.borderColor = '#FF3621';
+  else if (lvl==='ok') b.style.borderColor = '#00A972';
+  else b.style.borderColor = '#1B98E0';
+  setTimeout(()=>b.classList.remove('show'), 3500);
+}
+/* =========================================================================
+   SECTION 10 — Inspector pane
+   Three tabs: Packet, Switch, Reservations
+   ========================================================================= */
+
+let _activeInspectorTab = 'packet';
+let _activeInspectorObject = null;  // {kind:'packet'|'switch'|'endpoint', payload}
+
+function setupInspectorTabs(){
+  document.querySelectorAll('.insp-tab').forEach(t => {
+    t.addEventListener('click', () => {
+      document.querySelectorAll('.insp-tab').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      _activeInspectorTab = t.dataset.tab;
+      renderInspector();
+    });
+  });
+  document.getElementById('insp-clear').addEventListener('click', () => {
+    _activeInspectorObject = null;
+    document.getElementById('insp-body').innerHTML = '<div class="empty-msg">Click a packet on the wire, or a switch, or a port to inspect.</div>';
+  });
+}
+
+function showPacketInInspector(frame, kind){
+  _activeInspectorObject = { kind:'packet', payload:{frame, kind} };
+  // Switch to packet tab
+  document.querySelectorAll('.insp-tab').forEach(t=>{
+    t.classList.toggle('active', t.dataset.tab==='packet');
+  });
+  _activeInspectorTab = 'packet';
+  renderInspector();
+}
+
+function showSwitchInInspector(swId){
+  _activeInspectorObject = { kind:'switch', payload:{swId} };
+  document.querySelectorAll('.insp-tab').forEach(t=>{
+    t.classList.toggle('active', t.dataset.tab==='switch');
+  });
+  _activeInspectorTab = 'switch';
+  renderInspector();
+}
+
+function showEndpointInInspector(epId){
+  _activeInspectorObject = { kind:'endpoint', payload:{epId} };
+  _activeInspectorTab = 'packet';
+  renderInspector();
+}
+
+function renderInspector(){
+  const body = document.getElementById('insp-body');
+  if (_activeInspectorTab === 'packet'){
+    if (!_activeInspectorObject || _activeInspectorObject.kind !== 'packet'){
+      // Show last packet if any
+      if (window._lastPacket) renderPacket(body, window._lastPacket.frame, window._lastPacket.kind);
+      else body.innerHTML = '<div class="empty-msg">No packet selected. Click a packet flying on the wire to inspect.</div>';
+    } else {
+      renderPacket(body, _activeInspectorObject.payload.frame, _activeInspectorObject.payload.kind);
+    }
+  } else if (_activeInspectorTab === 'switch'){
+    const swId = _activeInspectorObject && _activeInspectorObject.kind==='switch' ? _activeInspectorObject.payload.swId : 'SW1';
+    renderSwitchTab(body, swId);
+  } else if (_activeInspectorTab === 'reservations'){
+    renderReservationsTab(body);
+  }
+}
+
+function renderPacket(body, frame, kind){
+  const ethBuilt = buildEthBytes(frame.eth);
+  let allBytes = ethBuilt.bytes;
+  if (kind === 'avtp'){
+    allBytes = allBytes.concat(buildAvtpduBytes(frame.avtp, ethBuilt.payloadOffset));
+  } else if (kind === 'msrp'){
+    allBytes = allBytes.concat(buildMsrpduBytes(frame.msrp, ethBuilt.payloadOffset));
+  }
+  // Group by group
+  const groups = {};
+  for (const f of allBytes){
+    if (!groups[f.group]) groups[f.group] = [];
+    groups[f.group].push(f);
+  }
+  let html = '';
+  // Header summary
+  html += '<div class="hdr-section">';
+  html += `<div class="hdr-title">Frame summary <span class="ref">on the wire</span></div>`;
+  html += `<div class="kv"><div class="k">Kind</div><div class="v">${kind.toUpperCase()}</div></div>`;
+  html += `<div class="kv"><div class="k">DA</div><div class="v">${frame.eth.da}</div></div>`;
+  html += `<div class="kv"><div class="k">SA</div><div class="v">${frame.eth.sa}</div></div>`;
+  html += `<div class="kv"><div class="k">VID/PCP</div><div class="v">${frame.eth.vid} / ${frame.eth.pcp}</div></div>`;
+  html += `<div class="kv"><div class="k">EtherType</div><div class="v">${hex4(frame.eth.etherType)}</div></div>`;
+  if (kind==='avtp'){
+    html += `<div class="kv"><div class="k">subtype</div><div class="v">${frame.avtp.subtype===STD.AVTP_SUBTYPE.CVF?'CVF (compressed video)':frame.avtp.subtype===STD.AVTP_SUBTYPE.AAF?'AAF (audio)':hex2(frame.avtp.subtype)}</div></div>`;
+    html += `<div class="kv"><div class="k">stream_id</div><div class="v">${streamIdHex64Of(frame.avtp.streamMac, frame.avtp.uniqId)}</div></div>`;
+    html += `<div class="kv"><div class="k">seq_num</div><div class="v">${frame.avtp.sequence_num}</div></div>`;
+  }
+  if (kind==='msrp' && frame.msrp.messages.length){
+    const m = frame.msrp.messages[0];
+    html += `<div class="kv"><div class="k">Attribute</div><div class="v">${STD.MSRP_ATTR_TYPE_NAME[m.attributeType]}</div></div>`;
+    if (m.attributeType===STD.MSRP_ATTR_TYPE.TalkerAdvertise || m.attributeType===STD.MSRP_ATTR_TYPE.TalkerFailed){
+      const va = m.vectorAttributes[0];
+      html += `<div class="kv"><div class="k">StreamID</div><div class="v">${va.firstValue.streamId}</div></div>`;
+      html += `<div class="kv"><div class="k">DA</div><div class="v">${va.firstValue.destMac}</div></div>`;
+      html += `<div class="kv"><div class="k">PCP/Rank</div><div class="v">PCP=${va.firstValue.pcp} Rank=${va.firstValue.rank} (${va.firstValue.rank?'non-emergency':'EMERGENCY'})</div></div>`;
+      html += `<div class="kv"><div class="k">TSpec</div><div class="v">MFS=${va.firstValue.maxFrameSize} MIF=${va.firstValue.maxIntervalFrames}</div></div>`;
+      html += `<div class="kv"><div class="k">AccLatency</div><div class="v">${fmtNs(va.firstValue.accumulatedLatency)}</div></div>`;
+      if (m.attributeType===STD.MSRP_ATTR_TYPE.TalkerFailed){
+        html += `<div class="kv"><div class="k">FailureCode</div><div class="v">${va.firstValue.failureCode} — ${STD.MSRP_FAILURE[va.firstValue.failureCode]}</div></div>`;
+      }
+    } else if (m.attributeType===STD.MSRP_ATTR_TYPE.Listener){
+      const va = m.vectorAttributes[0];
+      html += `<div class="kv"><div class="k">StreamID</div><div class="v">${va.firstValue.streamId}</div></div>`;
+      const decl = va.declarations && va.declarations[0];
+      html += `<div class="kv"><div class="k">Declaration</div><div class="v">${STD.MSRP_LISTENER_FOURPACK_NAME[decl||0]}</div></div>`;
+    }
+  }
+  html += '</div>';
+
+  // Render groups as byte tables
+  for (const grpName in groups){
+    html += '<div class="hdr-section">';
+    const ref = grpName.includes('AVTPDU') ? 'IEEE 1722-2016 cl 5.4–5.5'
+              : grpName.includes('MSRPDU') ? '802.1Q-2022 cl 35.2'
+              : grpName.includes('Vector') ? 'cl 10.8.1.5 / 35.2.2.8.4'
+              : grpName.includes('FirstValue') ? 'cl 35.2.2.8'
+              : grpName.includes('Ethernet') ? '802.1Q-2022 cl 9'
+              : '';
+    html += `<div class="hdr-title">${grpName} <span class="ref">${ref}</span></div>`;
+    html += '<div class="hdr-grid">';
+    for (const f of groups[grpName]){
+      html += `<div class="row"><div class="o">+${f.offset}</div><div class="v"><span class="lbl">${f.name}</span> = ${escapeHTML(String(f.value))} <span class="hex">[${f.hex}]</span> <span class="note">${escapeHTML(f.note||'')}</span></div></div>`;
+    }
+    html += '</div>';
+    // Special: if this group is the Vector packed-events, render a packing visualization
+    if (grpName.includes('Vector (packed events)')){
+      html += renderPackingVisualization(frame, kind);
+    }
+    html += '</div>';
+  }
+  body.innerHTML = html;
+}
+
+function renderPackingVisualization(frame, kind){
+  // For MSRP, find the first message and visualize the threePack/fourPack
+  if (kind !== 'msrp' || !frame.msrp.messages.length) return '';
+  const m = frame.msrp.messages[0];
+  const va = m.vectorAttributes[0];
+  let html = '<div class="pack-vis">';
+  html += '<div style="color:var(--text-dim); font-weight:600; margin-bottom:6px;">Packed-event encoding (live)</div>';
+  if (m.attributeType !== STD.MSRP_ATTR_TYPE.Listener){
+    // ThreePackedEvent
+    const e1 = va.events[0] ?? STD.MRP_EVENT.Mt;
+    const e2 = va.events[1] ?? STD.MRP_EVENT.Mt;
+    const e3 = va.events[2] ?? STD.MRP_EVENT.Mt;
+    const v = threePack(e1,e2,e3);
+    html += '<div class="pack-row">';
+    html += `<span class="pack-cell ev">${STD.MRP_EVENT_NAME[e1]}<br>(${e1})</span>`;
+    html += `<span class="pack-cell ev">${STD.MRP_EVENT_NAME[e2]}<br>(${e2})</span>`;
+    html += `<span class="pack-cell ev">${STD.MRP_EVENT_NAME[e3]}<br>(${e3})</span>`;
+    html += `<span class="pack-arrow">→</span>`;
+    html += `<span class="pack-cell res">${e1}×36 + ${e2}×6 + ${e3}<br>= ${v} = ${hex2(v)}</span>`;
+    html += '</div>';
+    html += `<div style="color:var(--text-mute); font-size:10px; margin-top:4px;">Q-2022 cl 10.8.1.5: ThreePackedEvent base-6 packing of MRP AttributeEvent values (New=0, JoinIn=1, In=2, JoinMt=3, Mt=4, Lv=5).</div>`;
+  } else {
+    const e1 = va.events[0] ?? STD.MRP_EVENT.JoinIn;
+    const v3 = threePack(e1, STD.MRP_EVENT.Mt, STD.MRP_EVENT.Mt);
+    const d1 = va.declarations[0] ?? 0;
+    const v4 = fourPack(d1, 0, 0, 0);
+    html += '<div class="pack-row" style="margin-bottom:6px;">';
+    html += `<span class="pack-cell ev">${STD.MRP_EVENT_NAME[e1]}<br>(${e1})</span>`;
+    html += `<span class="pack-cell ev">Mt<br>(4)</span>`;
+    html += `<span class="pack-cell ev">Mt<br>(4)</span>`;
+    html += `<span class="pack-arrow">→</span>`;
+    html += `<span class="pack-cell res">3-packed = ${v3} = ${hex2(v3)}</span>`;
+    html += '</div>';
+    html += '<div class="pack-row">';
+    html += `<span class="pack-cell ev">${STD.MSRP_LISTENER_FOURPACK_NAME[d1]}<br>(${d1})</span>`;
+    html += `<span class="pack-cell ev">Ign<br>(0)</span>`;
+    html += `<span class="pack-cell ev">Ign<br>(0)</span>`;
+    html += `<span class="pack-cell ev">Ign<br>(0)</span>`;
+    html += `<span class="pack-arrow">→</span>`;
+    html += `<span class="pack-cell res">4-packed = ${d1}×64 + 0 + 0 + 0 = ${v4} = ${hex2(v4)}</span>`;
+    html += '</div>';
+    html += `<div style="color:var(--text-mute); font-size:10px; margin-top:4px;">Q-2022 cl 35.2.2.8.4: Listener Vector contains both ThreePackedEvent (registration) and FourPackedEvent (declaration type).</div>`;
+  }
+  html += '</div>';
+  return html;
+}
+
+function renderSwitchTab(body, swId){
+  const sw = NET.switches[swId];
+  if (!sw){ body.innerHTML = '<div class="empty-msg">No such switch</div>'; return; }
+  let html = '';
+  html += `<div class="hdr-section"><div class="hdr-title">${swId} — Forwarding Database (FDB) <span class="ref">802.1Q cl 8.8</span></div>`;
+  html += '<table class="tbl"><thead><tr><th>VID</th><th>MAC</th><th>Port map</th><th>Type</th></tr></thead><tbody>';
+  for (const e of sw.fdb){
+    html += `<tr><td>${e.vid}</td><td>${e.mac}</td><td>${e.port_map.join(', ')}</td><td>${e.type}</td></tr>`;
+  }
+  html += '</tbody></table></div>';
+
+  html += `<div class="hdr-section"><div class="hdr-title">${swId} — Stream Identification <span class="ref">cl 6.6 (Active DA+VLAN)</span></div>`;
+  html += '<table class="tbl"><thead><tr><th>VID</th><th>DA</th><th>handle</th><th>StreamID</th></tr></thead><tbody>';
+  for (const e of sw.streamIdTable){
+    html += `<tr><td>${e.vid}</td><td>${e.dest_mac}</td><td>${hex8(e.stream_handle)}</td><td>${e.stream_id}</td></tr>`;
+  }
+  html += '</tbody></table></div>';
+
+  html += `<div class="hdr-section"><div class="hdr-title">${swId} — Active reservations <span class="ref">cl 35</span></div>`;
+  html += '<table class="tbl"><thead><tr><th>StreamID</th><th>PCP</th><th>Rank</th><th>BW</th><th>Egress</th><th>State</th></tr></thead><tbody>';
+  for (const sId in sw.reservations){
+    const r = sw.reservations[sId];
+    const stClass = r.state==='Reserved'?'ok':r.state==='Failed'?'fail':'warn';
+    html += `<tr><td>${r.stream_id}</td><td>${r.pcp}</td><td>${r.rank} (${r.rank?'non-emerg':'EMERG'})</td><td>${fmtBps(r.required_idleSlope_bps)}</td><td>${r.egress_ports.join(', ')}</td><td class="${stClass}">${r.state}</td></tr>`;
+  }
+  if (Object.keys(sw.reservations).length===0){
+    html += `<tr><td colspan="6" style="color:var(--text-mute); font-style:italic;">no reservations</td></tr>`;
+  }
+  html += '</tbody></table></div>';
+
+  // CBS state
+  html += `<div class="hdr-section"><div class="hdr-title">${swId} — Per-port CBS state <span class="ref">cl 8.6.8.2 + Annex L</span></div>`;
+  for (const pid in sw.ports){
+    const p = sw.ports[pid];
+    if (p.role !== 'egress' && Object.keys(sw.ports).length>1) continue;
+    html += `<div style="font-family:var(--mono); font-size:10.5px; color:var(--text-dim); margin-top:6px;">${pid} (${p.role})</div>`;
+    html += '<table class="tbl"><thead><tr><th>PCP</th><th>idleSlope</th><th>sendSlope</th><th>hiCredit</th><th>loCredit</th><th>reserved</th><th>cap</th></tr></thead><tbody>';
+    for (const pcp of [STD.CLASS_A_PCP, STD.CLASS_B_PCP]){
+      const c = p.cbs[pcp];
+      html += `<tr><td>${pcp}${pcp===STD.CLASS_A_PCP?' (A)':pcp===STD.CLASS_B_PCP?' (B)':''}</td>
+        <td>${fmtBps(c.idleSlope_bps)}</td>
+        <td>${fmtBps(c.sendSlope_bps)}</td>
+        <td>${c.hiCredit.toFixed(0)} bits</td>
+        <td>${c.loCredit.toFixed(0)} bits</td>
+        <td>${fmtBps(c.reserved_bps)}</td>
+        <td>${fmtBps(c.cap_bps)}</td></tr>`;
+    }
+    html += '</tbody></table>';
+  }
+  html += '</div>';
+
+  body.innerHTML = html;
+}
+
+function renderReservationsTab(body){
+  let html = '';
+  html += '<div class="hdr-section"><div class="hdr-title">All reservations across the network</div>';
+  html += '<table class="tbl"><thead><tr><th>Switch</th><th>StreamID</th><th>PCP</th><th>Rank</th><th>BW</th><th>Egress</th><th>State</th></tr></thead><tbody>';
+  let any = false;
+  for (const sId of ['SW1','SW2','SW3']){
+    const sw = NET.switches[sId];
+    for (const sName in sw.reservations){
+      any = true;
+      const r = sw.reservations[sName];
+      const stClass = r.state==='Reserved'?'ok':r.state==='Failed'?'fail':'warn';
+      html += `<tr><td>${sId}</td><td>${r.stream_id}</td><td>${r.pcp}</td><td>${r.rank}</td><td>${fmtBps(r.required_idleSlope_bps)}</td><td>${r.egress_ports.join(', ')}</td><td class="${stClass}">${r.state}</td></tr>`;
+    }
+  }
+  if (!any) html += '<tr><td colspan="7" style="color:var(--text-mute); font-style:italic;">no reservations</td></tr>';
+  html += '</tbody></table></div>';
+  body.innerHTML = html;
+}
+
+function escapeHTML(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+/* =========================================================================
+   SECTION 11 — Configuration modals
+   ========================================================================= */
+
+let _modalState = null;
+
+function openModal({title, tabs, body, onApply}){
+  _modalState = { onApply, tabs };
+  document.getElementById('modal-title').textContent = title;
+  const tabsEl = document.getElementById('modal-tabs');
+  tabsEl.innerHTML = '';
+  if (tabs && tabs.length){
+    tabs.forEach((t,i) => {
+      const el = document.createElement('div');
+      el.className = 'modal-tab' + (i===0?' active':'');
+      el.textContent = t.label;
+      el.dataset.idx = i;
+      el.addEventListener('click', () => {
+        document.querySelectorAll('.modal-tab').forEach(x => x.classList.remove('active'));
+        el.classList.add('active');
+        document.getElementById('modal-body').innerHTML = tabs[i].render();
+        if (tabs[i].afterRender) tabs[i].afterRender();
+      });
+      tabsEl.appendChild(el);
+    });
+    document.getElementById('modal-body').innerHTML = tabs[0].render();
+    if (tabs[0].afterRender) tabs[0].afterRender();
+  } else {
+    document.getElementById('modal-body').innerHTML = body || '';
+  }
+  document.getElementById('modal-bg').classList.add('open');
+}
+function closeModal(){
+  document.getElementById('modal-bg').classList.remove('open');
+  _modalState = null;
+}
+
+function openSwitchConfig(swId){
+  const sw = NET.switches[swId];
+  openModal({
+    title: `Configure ${swId}`,
+    tabs: [
+      {
+        label: 'FDB',
+        render(){ return renderFdbEditor(swId); },
+        afterRender(){ wireFdbEditor(swId); }
+      },
+      {
+        label: 'Stream Identification',
+        render(){ return renderStreamIdEditor(swId); },
+        afterRender(){ wireStreamIdEditor(swId); }
+      },
+      {
+        label: 'Ports & CBS',
+        render(){ return renderPortsEditor(swId); },
+        afterRender(){ wirePortsEditor(swId); }
+      },
+      {
+        label: 'WRR / PCP map',
+        render(){ return renderWrrEditor(swId); },
+        afterRender(){ wireWrrEditor(swId); }
+      }
+    ],
+    onApply(){ closeModal(); RENDERER.refresh(); SIM.notify(); }
+  });
+}
+
+function renderFdbEditor(swId){
+  const sw = NET.switches[swId];
+  let html = '<div class="subhead">Static FDB entries (cl 8.8) — IVL</div>';
+  html += '<table class="edit-tbl" id="fdb-tbl"><thead><tr><th>VID</th><th>MAC</th><th>Port map (comma-sep)</th><th>Type</th><th></th></tr></thead><tbody>';
+  for (let i=0;i<sw.fdb.length;i++){
+    const e = sw.fdb[i];
+    html += `<tr data-i="${i}"><td><input value="${e.vid}" data-f="vid"></td><td><input value="${e.mac}" data-f="mac"></td><td><input value="${e.port_map.join(',')}" data-f="port_map"></td><td><select data-f="type"><option ${e.type==='Static'?'selected':''}>Static</option><option ${e.type==='Dynamic'?'selected':''}>Dynamic</option></select></td><td><button class="del-btn" data-del="${i}">×</button></td></tr>`;
+  }
+  html += '</tbody></table>';
+  html += '<div style="margin-top:8px;"><button class="btn tiny" id="fdb-add">+ Add entry</button></div>';
+  return html;
+}
+function wireFdbEditor(swId){
+  const sw = NET.switches[swId];
+  document.getElementById('fdb-add').addEventListener('click', () => {
+    sw.fdb.push({ vid:2, mac:'00:00:00:00:00:00', port_map:[], type:'Static' });
+    document.getElementById('modal-body').innerHTML = renderFdbEditor(swId);
+    wireFdbEditor(swId);
+  });
+  // Wire input changes
+  document.querySelectorAll('#fdb-tbl input, #fdb-tbl select').forEach(inp => {
+    inp.addEventListener('change', () => {
+      const tr = inp.closest('tr');
+      const i = +tr.dataset.i;
+      const f = inp.dataset.f;
+      if (f==='vid') sw.fdb[i].vid = +inp.value;
+      else if (f==='mac') sw.fdb[i].mac = inp.value;
+      else if (f==='port_map') sw.fdb[i].port_map = inp.value.split(',').map(s=>s.trim()).filter(Boolean);
+      else if (f==='type') sw.fdb[i].type = inp.value;
+    });
+  });
+  document.querySelectorAll('#fdb-tbl [data-del]').forEach(b => {
+    b.addEventListener('click', () => {
+      const i = +b.dataset.del;
+      sw.fdb.splice(i,1);
+      document.getElementById('modal-body').innerHTML = renderFdbEditor(swId);
+      wireFdbEditor(swId);
+    });
+  });
+}
+
+function renderStreamIdEditor(swId){
+  const sw = NET.switches[swId];
+  let html = '<div class="subhead">Stream Identification table — Active DA+VLAN (cl 6.6)</div>';
+  html += '<table class="edit-tbl" id="sid-tbl"><thead><tr><th>VID</th><th>Dest MAC</th><th>Stream Handle</th><th>StreamID</th><th></th></tr></thead><tbody>';
+  for (let i=0;i<sw.streamIdTable.length;i++){
+    const e = sw.streamIdTable[i];
+    html += `<tr data-i="${i}"><td><input value="${e.vid}" data-f="vid"></td><td><input value="${e.dest_mac}" data-f="dest_mac"></td><td><input value="${hex8(e.stream_handle)}" data-f="stream_handle"></td><td><input value="${e.stream_id}" data-f="stream_id"></td><td><button class="del-btn" data-del="${i}">×</button></td></tr>`;
+  }
+  html += '</tbody></table>';
+  html += '<div style="margin-top:8px;"><button class="btn tiny" id="sid-add">+ Add entry</button></div>';
+  return html;
+}
+function wireStreamIdEditor(swId){
+  const sw = NET.switches[swId];
+  document.getElementById('sid-add').addEventListener('click', () => {
+    sw.streamIdTable.push({ vid:2, dest_mac:'91:E0:F0:00:FE:FF', stream_handle: 0x10100, stream_id:'00-00-00-00-00-00:00-00', in_facing_outputs:[] });
+    document.getElementById('modal-body').innerHTML = renderStreamIdEditor(swId);
+    wireStreamIdEditor(swId);
+  });
+  document.querySelectorAll('#sid-tbl input').forEach(inp => {
+    inp.addEventListener('change', () => {
+      const tr = inp.closest('tr'); const i = +tr.dataset.i; const f = inp.dataset.f;
+      if (f==='vid') sw.streamIdTable[i].vid = +inp.value;
+      else if (f==='dest_mac') sw.streamIdTable[i].dest_mac = inp.value;
+      else if (f==='stream_handle') sw.streamIdTable[i].stream_handle = parseInt(inp.value, 16) || 0;
+      else if (f==='stream_id') sw.streamIdTable[i].stream_id = inp.value;
+    });
+  });
+  document.querySelectorAll('#sid-tbl [data-del]').forEach(b => {
+    b.addEventListener('click', () => {
+      sw.streamIdTable.splice(+b.dataset.del, 1);
+      document.getElementById('modal-body').innerHTML = renderStreamIdEditor(swId);
+      wireStreamIdEditor(swId);
+    });
+  });
+}
+
+function renderPortsEditor(swId){
+  const sw = NET.switches[swId];
+  let html = '<div class="subhead">Port parameters & CBS class caps</div>';
+  for (const pid in sw.ports){
+    const p = sw.ports[pid];
+    html += `<div style="margin-bottom:14px; padding:8px; border:1px solid var(--line-soft); border-radius:4px;">`;
+    html += `<div style="font-family:var(--mono); color:var(--text-dim); margin-bottom:6px;">${pid} (${p.role}) → peer ${p.peer[0]}.${p.peer[1]}</div>`;
+    html += '<div class="form-grid">';
+    html += `<div class="field"><label>portTransmitRate (bps)</label><input data-port="${pid}" data-f="portRate_bps" value="${p.portRate_bps}"></div>`;
+    html += `<div class="field"><label>portTcMaxLatency (ns)</label><input data-port="${pid}" data-f="tcMaxLatency_ns" value="${p.tcMaxLatency_ns}"></div>`;
+    html += `<div class="field"><label>VLAN membership (comma)</label><input data-port="${pid}" data-f="vlanMembership" value="${[...p.vlanMembership].join(',')}"></div>`;
+    html += `<div class="field"><label>Class A cap (% of port)</label><input data-port="${pid}" data-f="capA" value="${(p.cbs[3].cap_bps/p.portRate_bps*100).toFixed(0)}"></div>`;
+    html += `<div class="field"><label>Class B cap (% of port)</label><input data-port="${pid}" data-f="capB" value="${(p.cbs[2].cap_bps/p.portRate_bps*100).toFixed(0)}"></div>`;
+    html += '</div></div>';
+  }
+  return html;
+}
+function wirePortsEditor(swId){
+  const sw = NET.switches[swId];
+  document.querySelectorAll('#modal-body input[data-port]').forEach(inp => {
+    inp.addEventListener('change', () => {
+      const pid = inp.dataset.port; const f = inp.dataset.f; const p = sw.ports[pid];
+      if (f==='portRate_bps') p.portRate_bps = +inp.value;
+      else if (f==='tcMaxLatency_ns') p.tcMaxLatency_ns = +inp.value;
+      else if (f==='vlanMembership') p.vlanMembership = new Set(inp.value.split(',').map(x=>+x.trim()).filter(x=>!isNaN(x)));
+      else if (f==='capA'){ p.cbs[3].cap_bps = (+inp.value/100)*p.portRate_bps; }
+      else if (f==='capB'){ p.cbs[2].cap_bps = (+inp.value/100)*p.portRate_bps; }
+      p.recomputeCbs(2); p.recomputeCbs(3);
+    });
+  });
+}
+
+function renderWrrEditor(swId){
+  const sw = NET.switches[swId];
+  let html = '<div class="subhead">PCP → Traffic Class map (8 PCPs)</div>';
+  html += '<table class="edit-tbl"><thead><tr><th>PCP</th><th>Traffic Class</th><th>Note</th></tr></thead><tbody>';
+  for (let i=0;i<8;i++){
+    html += `<tr><td>${i}</td><td><input data-pcp="${i}" value="${sw.pcpToTc[i]}"></td><td>${i===STD.CLASS_A_PCP?'<span style="color:var(--info)">SR Class A (CBS)</span>':i===STD.CLASS_B_PCP?'<span style="color:var(--ok)">SR Class B (CBS)</span>':'Best-Effort (WRR)'}</td></tr>`;
+  }
+  html += '</tbody></table>';
+
+  // WRR weights per egress port
+  html += '<div class="subhead">WRR weights (per egress port, applies to non-CBS PCPs)</div>';
+  for (const pid in sw.ports){
+    const p = sw.ports[pid];
+    if (p.role !== 'egress') continue;
+    html += `<div style="margin-bottom:8px;"><span style="color:var(--text-dim); font-family:var(--mono); font-size:11px;">${pid}: </span>`;
+    for (let i=0;i<8;i++){
+      html += `<label style="display:inline-flex; gap:4px; align-items:center; margin-right:8px; font-size:11px; color:var(--text-mute);">PCP${i}<input data-port="${pid}" data-w="${i}" value="${p.wrrWeights[i]}" style="width:36px; background:var(--bg-base); border:1px solid var(--line); border-radius:3px; color:var(--text); font-family:var(--mono); padding:2px 4px;"></label>`;
+    }
+    html += '</div>';
+  }
+  return html;
+}
+function wireWrrEditor(swId){
+  const sw = NET.switches[swId];
+  document.querySelectorAll('#modal-body input[data-pcp]').forEach(inp => {
+    inp.addEventListener('change', () => {
+      sw.pcpToTc[+inp.dataset.pcp] = +inp.value;
+    });
+  });
+  document.querySelectorAll('#modal-body input[data-w]').forEach(inp => {
+    inp.addEventListener('change', () => {
+      sw.ports[inp.dataset.port].wrrWeights[+inp.dataset.w] = +inp.value;
+    });
+  });
+}
+
+/* ----- Talker config ----- */
+function openTalkerConfig(epId){
+  const ep = NET.endpoints[epId];
+  if (!ep.stream) ep.stream = defaultStream({ talkerId: epId });
+  const s = ep.stream;
+  openModal({
+    title: `Configure ${epId} (Talker)`,
+    tabs: [{
+      label: 'Stream',
+      render(){
+        return `<div class="form-grid">
+          <div class="field"><label>Source MAC</label><input id="t-mac" value="${s.streamMac}"><div class="hint">Identifies the talker — combined with UniqueID forms the StreamID</div></div>
+          <div class="field"><label>Unique ID (16-bit hex)</label><input id="t-uniq" value="${s.uniqId.toString(16).toUpperCase().padStart(4,'0')}"></div>
+          <div class="field"><label>Destination MAC (multicast)</label><input id="t-da" value="${s.destMac}"><div class="hint">Stream multicast group address (91:E0:F0:xx:xx:xx for 1722 dynamic)</div></div>
+          <div class="field"><label>VLAN ID</label><input id="t-vid" value="${s.vid}"></div>
+          <div class="field"><label>SR Class</label><select id="t-class"><option value="A" ${s.pcp===3?'selected':''}>Class A (PCP 3)</option><option value="B" ${s.pcp===2?'selected':''}>Class B (PCP 2)</option></select></div>
+          <div class="field"><label>Rank</label><select id="t-rank"><option value="1" ${s.rank===1?'selected':''}>1 = non-emergency</option><option value="0" ${s.rank===0?'selected':''}>0 = EMERGENCY</option></select></div>
+          <div class="field"><label>MaxFrameSize (octets)</label><input id="t-mfs" value="${s.maxFrameSize}"></div>
+          <div class="field"><label>MaxIntervalFrames</label><input id="t-mif" value="${s.maxIntervalFrames}"></div>
+          <div class="field"><label>AVTP subtype</label><select id="t-subtype"><option value="${STD.AVTP_SUBTYPE.CVF}" ${s.avtpSubtype===STD.AVTP_SUBTYPE.CVF?'selected':''}>CVF (compressed video)</option><option value="${STD.AVTP_SUBTYPE.AAF}" ${s.avtpSubtype===STD.AVTP_SUBTYPE.AAF?'selected':''}>AAF (audio)</option><option value="${STD.AVTP_SUBTYPE.IEC61883}" ${s.avtpSubtype===STD.AVTP_SUBTYPE.IEC61883?'selected':''}>IEC 61883</option><option value="${STD.AVTP_SUBTYPE.CRF}" ${s.avtpSubtype===STD.AVTP_SUBTYPE.CRF?'selected':''}>CRF</option></select></div>
+        </div>
+        <div style="margin-top:14px; padding:8px; background:var(--bg-base); border:1px solid var(--line-soft); border-radius:4px;">
+          <div style="color:var(--text-dim); font-size:10.5px; margin-bottom:4px;">Computed required idleSlope</div>
+          <div id="t-bw" style="font-family:var(--mono); color:var(--info)"></div>
+        </div>`;
+      },
+      afterRender(){
+        const recompute = () => {
+          const mfs = +document.getElementById('t-mfs').value;
+          const mif = +document.getElementById('t-mif').value;
+          const cls = document.getElementById('t-class').value;
+          const ivl = cls==='A' ? STD.CLASS_A_INTERVAL_NS : STD.CLASS_B_INTERVAL_NS;
+          const bps = requiredIdleSlope_bps(mfs, mif, ivl);
+          document.getElementById('t-bw').textContent = `${fmtBps(bps)} per port (Class ${cls}, interval ${ivl/1000}us, +${STD.L1_OVERHEAD_OCTETS} octets L1 overhead)`;
+        };
+        recompute();
+        document.querySelectorAll('#modal-body input, #modal-body select').forEach(inp => inp.addEventListener('input', recompute));
+      }
+    }],
+    onApply(){
+      const cls = document.getElementById('t-class').value;
+      ep.stream = {
+        talkerId: epId,
+        streamMac: document.getElementById('t-mac').value,
+        uniqId: parseInt(document.getElementById('t-uniq').value, 16) || 1,
+        destMac: document.getElementById('t-da').value,
+        vid: +document.getElementById('t-vid').value,
+        pcp: cls==='A' ? STD.CLASS_A_PCP : STD.CLASS_B_PCP,
+        rank: +document.getElementById('t-rank').value,
+        maxFrameSize: +document.getElementById('t-mfs').value,
+        maxIntervalFrames: +document.getElementById('t-mif').value,
+        intervalNs: cls==='A' ? STD.CLASS_A_INTERVAL_NS : STD.CLASS_B_INTERVAL_NS,
+        avtpSubtype: +document.getElementById('t-subtype').value
+      };
+      closeModal();
+      SIM.notify();
+    }
+  });
+}
+
+function openListenerConfig(epId){
+  const ep = NET.endpoints[epId];
+  // List potential streams to subscribe to (drawn from talkers)
+  openModal({
+    title: `Configure ${epId} (Listener)`,
+    tabs: [{
+      label: 'Subscriptions',
+      render(){
+        let html = '<div class="subhead">Subscribed streams (declarations)</div>';
+        html += '<table class="edit-tbl"><thead><tr><th>Stream ID</th><th>Declaration</th><th></th></tr></thead><tbody>';
+        for (let i=0;i<ep.subscriptions.length;i++){
+          const s = ep.subscriptions[i];
+          html += `<tr data-i="${i}">
+            <td><input value="${s.stream_id}" data-f="stream_id"></td>
+            <td><select data-f="decl">
+              <option ${s.decl==='Ready'?'selected':''}>Ready</option>
+              <option ${s.decl==='AskingFailed'?'selected':''}>AskingFailed</option>
+              <option ${s.decl==='ReadyFailed'?'selected':''}>ReadyFailed</option>
+              <option ${s.decl==='Ignore'?'selected':''}>Ignore</option>
+            </select></td>
+            <td><button class="del-btn" data-del="${i}">×</button></td>
+          </tr>`;
+        }
+        html += '</tbody></table>';
+        html += '<div style="margin-top:8px;"><button class="btn tiny" id="sub-add">+ Add subscription</button></div>';
+        // Quick-pick known streams
+        const knownStreams = [];
+        for (const tid of ['T1','T2']){
+          const t = NET.endpoints[tid];
+          if (t.stream) knownStreams.push({ tid, sid: streamIdStr(t.stream.streamMac, t.stream.uniqId), da: t.stream.destMac });
+        }
+        if (knownStreams.length){
+          html += '<div class="subhead">Quick-add from configured talkers</div>';
+          for (const k of knownStreams){
+            html += `<button class="btn tiny" data-quick="${k.sid}">+ ${k.tid}: ${k.sid}</button> `;
+          }
+        }
+        return html;
+      },
+      afterRender(){
+        document.getElementById('sub-add').addEventListener('click', () => {
+          ep.subscriptions.push({ stream_id:'00-00-00-00-00-00:00-00', decl:'Ready' });
+          const tabs = _modalState.tabs;
+          document.getElementById('modal-body').innerHTML = tabs[0].render();
+          tabs[0].afterRender();
+        });
+        document.querySelectorAll('#modal-body input, #modal-body select').forEach(inp => {
+          inp.addEventListener('change', () => {
+            const tr = inp.closest('tr'); if (!tr) return;
+            const i = +tr.dataset.i; const f = inp.dataset.f;
+            if (f==='stream_id') ep.subscriptions[i].stream_id = inp.value;
+            else if (f==='decl') ep.subscriptions[i].decl = inp.value;
+          });
+        });
+        document.querySelectorAll('#modal-body [data-del]').forEach(b => {
+          b.addEventListener('click', () => {
+            ep.subscriptions.splice(+b.dataset.del, 1);
+            // re-render
+            const tabs = _modalState.tabs;
+            document.getElementById('modal-body').innerHTML = tabs[0].render();
+            tabs[0].afterRender();
+          });
+        });
+        document.querySelectorAll('#modal-body [data-quick]').forEach(b => {
+          b.addEventListener('click', () => {
+            ep.subscriptions.push({ stream_id: b.dataset.quick, decl:'Ready' });
+            const tabs = _modalState.tabs;
+            document.getElementById('modal-body').innerHTML = tabs[0].render();
+            tabs[0].afterRender();
+          });
+        });
+      }
+    }],
+    onApply(){ closeModal(); SIM.notify(); }
+  });
+}
+/* =========================================================================
+   SECTION 12 — Scenario presets (S1..S10)
+   Each scenario builder returns { network: Network, script: [actions] }.
+   The script is interpreted by Sim.planFromScript().
+   ========================================================================= */
+
+/* Helpers shared across scenarios */
+function _stream_T1_to_L1_ClassA(){
+  // 1000-octet frames at 1 per 125us:
+  // (1000+20)*8 / 125e-6 = 65.28 Mb/s — fits under 75 Mb/s Class A cap.
+  return defaultStream({
+    talkerId:'T1', streamMac:'00:11:22:33:44:01', uniqId:0x0001,
+    destMac:'91:E0:F0:00:FE:01', vid:2,
+    pcp: STD.CLASS_A_PCP, rank: 1,
+    maxFrameSize: 1000, maxIntervalFrames: 1,
+    intervalNs: STD.CLASS_A_INTERVAL_NS,
+    avtpSubtype: STD.AVTP_SUBTYPE.CVF
+  });
+}
+function _stream_T1_to_L1_ClassB(){
+  return defaultStream({
+    talkerId:'T1', streamMac:'00:11:22:33:44:01', uniqId:0x0001,
+    destMac:'91:E0:F0:00:FE:01', vid:2,
+    pcp: STD.CLASS_B_PCP, rank: 1,
+    maxFrameSize: 1500, maxIntervalFrames: 1,
+    intervalNs: STD.CLASS_B_INTERVAL_NS,
+    avtpSubtype: STD.AVTP_SUBTYPE.CVF
+  });
+}
+function _stream_T2_to_L2_ClassA(){
+  return defaultStream({
+    talkerId:'T2', streamMac:'00:11:22:33:44:02', uniqId:0x0001,
+    destMac:'91:E0:F0:00:FE:02', vid:2,
+    pcp: STD.CLASS_A_PCP, rank: 1,
+    maxFrameSize: 1500, maxIntervalFrames: 1,
+    intervalNs: STD.CLASS_A_INTERVAL_NS,
+    avtpSubtype: STD.AVTP_SUBTYPE.CVF
+  });
+}
+function _stream_T2_to_L1_emergency(){
+  // Rear-cam — emergency rank, large enough to require preempting T1
+  return defaultStream({
+    talkerId:'T2', streamMac:'00:11:22:33:44:02', uniqId:0x0002,
+    destMac:'91:E0:F0:00:FE:04', vid:2,
+    pcp: STD.CLASS_A_PCP,
+    rank: 0,                       // EMERGENCY
+    maxFrameSize: 1500, maxIntervalFrames: 4,  // ~ 48.6 Mb/s
+    intervalNs: STD.CLASS_A_INTERVAL_NS,
+    avtpSubtype: STD.AVTP_SUBTYPE.CVF
+  });
+}
+
+/* ---------- S1: Single stream success ---------- */
+SCENARIOS.S1 = function(){
+  const net = new Network();
+  const script = [
+    { kind:'message', text:'S1 — Single stream T1→L1, Class A. Demonstrates Talker Advertise → Listener Ready handshake and CBS commit.' },
+    { kind:'configure-talker',   id:'T1', stream: _stream_T1_to_L1_ClassA() },
+    { kind:'configure-listener', id:'L1', subscribe:[{ stream_id: streamIdStr('00:11:22:33:44:01', 0x0001), decl:'Ready' }] },
+    { kind:'advertise', talkerId:'T1' },
+    { kind:'data-burst', talkerId:'T1', count: 3 }
+  ];
+  return { network: net, script };
+};
+
+/* ---------- S2: Admission fail (oversize) ---------- */
+SCENARIOS.S2 = function(){
+  const net = new Network();
+  // Drop the Class A cap on SW2.p2 to force failure deeper in the path
+  net.switches.SW2.ports.p2.cbs[STD.CLASS_A_PCP].cap_bps = 30_000_000;  // 30 Mb/s artificial cap
+  // Stream sized at ~65 Mb/s (1000-octet frames, 1 per 125us) — admits fine on SW1.p3
+  // (cap 75 Mb/s) but fails on SW2.p2 (cap 30 Mb/s).
+  const t = _stream_T1_to_L1_ClassA();
+  const script = [
+    { kind:'message', text:'S2 — Admission fail. T1 requests ~65.3 Mb/s. SW1.p3 admits (cap 75 Mb/s); SW2.p2 has artificially low Class A cap of 30 Mb/s → Talker Failed code 1 issued at SW2.' },
+    { kind:'configure-talker',   id:'T1', stream: t },
+    { kind:'configure-listener', id:'L1', subscribe:[{ stream_id: streamIdStr('00:11:22:33:44:01', 0x0001), decl:'Ready' }] },
+    { kind:'advertise', talkerId:'T1' }
+  ];
+  return { network: net, script };
+};
+
+/* ---------- S3: Two same-priority streams, both fit ---------- */
+SCENARIOS.S3 = function(){
+  const net = new Network();
+  // Two Class A streams that together stay within the 75% SR ceiling on SW1.p3 and SW2.p2
+  const s1 = defaultStream({
+    talkerId:'T1', streamMac:'00:11:22:33:44:01', uniqId:0x0001,
+    destMac:'91:E0:F0:00:FE:01', vid:2,
+    pcp: STD.CLASS_A_PCP, rank: 1,
+    maxFrameSize: 1000, maxIntervalFrames: 1,
+    intervalNs: STD.CLASS_A_INTERVAL_NS,
+    avtpSubtype: STD.AVTP_SUBTYPE.CVF
+  });
+  const s2 = defaultStream({
+    talkerId:'T2', streamMac:'00:11:22:33:44:02', uniqId:0x0001,
+    destMac:'91:E0:F0:00:FE:02', vid:2,
+    pcp: STD.CLASS_A_PCP, rank: 1,
+    maxFrameSize: 1000, maxIntervalFrames: 1,
+    intervalNs: STD.CLASS_A_INTERVAL_NS,
+    avtpSubtype: STD.AVTP_SUBTYPE.CVF
+  });
+  // Required idleSlope each ≈ (1020*8)/125us ≈ 65.28 Mb/s -> too high for both on shared link
+  // Reduce frame size so both fit: 500 octets -> (520*8)/125us ≈ 33.28 Mb/s, two streams ≈ 66.6 Mb/s < 75 Mb/s cap
+  s1.maxFrameSize = 500; s2.maxFrameSize = 500;
+  const script = [
+    { kind:'message', text:'S3 — Two same-priority Class A streams (T1→L1, T2→L2) both admit on shared link SW1.p3→SW2.p1. Combined ~66.6 Mb/s < 75 Mb/s cap. Watch the SW1 PCP-3 queue: both T1 and T2 frames land concurrently and contend for egress; CBS gates by credit and frames are interleaved on the wire.' },
+    { kind:'configure-talker',   id:'T1', stream: s1 },
+    { kind:'configure-talker',   id:'T2', stream: s2 },
+    { kind:'configure-listener', id:'L1', subscribe:[{ stream_id: streamIdStr('00:11:22:33:44:01', 0x0001), decl:'Ready' }] },
+    { kind:'configure-listener', id:'L2', subscribe:[{ stream_id: streamIdStr('00:11:22:33:44:02', 0x0001), decl:'Ready' }] },
+    { kind:'advertise', talkerId:'T1' },
+    { kind:'advertise', talkerId:'T2' },
+    { kind:'parallel-burst', emissions: [
+      { talkerId:'T1', count: 3 },
+      { talkerId:'T2', count: 3 }
+    ]}
+  ];
+  return { network: net, script };
+};
+
+/* ---------- S4: Two same-priority streams, second fails ---------- */
+SCENARIOS.S4 = function(){
+  const net = new Network();
+  // Two Class A streams that together exceed the 75% ceiling
+  const s1 = defaultStream({
+    talkerId:'T1', streamMac:'00:11:22:33:44:01', uniqId:0x0001,
+    destMac:'91:E0:F0:00:FE:01', vid:2,
+    pcp: STD.CLASS_A_PCP, rank: 1,
+    maxFrameSize: 1000, maxIntervalFrames: 1,
+    intervalNs: STD.CLASS_A_INTERVAL_NS,
+    avtpSubtype: STD.AVTP_SUBTYPE.CVF
+  });
+  const s2 = defaultStream({
+    talkerId:'T2', streamMac:'00:11:22:33:44:02', uniqId:0x0001,
+    destMac:'91:E0:F0:00:FE:02', vid:2,
+    pcp: STD.CLASS_A_PCP, rank: 1,
+    maxFrameSize: 1000, maxIntervalFrames: 1,
+    intervalNs: STD.CLASS_A_INTERVAL_NS,
+    avtpSubtype: STD.AVTP_SUBTYPE.CVF
+  });
+  // 1020*8/125us ≈ 65.28 Mb/s each.  First admits (65.3 < 75). Second exceeds (130.6 > 75) -> fail.
+  const script = [
+    { kind:'message', text:'S4 — Two same-priority Class A streams. First admits (~65.3 Mb/s). Second pushes total to ~130.6 Mb/s, exceeding 75 Mb/s ceiling on SW1.p3 → Talker Failed code 1.' },
+    { kind:'configure-talker',   id:'T1', stream: s1 },
+    { kind:'configure-talker',   id:'T2', stream: s2 },
+    { kind:'configure-listener', id:'L1', subscribe:[{ stream_id: streamIdStr('00:11:22:33:44:01', 0x0001), decl:'Ready' }] },
+    { kind:'configure-listener', id:'L2', subscribe:[{ stream_id: streamIdStr('00:11:22:33:44:02', 0x0001), decl:'Ready' }] },
+    { kind:'advertise', talkerId:'T1' },
+    { kind:'advertise', talkerId:'T2' }
+  ];
+  return { network: net, script };
+};
+
+/* ---------- S5: Class A vs Class B (isolation, no preemption) ---------- */
+SCENARIOS.S5 = function(){
+  const net = new Network();
+  const sA = _stream_T1_to_L1_ClassA();
+  const sB = defaultStream({
+    talkerId:'T2', streamMac:'00:11:22:33:44:02', uniqId:0x0001,
+    destMac:'91:E0:F0:00:FE:02', vid:2,
+    pcp: STD.CLASS_B_PCP, rank: 1,
+    maxFrameSize: 1500, maxIntervalFrames: 1,
+    intervalNs: STD.CLASS_B_INTERVAL_NS,
+    avtpSubtype: STD.AVTP_SUBTYPE.AAF
+  });
+  const script = [
+    { kind:'message', text:'S5 — Class A vs Class B isolation. T1 reserves PCP 3 (~65.3 Mb/s, Class A); T2 reserves PCP 2 (~48.6 Mb/s, Class B). Both bursts are concurrent. Watch the SW1 queues: PCP-3 (Class A, blue) and PCP-2 (Class B, green) fill independently. Strict priority (cl 8.6.8.4) sends PCP-3 first when both queues are CBS-eligible; each class has its own credit accounting.' },
+    { kind:'configure-talker',   id:'T1', stream: sA },
+    { kind:'configure-talker',   id:'T2', stream: sB },
+    { kind:'configure-listener', id:'L1', subscribe:[{ stream_id: streamIdStr('00:11:22:33:44:01', 0x0001), decl:'Ready' }] },
+    { kind:'configure-listener', id:'L2', subscribe:[{ stream_id: streamIdStr('00:11:22:33:44:02', 0x0001), decl:'Ready' }] },
+    { kind:'advertise', talkerId:'T1' },
+    { kind:'advertise', talkerId:'T2' },
+    { kind:'parallel-burst', emissions: [
+      { talkerId:'T1', count: 3 },
+      { talkerId:'T2', count: 3 }
+    ]}
+  ];
+  return { network: net, script };
+};
+
+/* ---------- S6: Rear-view emergency rank preempts ---------- */
+SCENARIOS.S6 = function(){
+  const net = new Network();
+  // T1: IP video, Class A non-emergency, ~52.2 Mb/s
+  // 1000-octet frames, 4 per 500us = 1 per 125us at 8000 fps -> wait, MIF=4 means 4 frames per
+  // class A measurement interval (125us). (1020*8*1)/125e-6 = 65.28 Mb/s with MIF=1.
+  // Use MIF=1 to occupy roughly 65.3 Mb/s, leaving ~10 Mb/s headroom.
+  const s1 = defaultStream({
+    talkerId:'T1', streamMac:'00:11:22:33:44:01', uniqId:0x0001,
+    destMac:'91:E0:F0:00:FE:01', vid:2,
+    pcp: STD.CLASS_A_PCP, rank: 1,                  // non-emergency
+    maxFrameSize: 1000, maxIntervalFrames: 1,       // ~65.28 Mb/s
+    intervalNs: STD.CLASS_A_INTERVAL_NS,
+    avtpSubtype: STD.AVTP_SUBTYPE.CVF
+  });
+  // T2: rear cam, Class A EMERGENCY, ~32.6 Mb/s — fits only after T1 is preempted.
+  // Combined demand on SW1.p3 would be 65.3 + 32.6 = 97.9 Mb/s > 75 Mb/s cap, so the
+  // emergency advertise must bump T1's reservation to be admitted.
+  const s2 = defaultStream({
+    talkerId:'T2', streamMac:'00:11:22:33:44:02', uniqId:0x0002,
+    destMac:'91:E0:F0:00:FE:04', vid:2,
+    pcp: STD.CLASS_A_PCP,
+    rank: 0,                                        // EMERGENCY
+    maxFrameSize: 500, maxIntervalFrames: 1,        // ~33.28 Mb/s
+    intervalNs: STD.CLASS_A_INTERVAL_NS,
+    avtpSubtype: STD.AVTP_SUBTYPE.CVF
+  });
+  const script = [
+    { kind:'message', text:'S6 — Rear-view scenario. T1 holds non-emergency Class A reservation (~65.3 Mb/s). Driver engages reverse → T2 emits emergency-rank advertise (~33.3 Mb/s); combined exceeds cap, so T2 preempts T1 (failure code 6).' },
+    { kind:'configure-talker',   id:'T1', stream: s1 },
+    { kind:'configure-listener', id:'L1', subscribe:[
+      { stream_id: streamIdStr('00:11:22:33:44:01', 0x0001), decl:'Ready' },
+      { stream_id: streamIdStr('00:11:22:33:44:02', 0x0002), decl:'Ready' }
+    ]},
+    { kind:'advertise', talkerId:'T1' },
+    { kind:'data-burst', talkerId:'T1', count: 2 },
+    { kind:'message', text:'>>> Driver engages reverse — T2 (rear cam) issues EMERGENCY-RANK Talker Advertise <<<', banner: true, lvl:'warn' },
+    { kind:'configure-talker',   id:'T2', stream: s2 },
+    { kind:'advertise', talkerId:'T2' },
+    { kind:'data-burst', talkerId:'T2', count: 3 }
+  ];
+  return { network: net, script };
+};
+
+/* ---------- S7: Multicast partial fail (Listener Ready Failed merge) ---------- */
+SCENARIOS.S7 = function(){
+  const net = new Network();
+  // Multicast stream T1->{L1,L2} via FE:03
+  // Make L2's path constrained by setting low cap on SW3.p3
+  net.switches.SW3.ports.p3.cbs[STD.CLASS_A_PCP].cap_bps = 10_000_000; // 10 Mb/s cap on egress to L2
+  // Stream sized to admit at SW1, SW2, SW3.p2 (cap 75 Mb/s) but fail at SW3.p3 (cap 10 Mb/s).
+  // 500-octet frames, 1 per 125us = (520*8)/125e-6 = 33.28 Mb/s — fits everywhere except p3.
+  const s = defaultStream({
+    talkerId:'T1', streamMac:'00:11:22:33:44:01', uniqId:0x0002,
+    destMac:'91:E0:F0:00:FE:03',  // multicast to {L1,L2}
+    vid:2, pcp: STD.CLASS_A_PCP, rank: 1,
+    maxFrameSize: 500, maxIntervalFrames: 1,
+    intervalNs: STD.CLASS_A_INTERVAL_NS,
+    avtpSubtype: STD.AVTP_SUBTYPE.CVF
+  });
+  const script = [
+    { kind:'message', text:'S7 — Multicast partial fail. T1 advertises (~33.3 Mb/s) to multicast group {L1,L2}. SW3.p3 (toward L2) has artificially low Class A cap of 10 Mb/s. NOTE: this implementation models whole-or-nothing admission per Talker; full Q-2022 cl 35.2.4.4.4 partial-success (Listener Ready Failed) requires per-branch state tracking and is omitted for clarity.' },
+    { kind:'configure-talker',   id:'T1', stream: s },
+    { kind:'configure-listener', id:'L1', subscribe:[{ stream_id: streamIdStr('00:11:22:33:44:01', 0x0002), decl:'Ready' }] },
+    { kind:'configure-listener', id:'L2', subscribe:[{ stream_id: streamIdStr('00:11:22:33:44:01', 0x0002), decl:'Ready' }] },
+    { kind:'advertise', talkerId:'T1' }
+  ];
+  return { network: net, script };
+};
+
+/* ---------- S8: VID mismatch at listener ---------- */
+SCENARIOS.S8 = function(){
+  const net = new Network();
+  // Remove VID 2 from SW3.p2 (toward L1) to force VLAN egress filter drop / fail code 17
+  net.switches.SW3.ports.p2.vlanMembership = new Set([3]);
+  const s = _stream_T1_to_L1_ClassA();
+  const script = [
+    { kind:'message', text:'S8 — VLAN mismatch. SW3.p2 has VID 2 removed from membership. Talker Advertise reaches SW3 but admission on egress p2 fails — Talker Failed code 17.' },
+    { kind:'configure-talker',   id:'T1', stream: s },
+    { kind:'configure-listener', id:'L1', subscribe:[{ stream_id: streamIdStr('00:11:22:33:44:01', 0x0001), decl:'Ready' }] },
+    { kind:'advertise', talkerId:'T1' }
+  ];
+  return { network: net, script };
+};
+
+/* ---------- S9: No FDB entry ---------- */
+SCENARIOS.S9 = function(){
+  const net = new Network();
+  // Wipe FE:01 entry from SW2 to demonstrate FDB miss
+  net.switches.SW2.fdb = net.switches.SW2.fdb.filter(e => e.mac.toUpperCase() !== '91:E0:F0:00:FE:01');
+  const s = _stream_T1_to_L1_ClassA();
+  const script = [
+    { kind:'message', text:'S9 — FDB miss. SW2 has no entry for stream DA 91:E0:F0:00:FE:01, so the bridge cannot determine an egress port for the Talker Advertise. Note: in a conformant bridge MSRP itself installs the FDB entry (cl 8.8.4); this scenario uses a static FDB to surface the no-route case. 802.1Q-2022 Table 35-7 has no dedicated "lookup miss" failure code, so we surface FailureCode=12 as the closest match.' },
+    { kind:'configure-talker',   id:'T1', stream: s },
+    { kind:'configure-listener', id:'L1', subscribe:[{ stream_id: streamIdStr('00:11:22:33:44:01', 0x0001), decl:'Ready' }] },
+    { kind:'advertise', talkerId:'T1' }
+  ];
+  return { network: net, script };
+};
+
+/* ---------- S10: Listener Asking Failed ---------- */
+SCENARIOS.S10 = function(){
+  const net = new Network();
+  const s = _stream_T1_to_L1_ClassA();
+  const script = [
+    { kind:'message', text:'S10 — Listener emits AskingFailed. End-to-end MSRP path is fine, but L1 (e.g., resource-constrained) declares AskingFailed instead of Ready. Reservation NOT committed; T1 stays inactive.' },
+    { kind:'configure-talker',   id:'T1', stream: s },
+    { kind:'configure-listener', id:'L1', subscribe:[{ stream_id: streamIdStr('00:11:22:33:44:01', 0x0001), decl:'AskingFailed' }] },
+    { kind:'advertise', talkerId:'T1' }
+  ];
+  return { network: net, script };
+};
+/* =========================================================================
+   SECTION 13 — Main wiring
+   Globals: NET, SIM, RENDERER
+   ========================================================================= */
+
+let NET = null;
+let SIM = null;
+let RENDERER = null;
+let LOG_BUFFER = [];
+
+function appendLog(entry){
+  LOG_BUFFER.push(entry);
+  // Keep last 500 lines
+  if (LOG_BUFFER.length > 500) LOG_BUFFER.shift();
+  renderLog();
+}
+function renderLog(){
+  const el = document.getElementById('log');
+  // Append last entry only for performance
+  // Simpler approach: full re-render but capped
+  let html = '';
+  for (const e of LOG_BUFFER){
+    const cls = 'log-line ' + (e.lvl||'info');
+    const ts = e.t || '';
+    const swTag = e.sw ? `<span class="sw">[${e.sw}]</span> ` : '';
+    html += `<div class="${cls}"><span class="t">${ts}</span> ${swTag}${escapeHTML(e.text)}</div>`;
+  }
+  el.innerHTML = html;
+  el.scrollTop = el.scrollHeight;
+}
+
+function loadScenario(name){
+  const factory = SCENARIOS[name];
+  if (!factory){ appendLog({lvl:'fail', text:`Unknown scenario: ${name}`}); return; }
+  const { network, script } = factory();
+  NET = network;
+  // Reset log
+  LOG_BUFFER = [];
+  // (Re)wire log emitter
+  const logEmit = (entry) => {
+    entry.t = '[t=' + (SIM ? SIM.tNs : 0) + ']';
+    appendLog(entry);
+  };
+  SIM = new Sim(NET, logEmit);
+  SIM.scenarioName = name;
+  SIM.planFromScript(script);
+  SIM.on(() => { if (RENDERER) RENDERER.refresh(); renderInspector(); });
+  // Render
+  RENDERER = new Renderer(NET, SIM);
+  appendLog({lvl:'info', text:`=== Loaded scenario ${name} (${SIM.steps.length} steps planned) ===`});
+  appendLog({lvl:'info', text:'Press Play to run, or Step to advance one event at a time.'});
+  // Reset inspector
+  document.getElementById('insp-body').innerHTML = '<div class="empty-msg">Click a packet on the wire, or a switch, or a port to inspect.</div>';
+  // Set play button to ▶
+  document.getElementById('play-ico').textContent = '▶';
+  document.getElementById('play-lbl').textContent = 'Play';
+}
+
+function setupTopbar(){
+  document.getElementById('btn-play').addEventListener('click', async () => {
+    if (SIM.playing){
+      SIM.pause();
+      document.getElementById('play-ico').textContent = '▶';
+      document.getElementById('play-lbl').textContent = 'Play';
+    } else {
+      document.getElementById('play-ico').textContent = '⏸';
+      document.getElementById('play-lbl').textContent = 'Pause';
+      await SIM.play();
+      document.getElementById('play-ico').textContent = '▶';
+      document.getElementById('play-lbl').textContent = 'Play';
+    }
+  });
+  document.getElementById('btn-step').addEventListener('click', async () => {
+    await SIM.step();
+  });
+  document.getElementById('btn-reset').addEventListener('click', () => {
+    loadScenario(document.getElementById('scenario').value);
+  });
+  document.getElementById('speed').addEventListener('input', (e) => {
+    SIM.speed = (+e.target.value) / 5;  // 1..10 -> 0.2..2.0
+  });
+  document.getElementById('scenario').addEventListener('change', (e) => {
+    loadScenario(e.target.value);
+  });
+  document.getElementById('btn-validate').addEventListener('click', () => {
+    const r = runValidationHarness();
+    appendLog({lvl: r.failures.length===0?'ok':'fail',
+               text:`Validation harness: ${r.pass} pass, ${r.failures.length} fail`});
+    if (r.failures.length){
+      const banner = document.getElementById('harness-fail');
+      banner.textContent = `HARNESS FAILED: ${r.failures.map(f=>f.label).join('; ')}`;
+      banner.classList.add('show');
+      setTimeout(()=>banner.classList.remove('show'), 6000);
+      for (const f of r.failures){
+        appendLog({lvl:'fail', text:`  ✗ ${f.label}${f.clause?' ['+f.clause+']':''}`});
+      }
+    } else {
+      showInfoBanner(`Validation: all ${r.pass} assertions pass`, 'ok');
+    }
+  });
+  document.getElementById('btn-help').addEventListener('click', () => {
+    openModal({
+      title:'Conformance & Standards Notes',
+      tabs:[{
+        label:'References',
+        render(){
+          return `<div style="font-size:12px; line-height:1.7;">
+            <div class="subhead">Standards anchors</div>
+            <table class="tbl">
+              <thead><tr><th>Behavior</th><th>Reference</th></tr></thead>
+              <tbody>
+                <tr><td>MSRP signaling, Talker/Listener attributes, Domain</td><td>IEEE 802.1Q-2022 cl 35.2</td></tr>
+                <tr><td>MSRPDU format, FirstValue layouts</td><td>cl 35.2.2.7 / 35.2.2.8</td></tr>
+                <tr><td>ThreePackedEvent, base-6 packing</td><td>cl 10.8.1.5</td></tr>
+                <tr><td>FourPackedEvent, base-4 packing (Listener decl)</td><td>cl 35.2.2.8.4</td></tr>
+                <tr><td>Failure code table</td><td>cl 35.2.2.8.6, Table 35-7</td></tr>
+                <tr><td>Rank-based override (emergency preempts)</td><td>cl 35.2.4.4.5</td></tr>
+                <tr><td>Credit-Based Shaper algorithm</td><td>cl 8.6.8.2</td></tr>
+                <tr><td>CBS parameter equations (idleSlope, sendSlope, hi/loCredit)</td><td>Annex L.1, L.2</td></tr>
+                <tr><td>SR class measurement intervals (A=125us, B=250us)</td><td>cl 35.5</td></tr>
+                <tr><td>SR deltaBandwidth ceiling (default 75%)</td><td>cl 35.5</td></tr>
+                <tr><td>Stream Identification (Active DA + VLAN)</td><td>cl 6.6, 8.6.5, Annex T</td></tr>
+                <tr><td>Forwarding process (FDB, ingress/egress filtering)</td><td>cl 8.6, 8.8</td></tr>
+                <tr><td>AVTPDU subtypes (CVF, AAF, IEC61883, CRF)</td><td>IEEE 1722-2016 cl 5.4, Table 6</td></tr>
+                <tr><td>AVTPDU stream header layout</td><td>1722-2016 cl 5.4–5.5</td></tr>
+                <tr><td>StreamID = MAC(6) ‖ UniqueID(2)</td><td>1722-2016 cl 5.4.2.5; 802.1Q cl 46.3</td></tr>
+              </tbody>
+            </table>
+            <div class="subhead">Modeling choices and idealizations</div>
+            <ul style="padding-left:20px; color:var(--text-dim);">
+              <li>All links are 100 Mb/s full-duplex.</li>
+              <li>Class A and Class B SR caps default to 75% of port rate (deltaBandwidth = 75).</li>
+              <li>Per-port portTcMaxLatency defaults to 250us per hop.</li>
+              <li>Frame L1 overhead (preamble + SFD + IFG) modeled as +20 octets in idleSlope calculation per Annex L.1.</li>
+              <li>The preemption selection algorithm (which non-emergency reservations to bump first) is not mandated by the standard; this implementation greedily bumps the largest first until the deficit is covered.</li>
+              <li>FDB entries are statically configured; no dynamic learning during the scenarios.</li>
+              <li>WRR scheduler weights are simulated but not strictly enforced in animation timing — animation speed is decoupled from scheduling decisions.</li>
+              <li>MRP three-/four-packed event encoding is rendered literally per the standard byte layout.</li>
+            </ul>
+          </div>`;
+        }
+      }],
+      onApply(){ closeModal(); }
+    });
+  });
+}
+
+function setupModalChrome(){
+  document.getElementById('modal-x').addEventListener('click', closeModal);
+  document.getElementById('modal-cancel').addEventListener('click', closeModal);
+  document.getElementById('modal-apply').addEventListener('click', () => {
+    if (_modalState && _modalState.onApply) _modalState.onApply();
+  });
+  document.getElementById('modal-bg').addEventListener('click', (e) => {
+    if (e.target.id === 'modal-bg') closeModal();
+  });
+}
+
+/* ---- Boot ---- */
+window.addEventListener('DOMContentLoaded', () => {
+  const r = runValidationHarness();
+  if (r.failures.length){
+    const banner = document.getElementById('harness-fail');
+    banner.textContent = `HARNESS FAILED at load: ${r.failures.map(f=>f.label).join('; ')}`;
+    banner.classList.add('show');
+    setTimeout(()=>banner.classList.remove('show'), 8000);
+    console.error('Harness failures:', r.failures);
+  } else {
+    console.log(`Validation harness OK (${r.pass} assertions)`);
+  }
+  setupInspectorTabs();
+  setupModalChrome();
+  setupTopbar();
+  loadScenario('S6');
+});
+
+</script>
+</body>
+</html>

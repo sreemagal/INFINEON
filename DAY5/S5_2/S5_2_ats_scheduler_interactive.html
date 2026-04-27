@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ATS Interleaved Regulator Scheduler — IEEE 802.1Qcr</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    font-size: 13px;
+    background: #ffffff;
+    color: #1a1a1a;
+    padding: 24px;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+  .subtitle { font-size: 12px; color: #666; margin-bottom: 20px; }
+  .section-label { font-size: 12px; color: #666; margin: 12px 0 5px; }
+
+  .algo-note {
+    background: #EEF3FA; border-left: 4px solid #2E5EA8;
+    padding: 10px 14px; border-radius: 0 6px 6px 0;
+    font-size: 12px; color: #1F3864; line-height: 1.7;
+    margin-bottom: 20px;
+  }
+
+  .formula-box {
+    background: #F5F0FF; border: 1px solid #534AB7;
+    border-radius: 6px; padding: 10px 16px;
+    font-family: monospace; font-size: 13px;
+    color: #26215C; margin-bottom: 20px;
+    line-height: 1.8;
+  }
+
+  .controls { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+  button {
+    font-size: 12px; padding: 6px 16px; border-radius: 6px;
+    border: 1px solid #ccc; background: #f5f5f5;
+    color: #1a1a1a; cursor: pointer; font-family: inherit;
+  }
+  button:hover { background: #e8e8e8; }
+  button.primary { background: #1F3864; color: #fff; border-color: #1F3864; }
+  button.primary:hover { background: #2E5EA8; }
+
+  .clock-display {
+    font-size: 14px; font-weight: 700; color: #1a1a1a;
+    background: #f8f8f8; border: 1px solid #e0e0e0;
+    border-radius: 6px; padding: 6px 16px;
+    display: inline-block; margin-bottom: 16px;
+    font-family: monospace;
+  }
+
+  /* TX strip */
+  .tx-row {
+    display: flex; gap: 3px; flex-wrap: wrap;
+    min-height: 36px; padding: 5px 8px;
+    background: #f8f8f8; border-radius: 6px;
+    border: 1px solid #e0e0e0; margin-bottom: 16px;
+  }
+  .tx-fr {
+    min-width: 52px; height: 26px; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 600; padding: 0 5px;
+    border-width: 1px; border-style: solid;
+  }
+
+  /* Stream rows */
+  .srow { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px; }
+  .slabel {
+    width: 120px; font-size: 12px; font-weight: 600;
+    flex-shrink: 0; padding-top: 4px; line-height: 1.5;
+  }
+  .sframes { display: flex; gap: 4px; flex-wrap: wrap; flex: 1; }
+  .sfr {
+    min-width: 52px; height: 30px; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 600; flex-shrink: 0;
+    border-width: 1px; border-style: solid;
+    transition: opacity 0.2s;
+  }
+  .sfr.sent    { opacity: 0.18; }
+  .sfr.held    { box-shadow: 0 0 0 2.5px #c0392b; }
+  .sfr.eligible { box-shadow: 0 0 0 2.5px #1D9E75; }
+
+  /* Eligibility rows */
+  .elig-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .elig-label { width: 120px; font-size: 12px; font-weight: 600; flex-shrink: 0; }
+  .elig-info { font-size: 12px; color: #555; flex: 1; line-height: 1.6; }
+  .elig-tag {
+    font-size: 11px; font-weight: 600; padding: 2px 8px;
+    border-radius: 4px; margin-left: 8px; white-space: nowrap;
+  }
+  .tag-eligible { background: #E1F5EE; color: #085041; }
+  .tag-held     { background: #FCEBEB; color: #791F1F; }
+  .tag-idle     { background: #F1EFE8; color: #444441; }
+
+  hr { border: none; border-top: 1px solid #e0e0e0; margin: 16px 0; }
+
+  /* Log */
+  .log {
+    font-size: 12px; color: #555;
+    background: #f8f8f8; padding: 10px 12px;
+    border-radius: 6px; border: 1px solid #e0e0e0;
+    line-height: 2; min-height: 56px;
+    font-family: monospace;
+  }
+  .log .hi { color: #1a1a1a; font-weight: 700; }
+
+  /* Stats */
+  .stats { display: flex; gap: 20px; font-size: 12px; color: #666; margin: 10px 0; flex-wrap: wrap; }
+  .stats span { color: #1a1a1a; font-weight: 600; }
+
+  /* Key legend */
+  .legend { display: flex; gap: 20px; font-size: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+  .leg-item { display: flex; align-items: center; gap: 6px; }
+  .leg-box { width: 18px; height: 18px; border-radius: 3px; border-width: 1px; border-style: solid; }
+</style>
+</head>
+<body>
+
+<h1>ATS — Asynchronous Traffic Shaping</h1>
+<p class="subtitle">IEEE 802.1Qcr · Interleaved Regulator — per-stream eligibility time enforcement</p>
+
+<div class="algo-note">
+  <strong>Core principle:</strong> Each stream has its own eligibility time — the earliest moment its next frame may be forwarded. A frame that arrives before its eligibility time is held back for that stream only. Frames from all other streams continue unimpeded. This is what makes it <em>interleaved</em> — per-stream hold without blocking other streams.
+</div>
+
+<div class="formula-box">
+  Eligibility time update (after forwarding each frame):<br>
+  new_eligibility = max(arrival_time, old_eligibility) + L/r<br><br>
+  L = frame length in bits &nbsp;·&nbsp; r = committed rate in bit/s &nbsp;·&nbsp; L/r = minimum inter-frame gap
+</div>
+
+<div class="controls">
+  <button class="primary" onclick="astep()">Advance clock 20 µs →</button>
+  <button onclick="arun()">Run 20 ticks</button>
+  <button onclick="areset()">Reset</button>
+</div>
+
+<div class="clock-display" id="clock">Clock: 0 µs</div>
+
+<div class="legend">
+  <div class="leg-item">
+    <div class="leg-box" style="background:#E1F5EE;border-color:#0F6E56;box-shadow:0 0 0 2px #1D9E75"></div>
+    <span>Eligible — will be forwarded this tick</span>
+  </div>
+  <div class="leg-item">
+    <div class="leg-box" style="background:#FCEBEB;border-color:#E24B4A;box-shadow:0 0 0 2px #c0392b"></div>
+    <span>Held — arrived before eligibility time</span>
+  </div>
+  <div class="leg-item">
+    <div class="leg-box" style="background:#f8f8f8;border-color:#ccc;opacity:0.3"></div>
+    <span>Sent</span>
+  </div>
+  <div class="leg-item">
+    <div class="leg-box" style="background:#f8f8f8;border-color:#ccc"></div>
+    <span>Not yet arrived</span>
+  </div>
+</div>
+
+<div class="section-label">Transmitted output (stream letter + original arrival time µs):</div>
+<div class="tx-row" id="atx"></div>
+
+<div class="section-label">Stream queues:</div>
+<div id="astreams"></div>
+
+<hr>
+
+<div class="section-label">Per-stream eligibility state:</div>
+<div id="aelig"></div>
+
+<div class="stats" id="stats"></div>
+
+<div class="section-label">Step log:</div>
+<div class="log" id="alog"></div>
+
+<script>
+// Three streams with different committed rates and bursty arrival patterns
+// Time unit: microseconds
+const STREAMS = [
+  {
+    name: 'Stream A',
+    desc: '100 Mbit/s · 1000 B',
+    rate: 100,        // Mbit/s
+    frameBytes: 1000,
+    minGap: 80,       // (1000×8) / 100 = 80 µs
+    // Bursty arrivals: some too close together, some late
+    arrivals: [0, 40, 160, 200, 290, 450, 530, 620],
+    c: { bg: '#E1F5EE', bd: '#0F6E56', tx: '#085041' }
+  },
+  {
+    name: 'Stream B',
+    desc: '50 Mbit/s · 500 B',
+    rate: 50,
+    frameBytes: 500,
+    minGap: 80,       // (500×8) / 50 = 80 µs
+    arrivals: [10, 50, 140, 260, 330, 500, 580],
+    c: { bg: '#FAEEDA', bd: '#BA7517', tx: '#633806' }
+  },
+  {
+    name: 'Stream C',
+    desc: '200 Mbit/s · 2000 B',
+    rate: 200,
+    frameBytes: 2000,
+    minGap: 80,       // (2000×8) / 200 = 80 µs
+    arrivals: [5, 60, 180, 240, 380, 460, 600],
+    c: { bg: '#EEEDFE', bd: '#534AB7', tx: '#3C3489' }
+  }
+];
+
+let AS;
+
+function ainit() {
+  AS = {
+    clock:       0,
+    eligibility: [0, 0, 0],
+    sent:        STREAMS.map(s => new Array(s.arrivals.length).fill(false)),
+    held:        STREAMS.map(() => []),   // indices of arrived-but-not-yet-forwarded frames
+    txLog:       [],
+    log:         [],
+    fwdCount:    [0, 0, 0]
+  };
+}
+
+function allDone() {
+  return STREAMS.every((s, si) => AS.sent[si].every(Boolean));
+}
+
+function hasFrames(si) {
+  return AS.frames ? AS.frames[si].some(f => !f.sent) : false;
+}
+
+function nextFrame(q) {
+  return AS.frames ? AS.frames[q].find(f => !f.sent) || null : null;
+}
+
+function astep() {
+  if (allDone()) {
+    AS.log.push('All frames forwarded — done.');
+    arender();
+    return;
+  }
+
+  AS.clock += 20;
+  AS.log.push(`── Clock → ${AS.clock} µs ──`);
+
+  STREAMS.forEach((s, si) => {
+    // Register newly arrived frames into held list
+    s.arrivals.forEach((arr, fi) => {
+      if (!AS.sent[si][fi] && arr <= AS.clock && !AS.held[si].includes(fi)) {
+        AS.held[si].push(fi);
+        AS.log.push(`  ${s.name}: frame ${fi+1} arrives (scheduled at ${arr} µs)`);
+      }
+    });
+
+    // Attempt to forward the oldest held frame
+    if (AS.held[si].length > 0) {
+      const fi  = AS.held[si][0];
+      const arr = s.arrivals[fi];
+      const elig = AS.eligibility[si];
+
+      if (AS.clock >= elig) {
+        // Forward
+        AS.sent[si][fi] = true;
+        AS.held[si].shift();
+        AS.txLog.push({ si, fi, arr, fwdAt: AS.clock });
+        AS.fwdCount[si]++;
+
+        const newElig = Math.max(arr, elig) + s.minGap;
+        AS.eligibility[si] = newElig;
+        AS.log.push(`  ${s.name}: frame ${fi+1} FORWARDED · new eligibility = max(${arr},${elig}) + ${s.minGap} = ${newElig} µs`);
+      } else {
+        const wait = elig - AS.clock;
+        AS.log.push(`  ${s.name}: frame ${fi+1} HELD — eligibility ${elig} µs not yet reached (${wait} µs to go)`);
+      }
+    }
+  });
+
+  arender();
+}
+
+function arun()   { for (let i = 0; i < 20; i++) astep(); }
+function areset() { ainit(); arender(); }
+
+function arender() {
+  document.getElementById('clock').textContent = `Clock: ${AS.clock} µs`;
+
+  // TX strip
+  const txDiv = document.getElementById('atx');
+  txDiv.innerHTML = AS.txLog.length
+    ? AS.txLog.map(t => {
+        const c = STREAMS[t.si].c;
+        return `<div class="tx-fr" style="background:${c.bg};border-color:${c.bd};color:${c.tx}">${STREAMS[t.si].name.split(' ')[1]} @${t.arr}</div>`;
+      }).join('')
+    : '<span style="color:#999;font-size:12px;padding:4px 0">nothing forwarded yet — press Step</span>';
+
+  // Stream queues
+  document.getElementById('astreams').innerHTML = STREAMS.map((s, si) => {
+    const c = s.c;
+    const fhtml = s.arrivals.map((arr, fi) => {
+      const sent    = AS.sent[si][fi];
+      const arrived = arr <= AS.clock;
+      const isHeld  = AS.held[si].includes(fi);
+      const isFirst = isHeld && fi === AS.held[si][0];
+      const isElig  = isFirst && AS.clock >= AS.eligibility[si];
+
+      const bg  = arrived ? c.bg : '#f8f8f8';
+      const bd  = arrived ? c.bd : '#ccc';
+      const tx  = arrived ? c.tx : '#999';
+      const cls = sent ? 'sent' : isElig ? 'eligible' : isHeld ? 'held' : '';
+
+      return `<div class="sfr ${cls}" style="background:${bg};border-color:${bd};color:${tx}">
+        ${arrived ? `f${fi+1} @${arr}` : `@${arr}`}
+      </div>`;
+    }).join('');
+
+    return `<div class="srow">
+      <div class="slabel" style="color:${c.tx}">${s.name}<br>
+        <span style="font-weight:400;font-size:11px;color:#888">${s.desc} · gap=${s.minGap}µs</span>
+      </div>
+      <div class="sframes">${fhtml}</div>
+    </div>`;
+  }).join('');
+
+  // Eligibility state
+  document.getElementById('aelig').innerHTML = STREAMS.map((s, si) => {
+    const c    = s.c;
+    const elig = AS.eligibility[si];
+    const canSend = AS.held[si].length > 0 && AS.clock >= elig;
+    const isHeld  = AS.held[si].length > 0 && AS.clock < elig;
+
+    let tag;
+    if (canSend)     tag = `<span class="elig-tag tag-eligible">eligible now</span>`;
+    else if (isHeld) tag = `<span class="elig-tag tag-held">holding — ${elig - AS.clock} µs remaining</span>`;
+    else             tag = `<span class="elig-tag tag-idle">idle</span>`;
+
+    return `<div class="elig-row">
+      <div class="elig-label" style="color:${c.tx}">${s.name}</div>
+      <div class="elig-info">
+        eligibility = <strong>${elig} µs</strong> &nbsp;·&nbsp; min gap = ${s.minGap} µs
+        ${tag}
+      </div>
+    </div>`;
+  }).join('');
+
+  // Stats
+  document.getElementById('stats').innerHTML =
+    `Clock: <span>${AS.clock} µs</span>` +
+    `&nbsp;&nbsp; Forwarded — A: <span>${AS.fwdCount[0]}</span>` +
+    `&nbsp; B: <span>${AS.fwdCount[1]}</span>` +
+    `&nbsp; C: <span>${AS.fwdCount[2]}</span>` +
+    `&nbsp;&nbsp; Total: <span>${AS.fwdCount.reduce((a,b)=>a+b,0)}</span>`;
+
+  // Log — last 8 entries, most recent highlighted
+  document.getElementById('alog').innerHTML =
+    AS.log.slice(-8).map((line, i, arr) =>
+      i === arr.length - 1 ? `<span class="hi">${line}</span>` : line
+    ).join('<br>') || 'Press Step to begin.';
+}
+
+ainit();
+arender();
+</script>
+</body>
+</html>

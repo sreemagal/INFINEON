@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Training material on IEEE 802.1CB FRER implementation with mechanisms, protocol headers, and field meanings</title>
+<style>
+:root{
+  --bg:#0b0f14; --panel:#111827; --panel2:#151f2c; --card:#182230; --text:#e8edf4; --muted:#a7b1c2;
+  --line:#2c3a4e; --accent:#ff5f46; --accent2:#ff3621; --accent3:#ffb86b; --green:#55d98d; --blue:#5ab0ff; --purple:#b58cff;
+  --code:#0a0f16; --shadow: 0 18px 50px rgba(0,0,0,.38); --radius:18px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:radial-gradient(circle at 20% 0%,rgba(255,95,70,.12),transparent 28%),radial-gradient(circle at 75% 10%,rgba(90,176,255,.10),transparent 24%),var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;line-height:1.65}
+a{color:#ffd1c9;text-decoration:none;border-bottom:1px dotted rgba(255,209,201,.5)}
+a:hover{color:white;border-bottom-color:white}
+.topbar{position:sticky;top:0;z-index:1000;background:rgba(9,13,19,.88);backdrop-filter:blur(14px);border-bottom:1px solid rgba(255,95,70,.35);box-shadow:0 8px 30px rgba(0,0,0,.38)}
+.topbar-inner{display:flex;align-items:center;gap:16px;min-height:64px;padding:10px 26px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:.2px;white-space:nowrap}.brand-mark{width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,var(--accent2),#ff8d75);box-shadow:0 0 24px rgba(255,54,33,.42)}
+.context{flex:1;min-width:0;border-left:1px solid var(--line);padding-left:16px}.context small{display:block;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.16em}.context-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:14px;color:#fff}
+.progress{height:3px;background:linear-gradient(90deg,var(--accent2),var(--accent3));width:0%;transition:width .08s linear}.layout{display:grid;grid-template-columns:290px minmax(0,1fr);gap:28px;max-width:1480px;margin:0 auto;padding:28px 24px 80px}.sidebar{position:sticky;top:84px;height:calc(100vh - 104px);overflow:auto;align-self:start;background:rgba(17,24,39,.72);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px}.sidebar h3{margin:0 0 12px;font-size:13px;text-transform:uppercase;letter-spacing:.14em;color:#ffb8aa}.nav a{display:block;padding:8px 10px;margin:3px 0;border-radius:11px;color:var(--muted);border:0;font-size:13px;line-height:1.25}.nav a.active{background:linear-gradient(90deg,rgba(255,54,33,.25),rgba(255,95,70,.08));color:#fff;border-left:3px solid var(--accent2)}
+main{min-width:0}.hero{background:linear-gradient(135deg,rgba(255,54,33,.16),rgba(21,31,44,.88) 46%,rgba(90,176,255,.10));border:1px solid rgba(255,95,70,.28);border-radius:26px;padding:34px;box-shadow:var(--shadow);margin-bottom:26px}.eyebrow{display:inline-flex;align-items:center;gap:8px;background:rgba(255,95,70,.12);border:1px solid rgba(255,95,70,.35);color:#ffd8d2;padding:6px 10px;border-radius:999px;font-size:12px;text-transform:uppercase;letter-spacing:.12em}.hero h1{font-size:clamp(28px,4vw,48px);line-height:1.08;margin:18px 0 12px}.hero p{max-width:1040px;color:#cdd6e4;font-size:18px}.section{scroll-margin-top:92px;background:rgba(17,24,39,.80);border:1px solid var(--line);border-radius:var(--radius);padding:30px;margin:24px 0;box-shadow:var(--shadow)}h2{margin:0 0 16px;font-size:30px;line-height:1.2}h3{margin:26px 0 10px;font-size:21px;color:#fff}h4{margin:22px 0 8px;font-size:17px;color:#ffd1c9}.lead{font-size:18px;color:#d6deeb}.muted{color:var(--muted)}.callout{border-left:4px solid var(--accent2);background:rgba(255,95,70,.10);padding:14px 16px;border-radius:12px;margin:16px 0}.good{border-left-color:var(--green);background:rgba(85,217,141,.10)}.warn{border-left-color:var(--accent3);background:rgba(255,184,107,.10)}.blue{border-left-color:var(--blue);background:rgba(90,176,255,.10)}
+.grid{display:grid;gap:16px}.grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}.grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}.card{background:rgba(24,34,48,.88);border:1px solid var(--line);border-radius:16px;padding:18px}.card h4{margin-top:0}code,kbd{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace;color:#ffd1c9;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:6px;padding:1px 5px}pre{background:linear-gradient(180deg,#07111b,#090f16);border:1px solid #263244;border-radius:14px;padding:16px;overflow:auto;color:#e7eef9;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace;font-size:13px;line-height:1.55;box-shadow:inset 0 0 0 1px rgba(255,255,255,.02)}
+.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:14px;margin:14px 0}table{border-collapse:collapse;width:100%;min-width:760px;background:rgba(10,15,22,.35)}th,td{border-bottom:1px solid var(--line);padding:11px 12px;text-align:left;vertical-align:top}th{background:rgba(255,95,70,.10);color:#fff;font-size:13px;text-transform:uppercase;letter-spacing:.08em}td{color:#dbe5f3}tr:last-child td{border-bottom:0}.tag{display:inline-block;border:1px solid rgba(255,95,70,.35);background:rgba(255,95,70,.11);color:#ffd8d2;border-radius:999px;padding:3px 8px;font-size:12px;margin:2px}.pill{display:inline-block;padding:2px 8px;border-radius:999px;background:rgba(90,176,255,.14);border:1px solid rgba(90,176,255,.30);color:#d7ecff;font-size:12px}
+.diagram{background:#0a111a;border:1px solid #263244;border-radius:16px;padding:18px;margin:16px 0;overflow:auto}.ascii{white-space:pre;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace;font-size:13px;color:#e7eef9;line-height:1.45}.legend{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}.legend span{font-size:12px;border-radius:999px;padding:3px 8px;border:1px solid var(--line);background:rgba(255,255,255,.04)}.bytebox{display:flex;flex-wrap:wrap;gap:4px;margin:12px 0}.byte{min-width:92px;flex:1;border:1px solid #34445b;background:#0b1420;border-radius:10px;padding:10px;text-align:center}.byte strong{display:block;color:#fff}.byte small{color:var(--muted)}
+.timeline{position:relative;margin:16px 0;padding-left:18px}.timeline:before{content:"";position:absolute;left:0;top:4px;bottom:4px;width:2px;background:linear-gradient(var(--accent2),var(--blue))}.step{position:relative;margin:0 0 14px 0;padding:12px 14px;background:rgba(24,34,48,.9);border:1px solid var(--line);border-radius:14px}.step:before{content:"";position:absolute;left:-23px;top:18px;width:11px;height:11px;border-radius:50%;background:var(--accent2);box-shadow:0 0 0 4px rgba(255,54,33,.18)}.footer{color:var(--muted);font-size:13px;margin-top:32px}.kbdrow{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.small{font-size:13px}.source-list li{margin-bottom:8px}@media(max-width:980px){.layout{grid-template-columns:1fr}.sidebar{position:relative;top:0;height:auto}.grid.two,.grid.three{grid-template-columns:1fr}.brand span{display:none}.hero{padding:24px}.topbar-inner{padding:10px 16px}}
+@media print{.topbar,.sidebar{display:none}.layout{display:block;max-width:none;padding:0}.section,.hero{box-shadow:none;break-inside:avoid}body{background:white;color:black}.section,.hero,.card{background:white;border-color:#ddd}pre,.diagram{background:#f6f6f6;color:black}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="brand"><div class="brand-mark"></div><span>Databricks-style TSN Training</span></div>
+    <div class="context"><small>Current context</small><div id="ctx" class="context-title">IEEE 802.1CB FRER implementation</div></div>
+  </div>
+  <div id="progress" class="progress"></div>
+</div>
+<div class="layout">
+  <aside class="sidebar">
+    <h3>Context map</h3>
+    <nav class="nav" id="nav">
+      <a href="#sec1">1. Reliability problem</a>
+      <a href="#sec2">2. FRER pipeline</a>
+      <a href="#sec3">3. Ethernet frame and R-TAG</a>
+      <a href="#sec4">4. Stream identification</a>
+      <a href="#sec5">5. Sequence generation</a>
+      <a href="#sec6">6. Sequence encode/decode</a>
+      <a href="#sec7">7. Replication</a>
+      <a href="#sec8">8. Elimination and recovery</a>
+      <a href="#sec9">9. Match vs vector algorithms</a>
+      <a href="#sec10">10. End-to-end examples</a>
+      <a href="#sec11">11. Disjoint path engineering</a>
+      <a href="#sec12">12. 802.1CBdb and 802.1CBcv</a>
+      <a href="#sec13">13. Automotive deployment</a>
+      <a href="#sec14">14. Counters and validation</a>
+      <a href="#sec15">15. Implementation checklist</a>
+      <a href="#sec16">16. Common mistakes</a>
+      <a href="#sec17">17. Summary</a>
+    </nav>
+  </aside>
+  <main>
+    <section class="hero" id="top">
+      <span class="eyebrow">IEEE 802.1CB • FRER • Implementation-level training</span>
+      <h1>Training material on IEEE 802.1CB FRER implementation with mechanisms, protocol headers, and field meanings</h1>
+      <p>This page replaces a sketch-level explanation with implementation-oriented material. It explains how Frame Replication and Elimination for Reliability (FRER) identifies a stream, generates sequence numbers, inserts the Redundancy Tag (R-TAG), replicates frames over member paths, eliminates duplicates, and exposes the mechanism for automotive Ethernet validation.</p>
+      <div class="legend"><span>R-TAG format</span><span>Stream identification</span><span>Sequence generation</span><span>Match and vector recovery</span><span>Worked examples</span><span>Automotive zonal context</span></div>
+    </section>
+
+    <section class="section" id="sec1" data-title="1. Reliability problem">
+      <h2>1. Start with the real reliability problem</h2>
+      <p class="lead">A normal switched Ethernet flow usually follows one active path. If a link, bridge, PHY, or egress queue on that path fails at the wrong instant, frames are lost until a separate recovery mechanism detects the fault and changes forwarding.</p>
+      <p><strong>IEEE 802.1CB Frame Replication and Elimination for Reliability (FRER)</strong> avoids the detection-and-switchover delay by sending equivalent copies of the same frame over multiple member paths and then eliminating duplicates at a merge point or listener.</p>
+      <div class="callout">
+        <strong>Core distinction:</strong> FRER does not compute the redundant paths. FRER assumes suitable paths exist and defines how a protected stream is identified, sequenced, replicated, decoded, recovered, and counted.
+      </div>
+      <div class="diagram"><div class="ascii">Classic recovery model
+
+Talker ───── active path ───── Listener
+              X failure
+
+Loss occurs until failure detection + switchover completes.
+
+FRER model
+
+             path A ───────────────►
+Talker ── Replication                 Elimination ──► one clean stream
+             path B ───────────────►
+
+Both paths are used immediately. The first valid copy can be accepted.</div></div>
+      <p>That is why FRER is described as <strong>seamless redundancy</strong>. It is not waiting for the network to decide that a backup path must be activated. The redundant copies are already in flight.</p>
+    </section>
+
+    <section class="section" id="sec2" data-title="2. FRER pipeline">
+      <h2>2. The FRER processing pipeline</h2>
+      <p>FRER is not one magic block. It is a chain of cooperating functions. A realistic bridge or end station implementation has to keep the following processing order straight.</p>
+      <div class="diagram"><div class="ascii">Transmit-side direction
+
+Incoming frame
+   │
+   ▼
+[Stream identification]
+   │  produces internal stream_handle
+   ▼
+[Sequence generation]
+   │  assigns sequence_number for this stream
+   ▼
+[Sequence encode]
+   │  inserts R-TAG or another sequence encoding
+   ▼
+[Stream splitting / replication]
+   │  creates member-stream copies
+   ├────────► member path A
+   └────────► member path B
+
+Receive-side direction
+
+member path A copy ─┐
+                    ├──► [Sequence decode] ─► [Sequence recovery / elimination] ─► one accepted frame
+member path B copy ─┘         extracts seq          discards duplicates/rogues</div></div>
+      <div class="grid two">
+        <div class="card"><h4>What belongs to FRER?</h4><p>Stream identification, sequence generation, sequence encode/decode, replication, individual recovery, compound recovery, duplicate elimination, and management counters.</p></div>
+        <div class="card"><h4>What is outside FRER?</h4><p>Physical topology design, explicit path computation, bridge forwarding path setup, resource reservation, and VLAN engineering. These may be handled by IEEE 802.1Q mechanisms, IEEE 802.1Qca path control, or a centralized controller.</p></div>
+      </div>
+    </section>
+
+    <section class="section" id="sec3" data-title="3. Ethernet frame and R-TAG">
+      <h2>3. Ethernet frame format and the R-TAG</h2>
+      <p>The most important packet-level header in IEEE 802.1CB is the <strong>Redundancy Tag (R-TAG)</strong>. It is an example sequence encode/decode format used to carry the sequence number needed by downstream recovery functions.</p>
+      <h3>3.1 Basic Ethernet frame before FRER sequence encoding</h3>
+      <div class="diagram"><div class="ascii">Without FRER sequence encoding
+
++------------------+------------------+------------------+--------------------+
+| Destination MAC  | Source MAC       | EtherType/Length | Payload            |
+| 6 octets         | 6 octets         | 2 octets         | ...                |
++------------------+------------------+------------------+--------------------+
+
+With VLAN tagging, one or more VLAN tags may appear between Source MAC and the carried EtherType.</div></div>
+      <h3>3.2 Conceptual frame after R-TAG insertion</h3>
+      <div class="diagram"><div class="ascii">Typical conceptual view with R-TAG
+
++------------------+------------------+----------------------+------------------+--------------------+
+| Destination MAC  | Source MAC       | R-TAG                | EtherType/Length | Payload            |
+| 6 octets         | 6 octets         | 6 octets             | 2 octets         | ...                |
++------------------+------------------+----------------------+------------------+--------------------+
+
+R-TAG = TPID/EtherType 0xF1C1 + Reserved + Sequence Number
+
+Important: the standard allows the position relative to other tags to depend on where the sequence encode/decode
+function is placed in the stack. Do not hard-code the assumption that every deployment has exactly the same tag order.</div></div>
+      <h3>3.3 R-TAG field layout</h3>
+      <div class="bytebox">
+        <div class="byte"><strong>Octet 0</strong><small>R-TAG EtherType high byte</small></div>
+        <div class="byte"><strong>Octet 1</strong><small>R-TAG EtherType low byte</small></div>
+        <div class="byte"><strong>Octet 2</strong><small>Reserved high byte</small></div>
+        <div class="byte"><strong>Octet 3</strong><small>Reserved low byte</small></div>
+        <div class="byte"><strong>Octet 4</strong><small>Sequence high byte</small></div>
+        <div class="byte"><strong>Octet 5</strong><small>Sequence low byte</small></div>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Field</th><th>Size</th><th>Value written by transmitter</th><th>Receiver interpretation</th><th>Training note</th></tr></thead>
+        <tbody>
+          <tr><td>R-TAG EtherType / TPID</td><td>16 bits</td><td><code>0xF1C1</code></td><td>Identifies the following 4 octets as R-TAG information.</td><td>This is the parser's first clue that a sequence number encoding is present.</td></tr>
+          <tr><td>Reserved</td><td>16 bits</td><td>All zeros in IEEE 802.1CB-2017 style R-TAG use.</td><td>Ignored on receipt.</td><td>Do not reject a frame merely because future extensions use these bits unless the configured profile says so. For the base behavior, transmit zero and ignore on receive.</td></tr>
+          <tr><td>Sequence Number</td><td>16 bits</td><td>Low-order 16 bits of the internal <code>sequence_number</code> subparameter.</td><td>Copied into the receiver-side sequence number used by duplicate detection and recovery.</td><td>Wraps modulo 65,536. Sequence values are meaningful only within the stream/recovery context.</td></tr>
+        </tbody>
+      </table></div>
+      <h3>3.4 R-TAG decode behavior</h3>
+      <pre>if first_two_octets == 0xF1C1 and MSDU_length >= 6:
+    remove first 6 octets from the MAC service data unit
+    sequence_number = R_TAG.sequence_number
+    ignore R_TAG.reserved
+else:
+    sequence_number = InvalidSequenceValue
+    increment errored/tagless counters according to configuration</pre>
+      <div class="warn callout"><strong>Implementation warning:</strong> R-TAG is a sequence encoding. It is not a routing header. It does not tell a bridge which path to take. It only carries information needed by the FRER recovery logic.</div>
+    </section>
+
+    <section class="section" id="sec4" data-title="4. Stream identification">
+      <h2>4. Stream identification: the step that must happen before sequencing</h2>
+      <p>A sequence number is meaningful only inside a stream context. Sequence number <code>42</code> from camera stream A and sequence number <code>42</code> from radar stream B are unrelated. Therefore, FRER first needs to derive an internal <code>stream_handle</code>.</p>
+      <div class="diagram"><div class="ascii">Frame fields on ingress
+
+Dst MAC + Src MAC + VLAN + PCP + EtherType + IP/UDP fields + ingress port
+             │
+             ▼
+Configured stream identification function
+             │
+             ▼
+stream_handle = "FrontCameraCriticalStream"
+             │
+             ▼
+Sequence generation / replication / recovery instance selected by stream_handle</div></div>
+      <h3>4.1 Common stream identification styles</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Identification function</th><th>What it matches or modifies</th><th>Where useful</th><th>Implementation risk</th></tr></thead>
+        <tbody>
+          <tr><td>Null Stream identification</td><td>Can identify by destination MAC/VLAN-style lower parameters while not relying on higher-layer headers.</td><td>Simple Layer 2 deployments where a protected stream is already isolated by MAC/VLAN.</td><td>Too coarse if multiple services share the same Layer 2 addressing.</td></tr>
+          <tr><td>Source MAC and VLAN Stream identification</td><td>Classifies using source MAC address and VLAN properties.</td><td>Talker-centric streams where the source and VLAN uniquely identify the flow.</td><td>Breaks if multiple protected streams come from the same source/VLAN and need separate FRER treatment.</td></tr>
+          <tr><td>Active Destination MAC and VLAN Stream identification</td><td>Can translate a stream into a particular destination MAC/VLAN/priority on the way down and restore original addressing on the way up.</td><td>Bridges that act as FRER proxies for endpoints that are not FRER-aware.</td><td>Incorrect restoration can confuse the receiving protocol stack.</td></tr>
+          <tr><td>IP Stream identification</td><td>Uses IP and transport-layer fields, typically combined with EISS parameters.</td><td>Automotive flows carried over IP/UDP where VLAN alone is not enough.</td><td>Requires deeper parsing and must be carefully aligned with security and encapsulation policies.</td></tr>
+          <tr><td>Extended stream identification functions</td><td>Additional stream classification options introduced through IEEE 802.1CBdb.</td><td>Real deployments where basic match types are insufficient.</td><td>Both ends and management tools must agree on supported identification functions.</td></tr>
+        </tbody>
+      </table></div>
+      <h3>4.2 Concrete automotive classification example</h3>
+      <pre>Protected stream: Front camera safety preview
+
+Ingress port          = SW1 port 3
+VLAN ID               = 42
+Priority Code Point   = 5
+Destination MAC       = 91:E0:F0:00:FE:01
+IPv4 source           = 10.1.3.10
+IPv4 destination      = 10.9.0.20
+UDP destination port  = 5004
+
+Configured result:
+stream_handle = 0x0000_0000_0000_0042</pre>
+      <p>The stream handle is not normally an Ethernet header field. It is an internal service parameter used to select the correct FRER sequence generation, replication, and recovery state.</p>
+    </section>
+
+    <section class="section" id="sec5" data-title="5. Sequence generation">
+      <h2>5. Sequence generation: numbering the stream before replication</h2>
+      <p>The sequence generation function assigns a monotonically increasing modulo-65,536 value to frames of a particular stream. The same original frame and all of its FRER replicas must carry the same sequence number, otherwise duplicate elimination cannot work.</p>
+      <div class="grid two">
+        <div class="card"><h4>Key state</h4><p><code>GenSeqSpace = 65,536</code></p><p><code>GenSeqNum</code> is the next sequence number to assign for this stream.</p></div>
+        <div class="card"><h4>One instance per context</h4><p>Each sequence generation instance is tied to a stream handle, port, and direction. Different streams do not share the same sequence state.</p></div>
+      </div>
+      <h3>5.1 Simplified generation algorithm</h3>
+      <pre>on reset:
+    GenSeqNum = 0
+
+on DATA_REQUEST(frame, stream_handle):
+    frame.sequence_number = GenSeqNum
+    GenSeqNum = (GenSeqNum + 1) mod 65536
+    send frame to sequence encode function</pre>
+      <h3>5.2 Wrap-around example</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Original frame number</th><th>Assigned sequence number</th><th>Next GenSeqNum</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td>Frame A</td><td>65534</td><td>65535</td><td>Near the end of the 16-bit sequence space.</td></tr>
+          <tr><td>Frame B</td><td>65535</td><td>0</td><td>Maximum 16-bit value used.</td></tr>
+          <tr><td>Frame C</td><td>0</td><td>1</td><td>Modulo wrap has occurred.</td></tr>
+          <tr><td>Frame D</td><td>1</td><td>2</td><td>Receiver must compare sequence values modulo 65,536.</td></tr>
+        </tbody>
+      </table></div>
+      <div class="blue callout"><strong>Why not just use a timestamp?</strong> Because duplicate elimination requires exact identity of replicas. Timing alone cannot reliably distinguish a delayed duplicate from a new frame under variable path delay.</div>
+    </section>
+
+    <section class="section" id="sec6" data-title="6. Sequence encode/decode">
+      <h2>6. Sequence encode/decode: putting the sequence number into the frame</h2>
+      <p>Sequence generation creates an internal <code>sequence_number</code>. Sequence encode/decode is the mechanism that carries that number across the network. The R-TAG is the common IEEE 802.1CB sequence encoding example.</p>
+      <h3>6.1 Transmit-side encode</h3>
+      <pre>input: frame with internal sequence_number = 0x1234
+
+R_TAG.EtherType       = 0xF1C1
+R_TAG.Reserved        = 0x0000
+R_TAG.SequenceNumber  = 0x1234
+
+insert R-TAG in configured protocol-stack position
+send to replication / forwarding function</pre>
+      <h3>6.2 Receive-side decode</h3>
+      <pre>input: received MAC service data unit
+
+if R-TAG is present at the configured sequence-decode position:
+    sequence_number = R_TAG.SequenceNumber
+    remove R-TAG before passing packet upward, if configured to do so
+else:
+    sequence_number = InvalidSequenceValue
+    apply frerSeqRcvyTakeNoSequence policy</pre>
+      <div class="warn callout"><strong>Important:</strong> Some systems may use other sequence encode/decode formats for interworking, such as High-availability Seamless Redundancy (HSR) sequence tags or Parallel Redundancy Protocol (PRP) trailers. For an IEEE 802.1CB R-TAG discussion, focus on the 6-octet R-TAG described above.</div>
+    </section>
+
+    <section class="section" id="sec7" data-title="7. Replication">
+      <h2>7. Replication: creating member streams without losing identity</h2>
+      <p>Replication takes one sequenced compound stream and creates multiple member-stream copies. Each copy must retain the same sequence identity so that recovery functions can later recognize duplicates.</p>
+      <div class="diagram"><div class="ascii">Original stream frame
+
+stream_handle = X
+sequence_number = 101
+payload = P
+
+                ┌──────────────────────────────► Member stream X-A, sequence 101, payload P
+Replication ────┤
+                └──────────────────────────────► Member stream X-B, sequence 101, payload P
+
+The copies are not new application frames. They are redundant representations of the same original frame.</div></div>
+      <h3>7.1 Where replication can happen</h3>
+      <div class="grid three">
+        <div class="card"><h4>At the talker</h4><p>The source endpoint is FRER-aware and inserts sequence information before sending copies into two member paths.</p></div>
+        <div class="card"><h4>At the first bridge</h4><p>A bridge acts as a proxy for a non-FRER-aware talker. It identifies the stream, adds sequence information, and splits the stream.</p></div>
+        <div class="card"><h4>At an intermediate bridge</h4><p>The network may split a stream at a bridge where two configured member paths become available.</p></div>
+      </div>
+      <h3>7.2 Replication is not path computation</h3>
+      <p>Replication chooses configured member outputs for a stream. The existence of the disjoint or partially disjoint paths is a topology and path-control problem, not a consequence of the R-TAG itself.</p>
+      <div class="blue callout"><strong>Clearer interpretation:</strong> a configured replication table is a per-stream instruction table inside the talker, bridge, or FRER proxy. It says: when a frame belongs to this protected compound stream, make these redundant member-stream copies and send each copy into its configured member path.</div>
+      <h3>7.3 Clear configured replication table example</h3>
+      <p>Assume a bridge has already identified an incoming frame as protected stream <code>X</code>, assigned or preserved FRER sequence number <code>101</code>, and inserted an R-TAG carrying that sequence number. The frame is still one original application frame at this point.</p>
+      <div class="diagram"><div class="ascii">Incoming protected compound-stream frame
+
+stream_handle = X
+sequence_number = 101
+payload = P
+        │
+        ▼
+Configured replication table for stream X
+        │
+        ├──► Member stream X-A
+        │       egress port       = 5
+        │       VLAN ID           = 42
+        │       destination MAC   = 91:E0:F0:00:01:01
+        │       R-TAG sequence    = 101
+        │       payload           = P
+        │
+        └──► Member stream X-B
+                egress port       = 6
+                VLAN ID           = 43
+                destination MAC   = 91:E0:F0:00:01:02
+                R-TAG sequence    = 101
+                payload           = P
+
+The forwarding information may differ. The FRER sequence identity must remain the same.</div></div>
+      <p>The two transmitted Ethernet frames may therefore differ in their forwarding envelope, because they are being forced into different engineered paths. But they must still represent the same original frame to FRER recovery.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Item</th><th>Member stream X-A</th><th>Member stream X-B</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td>Purpose</td><td>First redundant copy</td><td>Second redundant copy</td><td>Both copies protect the same original application frame.</td></tr>
+          <tr><td>Egress port</td><td>Port 5</td><td>Port 6</td><td>Different output ports place the copies on different member paths.</td></tr>
+          <tr><td>VLAN ID</td><td>42</td><td>43</td><td>The VLAN may be changed to steer the member streams through different forwarding domains or traffic profiles.</td></tr>
+          <tr><td>Destination MAC used on that member path</td><td><code>91:E0:F0:00:01:01</code></td><td><code>91:E0:F0:00:01:02</code></td><td>The destination MAC may be rewritten in proxy-style deployments so that normal bridge forwarding carries each copy to the intended next hop.</td></tr>
+          <tr><td>R-TAG sequence number</td><td><code>101</code></td><td><code>101</code></td><td>This must be identical, because both copies are redundant representations of the same original frame.</td></tr>
+          <tr><td>Payload</td><td><code>P</code></td><td><code>P</code></td><td>The application data represented by the two copies is the same.</td></tr>
+        </tbody>
+      </table></div>
+      <h4>Replication rule written as switch configuration logic</h4>
+      <pre>Protected compound stream:
+    stream_handle: X
+    sequence encoding: R-TAG
+
+For every accepted frame of stream X:
+    use one FRER sequence number for the original frame
+    insert or preserve that same R-TAG sequence number in all copies
+
+    create member copy X-A:
+        egress port: 5
+        VLAN ID: 42
+        destination MAC: 91:E0:F0:00:01:01
+
+    create member copy X-B:
+        egress port: 6
+        VLAN ID: 43
+        destination MAC: 91:E0:F0:00:01:02</pre>
+      <h4>Packet walk-through</h4>
+      <div class="timeline">
+        <div class="step"><strong>Step 1: stream identification.</strong> The bridge classifies the incoming packet and maps it to internal <code>stream_handle X</code>. This stream handle is the key used to look up the replication rule.</div>
+        <div class="step"><strong>Step 2: sequence identity.</strong> The FRER sequence generation or sequence encode function gives the original frame sequence number <code>101</code>. This number identifies this original frame within stream <code>X</code>.</div>
+        <div class="step"><strong>Step 3: replication.</strong> The bridge creates two member-stream copies. Copy <code>X-A</code> goes to port 5 and copy <code>X-B</code> goes to port 6.</div>
+        <div class="step"><strong>Step 4: path steering.</strong> VLAN ID and destination MAC can differ between the copies. These fields help normal bridge forwarding send the copies along different configured paths.</div>
+        <div class="step"><strong>Step 5: recovery invariant.</strong> Both copies keep R-TAG sequence number <code>101</code>. This is the value the downstream recovery function uses to realize that the two arrivals are duplicates of the same original frame.</div>
+      </div>
+      <h4>Merge-point behavior for the same example</h4>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Arrival</th><th>Path</th><th>Sequence number</th><th>Recovery decision</th><th>Reason</th></tr></thead>
+        <tbody>
+          <tr><td>First copy</td><td>X-A</td><td>101</td><td>Pass</td><td>This is the first valid copy of original frame 101 for protected stream X.</td></tr>
+          <tr><td>Later copy</td><td>X-B</td><td>101</td><td>Discard</td><td>The recovery function has already passed sequence 101, so this later arrival is a duplicate.</td></tr>
+        </tbody>
+      </table></div>
+      <div class="warn callout"><strong>Do not confuse these two roles:</strong> VLAN, destination MAC, and egress port help steer the replicated copies through the network. The R-TAG does not steer the frame. The R-TAG carries the sequence number that lets recovery accept the first valid copy and discard later duplicates.</div>
+    </section>
+
+    <section class="section" id="sec8" data-title="8. Elimination and recovery">
+      <h2>8. Elimination and sequence recovery</h2>
+      <p>Elimination is not a byte-by-byte duplicate comparison. It is a sequence-aware decision based on stream identity, sequence number, configured recovery algorithm, history length, and reset timeout.</p>
+      <div class="diagram"><div class="ascii">At the merge point or listener
+
+Path A copy: stream X, seq 101 ──┐
+                                  ├──► sequence recovery instance for stream X
+Path B copy: stream X, seq 101 ──┘
+
+Decision:
+    first valid seq 101  -> pass upward
+    later seq 101        -> discard as duplicate
+
+Output to application or next bridge:
+    one copy of sequence 101 only</div></div>
+      <h3>8.1 The recovery state variables</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Variable / parameter</th><th>Meaning</th><th>Why it matters</th></tr></thead>
+        <tbody>
+          <tr><td><code>RecovSeqSpace</code></td><td>Sequence number space. For R-TAG sequence numbers this is 65,536.</td><td>All comparisons must handle wrap-around.</td></tr>
+          <tr><td><code>RecovSeqNum</code></td><td>Receiver-side reference sequence number for this recovery instance. In Match recovery, it is the last accepted sequence number. In Vector recovery, it is the newest accepted sequence number at the forward edge of the history window.</td><td>New arrivals are compared against this value to decide whether they are duplicates, old-but-still-valid out-of-order frames, newer frames, or rogue/out-of-window frames. Comparisons must be modulo the sequence space, so after <code>65535</code>, sequence <code>0</code> can be newer.</td></tr>
+          <tr><td><code>SequenceHistory</code></td><td>Bit vector recording recently seen sequence numbers in the vector algorithm.</td><td>Allows duplicate detection even when frames arrive out of order.</td></tr>
+          <tr><td><code>frerSeqRcvyHistoryLength</code></td><td>Size of the recovery history window.</td><td>Must cover expected path-delay differences and reordering, but not be so large that stale frames are accepted too easily.</td></tr>
+          <tr><td><code>frerSeqRcvyResetMSec</code></td><td>Time allowed to pass without accepting a valid packet for this recovery instance. When this timeout expires, the recovery function resets its old sequence-reference state and enters a re-anchoring state such as <code>TakeAny</code>.</td><td>Prevents the receiver from being permanently stuck after the talker, sequence generator, or bridge restarts and begins numbering from a value that is far outside the receiver’s old recovery window. The value must be long enough to avoid false resets during normal gaps, but short enough to recover promptly from sequence-state mismatch.</td></tr>
+          <tr><td><code>TakeAny</code></td><td>After reset, accept the next packet regardless of sequence relation.</td><td>Lets the recovery function re-anchor itself.</td></tr>
+          <tr><td><code>frerSeqRcvyTakeNoSequence</code></td><td>Policy used when a frame reaches a recovery function but the sequence-decode step cannot provide a valid sequence number, for example because the R-TAG is missing, malformed, or not found at the expected position.</td><td>If the policy is strict, such frames are discarded because FRER cannot prove whether they are new frames or duplicates. If the policy is permissive, such frames may be passed, but duplicate elimination is not guaranteed for them. This should be used only when tagless traffic is intentionally allowed.</td></tr>
+        </tbody>
+      </table></div>
+      <h3>8.2 First-copy-wins example</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Time</th><th>Path</th><th>Sequence</th><th>Recovery decision</th><th>Reason</th></tr></thead>
+        <tbody>
+          <tr><td>100.000 µs</td><td>A</td><td>500</td><td>Pass</td><td>First valid copy of sequence 500.</td></tr>
+          <tr><td>118.000 µs</td><td>B</td><td>500</td><td>Discard</td><td>Duplicate of sequence 500 already passed.</td></tr>
+          <tr><td>200.000 µs</td><td>B</td><td>501</td><td>Pass</td><td>First valid copy of sequence 501.</td></tr>
+          <tr><td>203.000 µs</td><td>A</td><td>501</td><td>Discard</td><td>Duplicate of sequence 501 already passed.</td></tr>
+        </tbody>
+      </table></div>
+      <p>The output stream contains sequence 500 once and sequence 501 once, even though the listener physically received four Ethernet frames.</p>
+    </section>
+
+    <section class="section" id="sec9" data-title="9. Match vs vector algorithms">
+      <h2>9. Match recovery versus vector recovery</h2>
+      <p>IEEE 802.1CB defines recovery algorithms with different complexity. The two names trainees must understand are <strong>Match</strong> and <strong>Vector</strong>.</p>
+      <h3>9.1 Match recovery algorithm</h3>
+      <p>The match algorithm is the simpler mental model: after reset, accept the first packet. After that, discard packets whose sequence number equals the last accepted sequence number. Accept packets whose sequence number is different.</p>
+      <pre>Match recovery, simplified
+
+on reset:
+    TakeAny = true
+
+on packet(seq):
+    if no valid sequence:
+        apply TakeNoSequence policy
+    else if TakeAny:
+        accept(seq)
+        RecovSeqNum = seq
+        TakeAny = false
+    else if seq == RecovSeqNum:
+        discard as duplicate
+    else:
+        accept(seq)
+        RecovSeqNum = seq</pre>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Arrival order</th><th>Sequence</th><th>Decision</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>10</td><td>Pass</td><td>First after reset.</td></tr>
+          <tr><td>2</td><td>10</td><td>Discard</td><td>Same as last accepted.</td></tr>
+          <tr><td>3</td><td>11</td><td>Pass</td><td>Different from last accepted.</td></tr>
+          <tr><td>4</td><td>10</td><td>Pass in simple match logic</td><td>Different from last accepted 11, even though it may be an old delayed copy. This is why match is simple but weaker under reordering.</td></tr>
+        </tbody>
+      </table></div>
+      <h3>9.2 Vector recovery algorithm</h3>
+      <p>The vector algorithm keeps a history window. It can therefore remember more than just the last accepted sequence number. This allows it to handle a controlled amount of out-of-order arrival and still discard duplicates.</p>
+      <pre>Vector recovery, simplified teaching version
+
+state:
+    RecovSeqNum       = most advanced accepted sequence number
+    SequenceHistory[0] = whether RecovSeqNum has been seen
+    SequenceHistory[1] = whether RecovSeqNum - 1 has been seen
+    SequenceHistory[2] = whether RecovSeqNum - 2 has been seen
+    ... up to history length H
+
+on packet(seq):
+    delta = signed_modulo_difference(seq - RecovSeqNum, 65536)
+
+    if TakeAny:
+        accept seq, set RecovSeqNum = seq, mark history[0] = seen
+    else if delta >= H or delta <= -H:
+        discard as rogue / out of recovery window
+    else if delta <= 0:
+        index = -delta
+        if SequenceHistory[index] == seen:
+            discard as duplicate
+        else:
+            accept as old-but-not-yet-seen out-of-order packet
+            mark SequenceHistory[index] = seen
+    else:
+        shift history forward by delta positions
+        accept seq as newer packet
+        set RecovSeqNum = seq
+        mark history[0] = seen</pre>
+      <h3>9.3 Vector recovery worked example</h3>
+      <p>Assume <code>H = 4</code>, <code>RecovSeqNum = 105</code>, and the recovery function has seen sequences 105, 104, and 102, but not 103.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>History index</th><th>Represents</th><th>Seen?</th></tr></thead>
+        <tbody>
+          <tr><td>0</td><td>105</td><td>Yes</td></tr>
+          <tr><td>1</td><td>104</td><td>Yes</td></tr>
+          <tr><td>2</td><td>103</td><td>No</td></tr>
+          <tr><td>3</td><td>102</td><td>Yes</td></tr>
+        </tbody>
+      </table></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>New arrival</th><th>Delta from 105</th><th>Decision</th><th>Explanation</th></tr></thead>
+        <tbody>
+          <tr><td>104</td><td>-1</td><td>Discard</td><td>Old but already seen. Duplicate.</td></tr>
+          <tr><td>103</td><td>-2</td><td>Pass</td><td>Old but within history and not seen. Out-of-order legitimate arrival.</td></tr>
+          <tr><td>107</td><td>+2</td><td>Pass</td><td>Newer sequence within window. History shifts forward, sequence 106 is counted as missing unless later accepted within the policy window.</td></tr>
+          <tr><td>200</td><td>+95</td><td>Discard</td><td>Too far ahead for history length 4. Rogue/out-of-window.</td></tr>
+        </tbody>
+      </table></div>
+      <div class="good callout"><strong>Teaching rule:</strong> Match recovery remembers only the last accepted sequence. Vector recovery remembers a window of recent sequence values. That is why vector recovery is the mechanism to explain when path delay differences and reordering matter.</div>
+    </section>
+
+    <section class="section" id="sec10" data-title="10. End-to-end examples">
+      <h2>10. End-to-end FRER examples</h2>
+      <h3>10.1 Example 1: no failure, different path delays</h3>
+      <div class="diagram"><div class="ascii">Talker T                 Bridge B1                   Bridge B2                  Listener L
+   │                         │                           │                          │
+   │ seq 77 + R-TAG          │                           │                          │
+   │────────────────────────►│                           │                          │
+   │                         │ replicate                 │                          │
+   │                         ├──────── Path A, seq 77 ─────────────────────────────►│ t = 80 µs
+   │                         └──────── Path B, seq 77 ───────►│────────────────────►│ t = 140 µs
+   │                                                                                │
+   │                                                                                │ accepts first copy at 80 µs
+   │                                                                                │ discards duplicate at 140 µs</div></div>
+      <p>Output to the application: one frame with sequence 77. The duplicate does not leak upward.</p>
+      <h3>10.2 Example 2: one path fails silently</h3>
+      <div class="diagram"><div class="ascii">Talker T                 Replication bridge                              Listener L
+   │                              │                                             │
+   │ seq 88                       ├──── Path A ───── X link failure            │ no copy arrives from A
+   │                              │                                             │
+   │                              └──── Path B ───────────────────────────────►│ seq 88 arrives
+   │                                                                            │ pass seq 88
+
+No switchover is required. The network does not have to detect the failure before the listener can receive the frame.</div></div>
+      <h3>10.3 Example 3: delayed old copy</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Arrival time</th><th>Path</th><th>Sequence</th><th>Vector recovery decision</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td>10 µs</td><td>A</td><td>100</td><td>Pass</td><td>New sequence.</td></tr>
+          <tr><td>20 µs</td><td>A</td><td>101</td><td>Pass</td><td>New sequence.</td></tr>
+          <tr><td>30 µs</td><td>A</td><td>102</td><td>Pass</td><td>New sequence.</td></tr>
+          <tr><td>130 µs</td><td>B</td><td>100</td><td>Discard if within history and already seen</td><td>Late duplicate of already accepted sequence 100.</td></tr>
+        </tbody>
+      </table></div>
+      <p>This example is why the history length must be chosen based on expected path delay difference and burst behavior. Too small a history can cause legitimate delayed frames to fall outside the window. Too large a history can allow stale frames to remain plausible for too long.</p>
+    </section>
+
+    <section class="section" id="sec11" data-title="11. Disjoint path engineering">
+      <h2>11. Disjoint path engineering: what FRER relies on but does not create</h2>
+      <p>FRER gives the data-plane redundancy behavior. It does not automatically produce independent paths. A controller, path-control protocol, engineering design, or static configuration must arrange the member paths.</p>
+      <div class="diagram"><div class="ascii">Good path diversity
+
+T ── SW1 ── SW2 ── L
+ \              /
+  └── SW3 ── SW4 ┘
+
+A single link failure is unlikely to kill both copies.
+
+Weak path diversity
+
+T ── SW1 ── shared link ── SW2 ── L
+ \        same cable       /
+  └───────────────────────┘
+
+The diagram looks redundant, but a common shared segment can still be a single point of failure.</div></div>
+      <div class="warn callout"><strong>Automotive warning:</strong> In vehicles, “disjoint” should not only mean graph-disjoint. Check shared switch silicon, shared power supply, shared connector, shared harness branch, shared zone controller, and shared thermal or mechanical exposure.</div>
+    </section>
+
+    <section class="section" id="sec12" data-title="12. 802.1CBdb and 802.1CBcv">
+      <h2>12. IEEE 802.1CBdb and IEEE 802.1CBcv</h2>
+      <div class="grid two">
+        <div class="card"><h4>IEEE 802.1CBdb</h4><p><strong>Extended Stream Identification Functions.</strong> This amendment expands the stream identification toolbox. Understand it as the answer to the practical deployment problem: “How do I classify real vehicle or industrial streams precisely enough for FRER?”</p></div>
+        <div class="card"><h4>IEEE 802.1CBcv</h4><p><strong>Information Model, YANG Data Model, and Management Information Base Module.</strong> This is not a runtime duplicate-check packet protocol. Understand it as the management and observability layer for configuring and reporting FRER and stream-identification capabilities.</p></div>
+      </div>
+      <h3>12.1 Why CBcv is important</h3>
+      <p>FRER is only useful in production if it can be configured, audited, tested, and monitored. A validation engineer needs to know which stream identification functions are supported, which recovery algorithm is configured, what history length is used, what counters are exposed, and whether the device’s declared capabilities match the intended vehicle profile.</p>
+    </section>
+
+    <section class="section" id="sec13" data-title="13. Automotive deployment">
+      <h2>13. Automotive deployment view</h2>
+      <p>In a zonal vehicle network, FRER can protect safety-relevant camera, radar, lidar, chassis, or control-oriented Ethernet streams by carrying redundant copies through different backbone paths.</p>
+      <div class="diagram"><div class="ascii">Automotive zonal FRER example
+
+Front sensor zone                         Central compute zone
++------------------+                      +-------------------+
+| Camera / Radar   |                      | ADAS computer     |
++--------+---------+                      +---------+---------+
+         │                                          ▲
+         ▼                                          │
++------------------+         Path A          +------+------+
+| Zone switch Z1   |────────────────────────►| Switch C1   |
+| Stream ID + R-TAG|                         | Elimination |
+| Replication      |────────────────────────►| / recovery  |
++------------------+         Path B          +-------------+
+
+If Path A fails, Path B frames continue to be accepted without waiting for switchover.</div></div>
+      <h3>13.1 What a switch driver or firmware has to configure</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Configuration area</th><th>Example</th><th>Why it matters</th></tr></thead>
+        <tbody>
+          <tr><td>Stream identification</td><td>VLAN 42 + destination MAC + ingress port + UDP port</td><td>Selects the correct protected stream.</td></tr>
+          <tr><td>Sequence generation</td><td>Enable R-TAG insertion for stream handle X</td><td>Creates sequence numbers used by recovery.</td></tr>
+          <tr><td>Replication member outputs</td><td>Path A egress port 5, Path B egress port 6</td><td>Sends duplicates into separate member paths.</td></tr>
+          <tr><td>Recovery algorithm</td><td>Vector, history length 64, reset timeout 50 ms</td><td>Determines how duplicates, reordering, and late arrivals are handled.</td></tr>
+          <tr><td>Individual recovery</td><td>Enabled for each member stream where required</td><td>Can suppress repeated faulty frames on one path before compound merge.</td></tr>
+          <tr><td>Monitoring counters</td><td>Passed, discarded, lost, rogue, out-of-order, tagless</td><td>Provides evidence during validation and diagnostics.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section class="section" id="sec14" data-title="14. Counters and validation">
+      <h2>14. Counters, diagnostics, and validation</h2>
+      <p>A production FRER implementation must expose evidence that the mechanism is actually doing what the architecture claims.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Counter / event type</th><th>What it tells you</th><th>Typical interpretation</th></tr></thead>
+        <tbody>
+          <tr><td>Passed packets</td><td>Frames accepted by recovery and delivered upward.</td><td>Should roughly match application stream rate under normal operation.</td></tr>
+          <tr><td>Discarded packets</td><td>Duplicates or invalid packets eliminated by recovery.</td><td>Nonzero is normal in FRER because duplicate copies are expected.</td></tr>
+          <tr><td>Lost packets</td><td>Sequence values inferred missing by history advancement.</td><td>May indicate both paths lost a frame or history/timeout is misconfigured.</td></tr>
+          <tr><td>Rogue packets</td><td>Sequence values outside the allowed recovery window.</td><td>May indicate stale frames, wrong stream classification, wrong history length, or faulty talker reset handling.</td></tr>
+          <tr><td>Out-of-order packets</td><td>Frames accepted but not in direct sequence order.</td><td>Expected when path delays differ; excessive counts may indicate path-delay engineering problems.</td></tr>
+          <tr><td>Tagless packets</td><td>Frames without valid sequence encoding.</td><td>Usually configuration or encapsulation problem unless intentionally allowed by policy.</td></tr>
+        </tbody>
+      </table></div>
+      <h3>14.1 Validation test cases</h3>
+      <div class="timeline">
+        <div class="step"><strong>Normal duplicate test:</strong> inject two copies with same stream and sequence number on two ports. Expected result: one passed, one discarded.</div>
+        <div class="step"><strong>Path failure test:</strong> stop one member path. Expected result: stream continues using the remaining path with no switchover delay.</div>
+        <div class="step"><strong>Delay skew test:</strong> delay one path enough to reorder copies. Expected result: vector recovery accepts legitimate in-window arrivals and discards duplicates.</div>
+        <div class="step"><strong>Rogue sequence test:</strong> inject a sequence far outside the history window. Expected result: discard and rogue counter increment.</div>
+        <div class="step"><strong>Talker reset test:</strong> reset sequence generation to zero while receiver still has old state. Expected result: temporary discard until configured recovery timeout, then recovery re-anchors.</div>
+      </div>
+    </section>
+
+    <section class="section" id="sec15" data-title="15. Implementation checklist">
+      <h2>15. Implementation checklist</h2>
+      <div class="grid two">
+        <div class="card"><h4>Transmit side</h4>
+          <ul>
+            <li>Define protected streams precisely.</li>
+            <li>Map each stream to a <code>stream_handle</code>.</li>
+            <li>Instantiate sequence generation per stream and direction.</li>
+            <li>Insert R-TAG or configured sequence encoding.</li>
+            <li>Replicate to configured member streams.</li>
+            <li>Ensure member paths are actually diverse enough.</li>
+          </ul>
+        </div>
+        <div class="card"><h4>Receive / merge side</h4>
+          <ul>
+            <li>Identify member streams and map them to recovery context.</li>
+            <li>Decode R-TAG and extract sequence number.</li>
+            <li>Select match or vector recovery intentionally.</li>
+            <li>Choose history length based on delay difference and burst behavior.</li>
+            <li>Set reset timeout based on expected inter-arrival and fault behavior.</li>
+            <li>Monitor discard, rogue, lost, out-of-order, and tagless counters.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="sec16" data-title="16. Common mistakes">
+      <h2>16. Common mistakes</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Mistake</th><th>Correction</th></tr></thead>
+        <tbody>
+          <tr><td>“FRER creates the redundant paths.”</td><td>No. FRER uses configured paths. Path creation belongs to topology design, bridge forwarding configuration, IEEE 802.1Qca, or a controller.</td></tr>
+          <tr><td>“R-TAG tells the bridge where to forward the frame.”</td><td>No. R-TAG carries sequence information for recovery. Forwarding still depends on normal bridge forwarding and configured stream/member-path state.</td></tr>
+          <tr><td>“Duplicate elimination is just byte comparison.”</td><td>No. It is stream-aware and sequence-aware recovery.</td></tr>
+          <tr><td>“The first path is active and the second path is backup.”</td><td>Not in the normal FRER protection model. Both copies can be sent simultaneously, and the receiver accepts the first valid one.</td></tr>
+          <tr><td>“Any two paths are enough.”</td><td>No. They must be independent enough for the fault model. Shared harness, power, switch, or connector can defeat redundancy.</td></tr>
+          <tr><td>“History length can be arbitrary.”</td><td>No. It must reflect path delay difference, burst behavior, and expected reordering. It is a safety-relevant engineering parameter.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section class="section" id="sec17" data-title="17. Summary">
+      <h2>17. Summary</h2>
+      <p>IEEE 802.1CB FRER gives Ethernet a seamless redundancy mechanism by classifying frames into streams, assigning sequence numbers, encoding those numbers into frames, replicating frames over member paths, and eliminating duplicates through sequence recovery. The R-TAG is the key packet-level header: it is 6 octets long, uses EtherType <code>0xF1C1</code>, has a 16-bit reserved field, and carries a 16-bit sequence number.</p>
+      <p>The core implementation insight is that FRER is not one feature but a coordinated chain: stream identification creates the context; sequence generation creates identity across replicas; R-TAG carries the sequence number; replication creates member streams; vector or match recovery decides what to pass and what to discard; counters prove whether the system is behaving correctly.</p>
+      <p>In automotive Ethernet, FRER is valuable because it can maintain delivery of critical streams without waiting for failure detection and switchover. But it only delivers real reliability when combined with precise stream identification, carefully engineered path diversity, appropriate recovery parameters, and management support from IEEE 802.1CBdb and IEEE 802.1CBcv.</p>
+      <h3>Selected public references used while preparing this training note</h3>
+      <ul class="source-list small">
+        <li>IEEE Std 802.1CB-2017 public PDF, especially sequencing functions, R-TAG format, stream identification types, recovery algorithms, and counters.</li>
+        <li>IEEE 802.1 public FRER R-TAG improvement slide deck, confirming R-TAG EtherType <code>0xF1C1</code>, multiple R-TAG possibility, reserved field behavior, and low-order 16-bit sequence number use.</li>
+        <li>Vendor and TSN implementation documentation for recovery algorithm terminology, validation counters, and automotive deployment examples.</li>
+      </ul>
+    </section>
+
+    <p class="footer">Generated as standalone HTML for training use. This file contains no external JavaScript dependency and can be opened locally in a browser.</p>
+  </main>
+</div>
+<script>
+const sections=[...document.querySelectorAll('.section')];
+const nav=[...document.querySelectorAll('#nav a')];
+const ctx=document.getElementById('ctx');
+const progress=document.getElementById('progress');
+const byId=new Map(nav.map(a=>[a.getAttribute('href').slice(1),a]));
+const obs=new IntersectionObserver((entries)=>{
+  const visible=entries.filter(e=>e.isIntersecting).sort((a,b)=>b.intersectionRatio-a.intersectionRatio)[0];
+  if(!visible) return;
+  const id=visible.target.id;
+  ctx.textContent=visible.target.dataset.title || visible.target.querySelector('h2')?.textContent || id;
+  nav.forEach(a=>a.classList.toggle('active',a.getAttribute('href')==='#'+id));
+},{rootMargin:'-120px 0px -55% 0px',threshold:[0.02,0.12,0.25,0.5,0.75]});
+sections.forEach(s=>obs.observe(s));
+window.addEventListener('scroll',()=>{
+  const h=document.documentElement;
+  const pct=(h.scrollTop)/(h.scrollHeight-h.clientHeight)*100;
+  progress.style.width=Math.max(0,Math.min(100,pct))+'%';
+},{passive:true});
+</script>
+</body>
+</html>

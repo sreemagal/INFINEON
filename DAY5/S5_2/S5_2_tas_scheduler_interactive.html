@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TAS — Time-Aware Shaper · IEEE 802.1Qbv</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    font-size: 13px;
+    background: #ffffff;
+    color: #1a1a1a;
+    padding: 24px;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+  .subtitle { font-size: 12px; color: #666; margin-bottom: 20px; }
+  .section-label { font-size: 12px; color: #666; margin: 10px 0 5px; }
+
+  .algo-note {
+    background: #EEF3FA; border-left: 4px solid #2E5EA8;
+    padding: 10px 14px; border-radius: 0 6px 6px 0;
+    font-size: 12px; color: #1F3864; line-height: 1.7;
+    margin-bottom: 20px;
+  }
+
+  .controls { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+  button {
+    font-size: 12px; padding: 6px 16px; border-radius: 6px;
+    border: 1px solid #ccc; background: #f5f5f5;
+    color: #1a1a1a; cursor: pointer; font-family: inherit;
+  }
+  button:hover { background: #e8e8e8; }
+  button.primary { background: #1F3864; color: #fff; border-color: #1F3864; }
+  button.primary:hover { background: #2E5EA8; }
+
+  .clock-display {
+    font-size: 14px; font-weight: 700; color: #1a1a1a;
+    background: #f8f8f8; border: 1px solid #e0e0e0;
+    border-radius: 6px; padding: 6px 16px;
+    display: inline-block; margin-bottom: 14px;
+    font-family: monospace;
+  }
+
+  /* GCL tracks */
+  .gcl-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .gcl-label { width: 110px; font-size: 12px; font-weight: 600; flex-shrink: 0; }
+  .gcl-track {
+    flex: 1; height: 30px; border-radius: 4px;
+    background: #f0f0f0; border: 1px solid #e0e0e0;
+    position: relative; overflow: hidden;
+  }
+  .gcl-fill {
+    position: absolute; top: 0; height: 100%;
+  }
+  .gcl-cursor {
+    position: absolute; top: 0; height: 100%; width: 2px;
+    background: #c0392b; z-index: 4;
+  }
+  .gcl-guard {
+    position: absolute; top: 0; height: 100%;
+    background: repeating-linear-gradient(
+      45deg,
+      rgba(186,117,23,0.35), rgba(186,117,23,0.35) 3px,
+      transparent 3px, transparent 6px
+    );
+    z-index: 3;
+  }
+  .gate-state {
+    font-size: 11px; font-weight: 700; padding: 3px 10px;
+    border-radius: 4px; width: 84px; text-align: center;
+    flex-shrink: 0; font-family: monospace;
+  }
+
+  /* TX strip */
+  .tx-row {
+    display: flex; gap: 3px; flex-wrap: wrap;
+    min-height: 34px; padding: 5px 8px;
+    background: #f8f8f8; border-radius: 6px;
+    border: 1px solid #e0e0e0; margin-bottom: 14px;
+  }
+  .tx-fr {
+    min-width: 48px; height: 26px; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 600; padding: 0 5px;
+    border-width: 1px; border-style: solid; white-space: nowrap;
+  }
+
+  /* Queue rows */
+  .qrow { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .qlabel { width: 110px; font-size: 12px; font-weight: 600; flex-shrink: 0; }
+  .qframes { display: flex; gap: 3px; flex-wrap: wrap; flex: 1; min-height: 28px; }
+  .qfr {
+    min-width: 48px; height: 26px; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 600; padding: 0 5px;
+    border-width: 1px; border-style: solid;
+    transition: opacity 0.2s;
+  }
+  .qfr.sent    { opacity: 0.18; }
+  .qfr.blocked { box-shadow: 0 0 0 2.5px #c0392b; }
+  .qfr.next    { box-shadow: 0 0 0 2.5px #1D9E75; }
+  .qfr.guard   { box-shadow: 0 0 0 2.5px #BA7517; }
+
+  hr { border: none; border-top: 1px solid #e0e0e0; margin: 14px 0; }
+
+  .log {
+    font-size: 12px; color: #555;
+    background: #f8f8f8; padding: 10px 12px;
+    border-radius: 6px; border: 1px solid #e0e0e0;
+    line-height: 2; min-height: 56px;
+    font-family: monospace;
+  }
+  .log .hi { color: #1a1a1a; font-weight: 700; }
+
+  /* Legend */
+  .legend { display: flex; gap: 16px; font-size: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+  .leg-item { display: flex; align-items: center; gap: 6px; }
+  .leg-box { width: 18px; height: 18px; border-radius: 3px; border: 1px solid #ccc; flex-shrink: 0; }
+
+  /* GCL table */
+  .gcl-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 20px; }
+  .gcl-table th { background: #1F3864; color: #fff; padding: 7px 12px; text-align: left; }
+  .gcl-table td { padding: 7px 12px; border-bottom: 1px solid #e0e0e0; font-family: monospace; }
+  .gcl-table tr:nth-child(even) td { background: #f8f8f8; }
+</style>
+</head>
+<body>
+
+<h1>Time-Aware Shaper (TAS)</h1>
+<p class="subtitle">IEEE 802.1Qbv · Gate Control List scheduler — gates open and close on a pre-computed nanosecond schedule</p>
+
+<div class="algo-note">
+  <strong>Core principle:</strong> Each egress queue has a gate. The Gate Control List (GCL) specifies exactly when each gate opens and closes within a repeating cycle period. When a gate is closed, no frame from that queue may leave the switch — regardless of how long it has been waiting. Deterministic, bounded latency is guaranteed because safety-critical streams always get their dedicated window. Requires gPTP clock synchronisation across all switches so gate windows align end-to-end.
+</div>
+
+<table class="gcl-table">
+  <thead>
+    <tr><th>GCL entry</th><th>Gate mask</th><th>Window start</th><th>Window end</th><th>Duration</th><th>Queue open</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>1</td><td>10000000</td><td>0 µs</td><td>50 µs</td><td>50 µs</td><td>Q7 safety only</td></tr>
+    <tr><td>2</td><td>00000000</td><td>50 µs</td><td>100 µs</td><td>50 µs</td><td>all closed (inter-window gap)</td></tr>
+    <tr><td>3</td><td>00100000</td><td>100 µs</td><td>300 µs</td><td>200 µs</td><td>Q5 ADAS only</td></tr>
+    <tr><td>4</td><td>00000001</td><td>320 µs</td><td>1000 µs</td><td>680 µs</td><td>Q0 best-effort only</td></tr>
+  </tbody>
+</table>
+
+<div class="controls">
+  <button class="primary" onclick="tstep()">Advance clock 20 µs →</button>
+  <button onclick="trun()">Run 25 ticks (0.5 ms)</button>
+  <button onclick="treset()">Reset</button>
+</div>
+
+<div class="clock-display" id="tclock">Clock: 0 µs &nbsp;|&nbsp; Cycle position: 0 µs</div>
+
+<div class="section-label">GCL visualiser — red cursor = current position · green fill = gate open window · hatched amber = guard band (20 µs before gate closes)</div>
+<div id="tgcl"></div>
+
+<div class="legend">
+  <div class="leg-item">
+    <div class="leg-box" style="box-shadow:0 0 0 2.5px #1D9E75;background:#E1F5EE;border-color:#0F6E56"></div>
+    <span>Will transmit this tick</span>
+  </div>
+  <div class="leg-item">
+    <div class="leg-box" style="box-shadow:0 0 0 2.5px #c0392b;background:#FCEBEB;border-color:#E24B4A"></div>
+    <span>Gate closed — blocked</span>
+  </div>
+  <div class="leg-item">
+    <div class="leg-box" style="box-shadow:0 0 0 2.5px #BA7517;background:#FAEEDA;border-color:#BA7517"></div>
+    <span>Guard band — no new frame</span>
+  </div>
+  <div class="leg-item">
+    <div class="leg-box" style="opacity:0.2;background:#ccc;border-color:#ccc"></div>
+    <span>Already sent</span>
+  </div>
+</div>
+
+<hr>
+
+<div class="section-label">Transmitted output:</div>
+<div class="tx-row" id="ttx"></div>
+
+<div class="section-label">Queue contents:</div>
+<div id="tqueues"></div>
+
+<div class="section-label">Step log:</div>
+<div class="log" id="tlog"></div>
+
+<script>
+const CYCLE = 1000; // µs
+const GUARD = 20;   // µs guard band
+
+const GCL_WINDOWS = [
+  { start:   0, end:  50,  openQ: 7 },
+  { start: 100, end: 300,  openQ: 5 },
+  { start: 320, end: 1000, openQ: 0 },
+];
+
+const QUEUES = [
+  {
+    id: 7, label: 'Q7  safety',
+    c: { bg: '#FCEBEB', bd: '#E24B4A', tx: '#791F1F' },
+    frames: [{sz:500},{sz:500},{sz:300},{sz:500},{sz:500},{sz:300}]
+  },
+  {
+    id: 5, label: 'Q5  ADAS',
+    c: { bg: '#FAEEDA', bd: '#BA7517', tx: '#633806' },
+    frames: [{sz:1200},{sz:1200},{sz:1200},{sz:1200},{sz:800},{sz:1200}]
+  },
+  {
+    id: 0, label: 'Q0  best-effort',
+    c: { bg: '#F1EFE8', bd: '#888780', tx: '#444441' },
+    frames: [{sz:1500},{sz:1500},{sz:1000},{sz:1500},{sz:1500},{sz:1000},{sz:1500}]
+  }
+];
+
+function txTime(sz) { return (sz * 8) / 1000; } // µs at 1 Gbit/s
+
+let TS;
+
+function tinit() {
+  TS = {
+    clock:      0,
+    sent:       QUEUES.map(q => new Array(q.frames.length).fill(false)),
+    txLog:      [],
+    log:        [],
+    cycleCount: 0
+  };
+}
+
+function cyclePos() { return TS.clock % CYCLE; }
+
+function activeWindow(pos) {
+  return GCL_WINDOWS.find(w => pos >= w.start && pos < w.end) || null;
+}
+
+function inGuardBand(pos) {
+  for (const w of GCL_WINDOWS) {
+    if (pos >= w.end - GUARD && pos < w.end) return w;
+  }
+  return null;
+}
+
+function gateState(qid, pos) {
+  const win   = activeWindow(pos);
+  const guard = inGuardBand(pos);
+  if (!win || win.openQ !== qid) return 'closed';
+  if (guard && guard.openQ === qid) return 'guard';
+  return 'open';
+}
+
+function tstep() {
+  const prevPos = cyclePos();
+  TS.clock += 20;
+  const pos = cyclePos();
+
+  if (TS.clock > 20 && pos < prevPos) {
+    TS.cycleCount++;
+    TS.log.push(`══ Cycle ${TS.cycleCount + 1} begins ══`);
+  }
+
+  TS.log.push(`── Clock ${TS.clock} µs · cycle position ${pos} µs ──`);
+
+  const win = activeWindow(pos);
+
+  QUEUES.forEach((q, qi) => {
+    const state = gateState(q.id, pos);
+    const frameIdx = TS.sent[qi].findIndex(s => !s);
+    if (frameIdx === -1) return;
+
+    const sz = q.frames[frameIdx].sz;
+
+    if (state === 'open') {
+      const tt = txTime(sz);
+      const endPos = pos + tt;
+      const wouldHitGuard = win && endPos > (win.end - GUARD);
+      if (wouldHitGuard) {
+        TS.log.push(`  ${q.label}: open but ${sz}B frame (${tt.toFixed(1)}µs) would reach guard band — hold`);
+      } else {
+        TS.sent[qi][frameIdx] = true;
+        TS.txLog.push({ qi, sz, pos });
+        TS.log.push(`  ${q.label}: TRANSMIT frame ${frameIdx + 1} (${sz}B · ${tt.toFixed(1)}µs tx time)`);
+      }
+    } else if (state === 'guard') {
+      TS.log.push(`  ${q.label}: gate open but GUARD BAND active — no new frame may start`);
+    } else {
+      TS.log.push(`  ${q.label}: gate CLOSED — frame ${frameIdx + 1} (${sz}B) blocked`);
+    }
+  });
+
+  trender();
+}
+
+function trun()   { for (let i = 0; i < 25; i++) tstep(); }
+function treset() { tinit(); trender(); }
+
+function trender() {
+  const pos = cyclePos();
+  document.getElementById('tclock').textContent =
+    `Clock: ${TS.clock} µs  |  Cycle position: ${pos} µs  |  Cycle: ${TS.cycleCount + 1}`;
+
+  // GCL tracks
+  document.getElementById('tgcl').innerHTML = QUEUES.map(q => {
+    const state = gateState(q.id, pos);
+    const stateStyle = state === 'open'
+      ? 'background:#E1F5EE;color:#085041'
+      : state === 'guard'
+      ? 'background:#FAEEDA;color:#633806'
+      : 'background:#FCEBEB;color:#791F1F';
+    const stateText = state === 'open' ? '✓  OPEN' : state === 'guard' ? '⚠  GUARD' : '✗  CLOSED';
+
+    let segs = '';
+    GCL_WINDOWS.filter(w => w.openQ === q.id).forEach(w => {
+      const left  = (w.start / CYCLE * 100).toFixed(2);
+      const width = ((w.end - w.start) / CYCLE * 100).toFixed(2);
+      segs += `<div class="gcl-fill" style="left:${left}%;width:${width}%;background:#1D9E75;opacity:0.35;z-index:1"></div>`;
+      const gl = ((w.end - GUARD) / CYCLE * 100).toFixed(2);
+      const gw = (GUARD / CYCLE * 100).toFixed(2);
+      segs += `<div class="gcl-guard" style="left:${gl}%;width:${gw}%"></div>`;
+    });
+    const curLeft = (pos / CYCLE * 100).toFixed(2);
+    segs += `<div class="gcl-cursor" style="left:${curLeft}%"></div>`;
+
+    return `<div class="gcl-row">
+      <div class="gcl-label" style="color:${q.c.tx}">${q.label}</div>
+      <div class="gcl-track">${segs}</div>
+      <div class="gate-state" style="${stateStyle}">${stateText}</div>
+    </div>`;
+  }).join('');
+
+  // TX strip
+  document.getElementById('ttx').innerHTML = TS.txLog.length
+    ? TS.txLog.map(t => {
+        const q = QUEUES[t.qi];
+        return `<div class="tx-fr" style="background:${q.c.bg};border-color:${q.c.bd};color:${q.c.tx}">Q${q.id} ${t.sz}B</div>`;
+      }).join('')
+    : '<span style="color:#999;font-size:12px">nothing transmitted yet — press Step</span>';
+
+  // Queue rows
+  document.getElementById('tqueues').innerHTML = QUEUES.map((q, qi) => {
+    const state = gateState(q.id, pos);
+    const fhtml = q.frames.map((f, fi) => {
+      const sent = TS.sent[qi][fi];
+      const firstUnsent = TS.sent[qi].findIndex(s => !s);
+      const isNext = fi === firstUnsent;
+      const cls = sent ? 'sent'
+        : isNext && state === 'open'  ? 'next'
+        : isNext && state === 'guard' ? 'guard'
+        : isNext                      ? 'blocked'
+        : '';
+      return `<div class="qfr ${cls}" style="background:${q.c.bg};border-color:${q.c.bd};color:${q.c.tx}">${f.sz}B</div>`;
+    }).join('');
+    return `<div class="qrow">
+      <div class="qlabel" style="color:${q.c.tx}">${q.label}</div>
+      <div class="qframes">${fhtml}</div>
+    </div>`;
+  }).join('');
+
+  // Log
+  document.getElementById('tlog').innerHTML =
+    TS.log.slice(-7).map((line, i, arr) =>
+      i === arr.length - 1 ? `<span class="hi">${line}</span>` : line
+    ).join('<br>') || 'Press Step to begin.';
+}
+
+tinit();
+trender();
+</script>
+</body>
+</html>

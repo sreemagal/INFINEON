@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CBS Queue Shaping Animator</title>
+<style>
+  :root{
+    --bg:#0b1020;
+    --panel:#111827;
+    --panel2:#0f172a;
+    --ink:#e5e7eb;
+    --muted:#94a3b8;
+    --line:#334155;
+    --blue:#60a5fa;
+    --cyan:#22d3ee;
+    --green:#34d399;
+    --yellow:#fbbf24;
+    --orange:#fb923c;
+    --red:#f87171;
+    --purple:#a78bfa;
+    --white:#f8fafc;
+    --shadow: 0 20px 50px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    background: radial-gradient(circle at top left, rgba(96,165,250,.18), transparent 32rem), var(--bg);
+    color:var(--ink);
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  .topbar{
+    position:sticky;top:0;z-index:20;
+    background:linear-gradient(90deg,#111827,#0f172a 55%,#111827);
+    border-bottom:1px solid rgba(148,163,184,.25);
+    padding:14px 18px;
+    display:flex;align-items:center;gap:14px;justify-content:space-between;
+  }
+  .brand{display:flex;align-items:center;gap:12px;min-width:270px}
+  .badge{
+    width:44px;height:44px;border-radius:14px;
+    display:grid;place-items:center;
+    background:linear-gradient(135deg,var(--cyan),var(--blue));
+    color:#06111f;font-weight:900;box-shadow:var(--shadow)
+  }
+  h1{font-size:18px;margin:0;letter-spacing:.2px}
+  .subtitle{font-size:12px;color:var(--muted);margin-top:2px}
+  .context{
+    display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;
+    font-size:12px;color:#dbeafe
+  }
+  .pill{border:1px solid rgba(96,165,250,.35);background:rgba(37,99,235,.14);padding:7px 10px;border-radius:999px}
+
+  .layout{
+    height:calc(100vh - 73px);
+    display:grid;
+    grid-template-columns: minmax(680px, 1.55fr) minmax(360px, .85fr);
+    gap:14px;
+    padding:14px;
+  }
+  @media(max-width:1050px){.layout{grid-template-columns:1fr;height:auto}.rightcol{height:auto!important}}
+  .workspace,.rightcol{min-height:0}
+  .workspace{display:grid;grid-template-rows:auto minmax(420px,1fr) 220px;gap:12px}
+  .card{
+    background:linear-gradient(180deg,rgba(17,24,39,.97),rgba(15,23,42,.96));
+    border:1px solid rgba(148,163,184,.2);
+    border-radius:20px;
+    box-shadow:var(--shadow);
+  }
+  .controls{padding:12px;display:grid;gap:10px}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  button,select,input[type="range"]{font:inherit}
+  button,select{
+    background:#0b1220;color:var(--ink);border:1px solid rgba(148,163,184,.32);
+    border-radius:12px;padding:9px 12px;cursor:pointer;
+  }
+  button:hover,select:hover{border-color:rgba(96,165,250,.8);background:#111b2e}
+  button.primary{background:linear-gradient(135deg,#0284c7,#2563eb);border-color:#60a5fa;color:#eff6ff;font-weight:750}
+  button.warn{background:rgba(251,146,60,.12);border-color:rgba(251,146,60,.45)}
+  .sliderbox{display:flex;align-items:center;gap:8px;background:#0b1220;border:1px solid rgba(148,163,184,.22);border-radius:12px;padding:8px 10px;color:var(--muted);font-size:13px}
+  .sliderbox output{color:#e0f2fe;min-width:62px;text-align:right;font-variant-numeric:tabular-nums}
+  input[type="range"]{accent-color:#38bdf8;min-width:130px}
+
+  .stage{position:relative;overflow:hidden;padding:12px}
+  .stageTitle{display:flex;justify-content:space-between;align-items:center;margin:0 0 8px 0;color:#dbeafe;font-size:14px}
+  .simtime{font-variant-numeric:tabular-nums;color:#bae6fd}
+  #stageArea{position:relative;height:calc(100% - 30px);min-height:355px;border-radius:16px;background:linear-gradient(180deg,#0b1220,#08111e);border:1px solid rgba(51,65,85,.9);overflow:hidden}
+  .switchBox{position:absolute;left:35px;top:42px;right:35px;bottom:42px;border:2px solid rgba(96,165,250,.18);border-radius:26px;background:rgba(15,23,42,.54)}
+  .switchTitle{position:absolute;left:56px;top:26px;background:#0b1220;border:1px solid rgba(96,165,250,.3);border-radius:999px;padding:6px 12px;color:#bfdbfe;font-size:12px}
+  .wire{position:absolute;height:8px;background:linear-gradient(90deg,rgba(148,163,184,.35),rgba(34,211,238,.85),rgba(148,163,184,.25));border-radius:99px;box-shadow:0 0 22px rgba(34,211,238,.22)}
+  .wire.input{left:16px;top:120px;width:180px}.wire.output{right:14px;top:156px;width:200px}
+  .arrow{position:absolute;width:0;height:0;border-top:10px solid transparent;border-bottom:10px solid transparent;border-left:16px solid rgba(34,211,238,.85)}
+  .arrow.in{left:190px;top:114px}.arrow.out{right:12px;top:150px}
+  .block{position:absolute;border-radius:18px;border:1px solid rgba(148,163,184,.26);background:rgba(2,6,23,.7);box-shadow:inset 0 0 0 1px rgba(255,255,255,.025)}
+  .parser{left:150px;top:82px;width:105px;height:96px;display:grid;place-items:center;text-align:center;color:#c4b5fd;font-weight:700;font-size:13px}
+  .queueBlock{left:305px;top:70px;width:310px;height:122px;padding:10px}
+  .queueBlock.be{top:220px;height:105px}
+  .scheduler{left:650px;top:110px;width:128px;height:130px;display:grid;place-items:center;text-align:center;color:#fde68a;font-weight:750;font-size:13px}
+  .gateLight{width:14px;height:14px;border-radius:50%;display:inline-block;margin-right:6px;vertical-align:-2px;background:var(--green);box-shadow:0 0 18px rgba(52,211,153,.8)}
+  .gateLight.closed{background:var(--red);box-shadow:0 0 18px rgba(248,113,113,.8)}
+  .label{font-size:12px;color:var(--muted);letter-spacing:.2px}
+  .queueTitle{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#cbd5e1;margin-bottom:8px}
+  .slots{position:relative;height:65px;border-radius:14px;background:rgba(15,23,42,.82);border:1px dashed rgba(148,163,184,.28);overflow:hidden}
+  .tailHead{display:flex;justify-content:space-between;font-size:10px;color:#94a3b8;margin-top:4px;padding:0 3px}
+  .frame{position:absolute;height:38px;min-width:54px;border-radius:12px;border:1px solid rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;flex-direction:column;font-weight:850;font-size:12px;box-shadow:0 12px 25px rgba(0,0,0,.32);transition:left .15s linear, top .15s linear, transform .15s linear, opacity .15s linear}
+  .frame small{font-size:9px;font-weight:650;color:rgba(255,255,255,.85)}
+  .frame.cbs{background:linear-gradient(135deg,#0ea5e9,#2563eb);color:white}
+  .frame.be{background:linear-gradient(135deg,#64748b,#334155);color:white}
+  .frame.tx{box-shadow:0 0 25px rgba(34,211,238,.4), 0 12px 25px rgba(0,0,0,.32)}
+  .creditMeter{position:absolute;right:28px;top:54px;width:108px;height:270px;border-radius:18px;background:rgba(2,6,23,.68);border:1px solid rgba(148,163,184,.2);padding:12px;display:grid;grid-template-rows:auto 1fr auto;gap:8px}
+  .meterScale{position:relative;border-radius:12px;background:linear-gradient(180deg,rgba(52,211,153,.08),rgba(248,113,113,.08));border:1px solid rgba(148,163,184,.2);overflow:hidden}
+  .zeroLine,.hiLine,.loLine{position:absolute;left:0;right:0;height:1px;background:rgba(255,255,255,.55)}
+  .hiLine{background:rgba(52,211,153,.65)}.loLine{background:rgba(248,113,113,.65)}
+  .creditBar{position:absolute;left:30px;width:45px;border-radius:10px;background:linear-gradient(180deg,#34d399,#22d3ee);box-shadow:0 0 18px rgba(34,211,238,.35)}
+  .creditBar.neg{background:linear-gradient(180deg,#fb923c,#f87171)}
+  .meterText{text-align:center;font-variant-numeric:tabular-nums;color:#e0f2fe;font-size:13px;font-weight:750}
+  .miniLegend{font-size:10px;color:var(--muted);line-height:1.45}
+  .callout{position:absolute;left:60px;right:160px;bottom:18px;border:1px solid rgba(96,165,250,.25);background:rgba(15,23,42,.9);border-radius:16px;padding:10px 12px;font-size:13px;color:#dbeafe;box-shadow:var(--shadow)}
+  .callout b{color:#fef3c7}
+
+  .graph{padding:12px;min-height:210px;display:grid;grid-template-rows:auto 1fr}
+  .graphHead{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:#cbd5e1;margin-bottom:8px}
+  svg{width:100%;height:100%}.axis{stroke:#475569;stroke-width:1}.grid{stroke:#1e293b;stroke-width:1}.creditPath{fill:none;stroke:#38bdf8;stroke-width:2.5}.zeroPath{stroke:#f8fafc;stroke-width:1;stroke-dasharray:4 4;opacity:.7}.hiPath{stroke:#34d399;stroke-width:1;stroke-dasharray:6 4}.loPath{stroke:#f87171;stroke-width:1;stroke-dasharray:6 4}.graphLabel{fill:#94a3b8;font-size:11px}.eventMark{stroke:#fbbf24;stroke-width:1;opacity:.7}
+  .rightcol{height:100%;overflow:hidden;display:grid;grid-template-rows:minmax(0,1fr)}
+  .sideScroll{overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:12px}
+  .sideCard{border:1px solid rgba(148,163,184,.18);background:rgba(2,6,23,.32);border-radius:18px;padding:12px}
+  .sideCard h2{font-size:15px;margin:0 0 8px;color:#e0f2fe}.sideCard h3{font-size:13px;margin:10px 0 6px;color:#fde68a}.sideCard p{font-size:13px;color:#cbd5e1;line-height:1.55;margin:6px 0}.sideCard ul{margin:6px 0 0 18px;padding:0;color:#cbd5e1;font-size:13px;line-height:1.5}.kv{display:grid;grid-template-columns:145px 1fr;gap:6px;font-size:12.5px;color:#cbd5e1}.kv div:nth-child(odd){color:#94a3b8}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.good{color:#86efac}.bad{color:#fca5a5}.warnText{color:#fcd34d}.noteBox{border-left:3px solid #38bdf8;background:rgba(14,165,233,.08);padding:8px 10px;border-radius:10px;margin-top:8px;color:#dbeafe;font-size:13px}.log{max-height:300px;overflow:auto;border-radius:12px;background:#07101d;border:1px solid rgba(148,163,184,.15);padding:8px}.logEntry{font-size:12px;color:#cbd5e1;padding:6px 4px;border-bottom:1px solid rgba(148,163,184,.08)}.logEntry:last-child{border-bottom:0}.t{color:#7dd3fc;font-variant-numeric:tabular-nums;margin-right:6px}.formula{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:#07101d;border:1px solid rgba(148,163,184,.16);border-radius:12px;padding:9px;color:#e2e8f0;font-size:12px;line-height:1.55;overflow:auto}.acronyms{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;font-size:12.5px;color:#cbd5e1}.acronyms b{color:#e0f2fe}.footerNote{font-size:11px;color:#94a3b8;line-height:1.45}
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand">
+      <div class="badge">CBS</div>
+      <div>
+        <h1>Credit-Based Shaper queue animator</h1>
+        <div class="subtitle">How one switch egress queue is shaped by credit, not by a fixed time slot</div>
+      </div>
+    </div>
+    <div class="context">
+      <span class="pill">Switch egress port</span>
+      <span class="pill">FIFO traffic-class queue</span>
+      <span class="pill">Credit ≥ 0 permits selection</span>
+      <span class="pill">Negative credit forces recovery</span>
+    </div>
+  </div>
+
+  <main class="layout">
+    <section class="workspace">
+      <div class="controls card">
+        <div class="row">
+          <select id="scenarioSelect" title="Scenario">
+            <option value="burst">Burst is shaped into paced departures</option>
+            <option value="interference">Interference builds positive credit</option>
+            <option value="reset">Positive credit resets when queue becomes empty</option>
+            <option value="steady">Continuous stream with best-effort coexistence</option>
+          </select>
+          <button id="playBtn" class="primary">Play</button>
+          <button id="stepBtn">Step +20 µs</button>
+          <button id="resetBtn" class="warn">Reset</button>
+          <select id="speedSelect" title="Speed">
+            <option value="0.45">Slow</option>
+            <option value="1" selected>Medium</option>
+            <option value="2.2">Fast</option>
+          </select>
+          <div class="sliderbox">
+            <span>idleSlope</span>
+            <input id="idleSlider" type="range" min="15" max="75" step="5" value="35">
+            <output id="idleOut">35%</output>
+          </div>
+          <div class="sliderbox">
+            <span>link</span>
+            <select id="linkRate">
+              <option value="100" selected>100 Mb/s</option>
+              <option value="1000">1 Gb/s</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="stage card">
+        <div class="stageTitle">
+          <span id="scenarioTitle">Burst is shaped into paced departures</span>
+          <span class="simtime">t = <span id="timeReadout">0.0</span> µs</span>
+        </div>
+        <div id="stageArea">
+          <div class="switchBox"></div>
+          <div class="switchTitle">VLAN-aware bridge egress pipeline</div>
+          <div class="wire input"></div><div class="arrow in"></div>
+          <div class="wire output"></div><div class="arrow out"></div>
+          <div class="block parser">Ingress<br>classifier<br><span class="label">PCP → queue</span></div>
+          <div class="block queueBlock" id="cbsQueueBlock">
+            <div class="queueTitle"><span><span class="gateLight" id="gateLight"></span>CBS queue</span><span id="cbsCount">0 frames</span></div>
+            <div class="slots" id="cbsSlots"></div>
+            <div class="tailHead"><span>TAIL / enqueue</span><span>HEAD / dequeue</span></div>
+          </div>
+          <div class="block queueBlock be">
+            <div class="queueTitle"><span>Best-effort queue</span><span id="beCount">0 frames</span></div>
+            <div class="slots" id="beSlots"></div>
+            <div class="tailHead"><span>TAIL</span><span>HEAD</span></div>
+          </div>
+          <div class="block scheduler">Transmission<br>selection<br><span class="label">strict priority + CBS eligibility</span></div>
+          <div class="creditMeter">
+            <div class="meterText">credit<br><span id="creditReadout">0 B</span></div>
+            <div class="meterScale" id="meterScale">
+              <div class="hiLine" id="hiLine"></div>
+              <div class="zeroLine" id="zeroLine"></div>
+              <div class="loLine" id="loLine"></div>
+              <div class="creditBar" id="creditBar"></div>
+            </div>
+            <div class="miniLegend">hiCredit<br>zero eligibility<br>loCredit</div>
+          </div>
+          <div id="packetLayer"></div>
+          <div class="callout" id="callout"><b>Ready.</b> Press Play or Step to see the credit rule applied.</div>
+        </div>
+      </div>
+
+      <div class="graph card">
+        <div class="graphHead">
+          <span>Credit trace and transmission intervals</span>
+          <span class="mono" id="slopesReadout">idleSlope = 35 Mb/s, sendSlope = -65 Mb/s</span>
+        </div>
+        <svg id="creditSvg" viewBox="0 0 920 185" preserveAspectRatio="none" aria-label="credit graph">
+          <g id="gridLayer"></g>
+          <line class="hiPath" id="hiGraph" x1="50" x2="900" y1="30" y2="30"></line>
+          <line class="zeroPath" id="zeroGraph" x1="50" x2="900" y1="90" y2="90"></line>
+          <line class="loPath" id="loGraph" x1="50" x2="900" y1="150" y2="150"></line>
+          <path id="creditPath" class="creditPath" d=""></path>
+          <g id="txBands"></g>
+          <text class="graphLabel" x="8" y="34">hi</text>
+          <text class="graphLabel" x="8" y="94">0</text>
+          <text class="graphLabel" x="8" y="154">lo</text>
+          <text class="graphLabel" x="775" y="178">simulation time →</text>
+        </svg>
+      </div>
+    </section>
+
+    <aside class="rightcol card">
+      <div class="sideScroll">
+        <div class="sideCard">
+          <h2>Current decision</h2>
+          <div class="kv">
+            <div>Credit</div><div id="stateCredit" class="mono">0 B</div>
+            <div>CBS eligibility</div><div id="stateEligibility">eligible</div>
+            <div>Port state</div><div id="statePort">idle</div>
+            <div>Why this action?</div><div id="stateWhy">The queue is empty, so credit is zero.</div>
+          </div>
+          <div class="noteBox" id="stepNote">Step notes will appear here while the animation runs.</div>
+        </div>
+
+        <div class="sideCard">
+          <h2>What CBS is doing to the FIFO queue</h2>
+          <p><b>Credit-Based Shaping</b> does not reorder frames inside the selected queue. The queue remains <b>First-In, First-Out</b>. CBS only decides <b>when the head frame is allowed to leave</b>.</p>
+          <ul>
+            <li>When the head frame is selected, transmission starts if credit is non-negative.</li>
+            <li>While a CBS frame is transmitted, credit decreases using <span class="mono">sendSlope</span>.</li>
+            <li>When CBS has a frame waiting but is not allowed to transmit, credit increases using <span class="mono">idleSlope</span>.</li>
+            <li>After a frame creates negative credit, the next CBS frame waits until credit recovers to zero.</li>
+          </ul>
+        </div>
+
+        <div class="sideCard">
+          <h2>Formula card</h2>
+          <div class="formula">
+credit &gt;= 0  → CBS queue may be selected<br>
+credit &lt; 0   → CBS queue must wait<br><br>
+sendSlope = idleSlope − portTransmitRate<br>
+hiCredit  = maxInterferenceSize × idleSlope / portTransmitRate<br>
+loCredit  = maxFrameSize × sendSlope / portTransmitRate
+          </div>
+          <p>The animation uses byte credits. Frame sizes are treated as on-the-wire bytes for teaching clarity.</p>
+        </div>
+
+        <div class="sideCard">
+          <h2>Scenario guide</h2>
+          <h3>Burst is shaped into paced departures</h3>
+          <p>Several CBS frames arrive together. The first can leave immediately. Its transmission pushes credit negative. The following frames remain in FIFO order, but they are released only after credit climbs back to zero.</p>
+          <h3>Interference builds positive credit</h3>
+          <p>If a CBS frame is waiting while another frame is already occupying the egress port, CBS accumulates positive credit up to <span class="mono">hiCredit</span>. That positive credit permits a short CBS burst afterwards.</p>
+          <h3>Positive credit reset</h3>
+          <p>If the CBS queue becomes empty while credit is positive, the credit is reset to zero. CBS cannot hoard unused service forever.</p>
+        </div>
+
+        <div class="sideCard">
+          <h2>Acronym expansions</h2>
+          <div class="acronyms">
+            <b>CBS</b><span>Credit-Based Shaper</span>
+            <b>TSN</b><span>Time-Sensitive Networking</span>
+            <b>AVB</b><span>Audio Video Bridging</span>
+            <b>FIFO</b><span>First-In, First-Out</span>
+            <b>PCP</b><span>Priority Code Point in the VLAN tag</span>
+            <b>MAC</b><span>Media Access Control</span>
+            <b>BE</b><span>Best Effort traffic</span>
+          </div>
+        </div>
+
+        <div class="sideCard">
+          <h2>Event log</h2>
+          <div class="log" id="eventLog"></div>
+        </div>
+
+        <div class="sideCard">
+          <h2>Teaching interpretation</h2>
+          <p>CBS is often easier to understand as a <b>bandwidth account</b>. A queue can send when its account is non-negative. Sending spends credit faster than it earns it, because the physical link is faster than the reserved rate. Waiting earns credit at the reserved rate.</p>
+          <p class="footerNote">This is a teaching animation, not a bit-exact implementation of a particular switch ASIC. It preserves the important CBS behaviors: non-negative selection, negative-credit recovery, positive-credit cap, FIFO preservation, and positive-credit reset on empty queue. Event arrivals are sorted by timestamp before simulation so the scenario timeline remains deterministic even if a future scenario is written out of order.</p>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const scenarioSelect = $('scenarioSelect');
+  const playBtn = $('playBtn');
+  const stepBtn = $('stepBtn');
+  const resetBtn = $('resetBtn');
+  const speedSelect = $('speedSelect');
+  const idleSlider = $('idleSlider');
+  const idleOut = $('idleOut');
+  const linkRateSel = $('linkRate');
+
+  const stage = $('stageArea');
+  const packetLayer = $('packetLayer');
+  const cbsSlots = $('cbsSlots');
+  const beSlots = $('beSlots');
+  const eventLog = $('eventLog');
+  const creditPath = $('creditPath');
+  const txBands = $('txBands');
+  const gridLayer = $('gridLayer');
+
+  const scenarios = {
+    burst: {
+      title:'Burst is shaped into paced departures', maxTime: 620,
+      description:'A CBS burst is forced into a paced output stream because each transmission creates negative credit.',
+      events:[
+        {t:0, kind:'cbs', bytes:800, id:'C1'}, {t:0.4, kind:'cbs', bytes:800, id:'C2'}, {t:0.8, kind:'cbs', bytes:800, id:'C3'},
+        {t:85, kind:'be', bytes:900, id:'B1'}, {t:205, kind:'be', bytes:700, id:'B2'}
+      ]
+    },
+    interference: {
+      title:'Interference builds positive credit', maxTime: 450,
+      description:'CBS waits behind an already-started best-effort frame, accumulates credit, then drains a short CBS burst.',
+      events:[
+        {t:0, kind:'be', bytes:1500, id:'B1'},
+        {t:5, kind:'cbs', bytes:600, id:'C1'}, {t:10, kind:'cbs', bytes:600, id:'C2'}, {t:20, kind:'cbs', bytes:600, id:'C3'},
+        {t:260, kind:'be', bytes:900, id:'B2'}
+      ]
+    },
+    reset: {
+      title:'Positive credit resets when queue becomes empty', maxTime: 310,
+      description:'A small CBS frame arrives while the port is busy, gains credit, sends, and leaves positive credit behind. Because the queue is empty, that positive credit is discarded.',
+      events:[
+        {t:0, kind:'be', bytes:1000, id:'B1'},
+        {t:30, kind:'cbs', bytes:200, id:'C1'},
+        {t:170, kind:'be', bytes:600, id:'B2'},
+        {t:210, kind:'cbs', bytes:300, id:'C2'}
+      ]
+    },
+    steady: {
+      title:'Continuous stream with best-effort coexistence', maxTime: 780,
+      description:'A periodic CBS stream competes with best-effort traffic. CBS gets bounded service but cannot monopolize the link.',
+      events:[
+        {t:0,kind:'cbs',bytes:500,id:'C1'}, {t:35,kind:'cbs',bytes:500,id:'C2'}, {t:70,kind:'cbs',bytes:500,id:'C3'},
+        {t:105,kind:'cbs',bytes:500,id:'C4'}, {t:140,kind:'cbs',bytes:500,id:'C5'}, {t:175,kind:'cbs',bytes:500,id:'C6'},
+        {t:40,kind:'be',bytes:900,id:'B1'}, {t:215,kind:'be',bytes:900,id:'B2'}, {t:420,kind:'be',bytes:900,id:'B3'},
+        {t:300,kind:'cbs',bytes:500,id:'C7'}, {t:335,kind:'cbs',bytes:500,id:'C8'}, {t:370,kind:'cbs',bytes:500,id:'C9'},
+        {t:405,kind:'cbs',bytes:500,id:'C10'}, {t:440,kind:'cbs',bytes:500,id:'C11'}
+      ]
+    }
+  };
+
+  let sim, playing=false, lastTs=0;
+
+  function params(){
+    const linkMbps = Number(linkRateSel.value);
+    const idlePct = Number(idleSlider.value);
+    const linkB = linkMbps / 8;
+    const idleB = linkB * idlePct / 100;
+    const sendB = idleB - linkB;
+    const maxInterferenceSize = 1542;
+    const maxFrameSize = 1000;
+    return {
+      linkMbps, idlePct, linkB, idleB, sendB,
+      idleMbps: linkMbps * idlePct / 100,
+      sendMbps: linkMbps * (idlePct / 100 - 1),
+      hiCredit: maxInterferenceSize * (idlePct / 100),
+      loCredit: maxFrameSize * (idlePct / 100 - 1)
+    };
+  }
+
+  function newPacket(e){ return { ...e, queuedAt:e.t, started:null, ended:null }; }
+
+  function initSim(){
+    const scBase = scenarios[scenarioSelect.value];
+    const sc = { ...scBase, events: [...scBase.events].sort((a,b) => a.t - b.t) };
+    sim = {
+      sc, p:params(), time:0, credit:0, cbsQ:[], beQ:[], tx:null,
+      eventIndex:0, history:[{t:0,c:0}], txHistory:[], log:[], note:'Press Play or Step to begin.', lastReset:false
+    };
+    $('scenarioTitle').textContent = sc.title;
+    $('callout').innerHTML = `<b>${sc.title}.</b> ${sc.description}`;
+    eventLog.innerHTML = '';
+    addLog(`Scenario reset: ${sc.title}`);
+    render();
+  }
+
+  function addLog(msg){
+    if(!sim) return;
+    const line = {t:sim.time, msg};
+    sim.log.push(line);
+    const div = document.createElement('div');
+    div.className='logEntry';
+    div.innerHTML = `<span class="t">${sim.time.toFixed(1)} µs</span>${msg}`;
+    eventLog.prepend(div);
+    while(eventLog.children.length>80) eventLog.removeChild(eventLog.lastChild);
+  }
+
+  function processArrivals(){
+    const events = sim.sc.events;
+    while(sim.eventIndex < events.length && events[sim.eventIndex].t <= sim.time + 1e-9){
+      const pkt = newPacket(events[sim.eventIndex++]);
+      if(pkt.kind === 'cbs') { sim.cbsQ.push(pkt); addLog(`<b>${pkt.id}</b> arrived into CBS FIFO (${pkt.bytes} B).`); }
+      else { sim.beQ.push(pkt); addLog(`<b>${pkt.id}</b> arrived into best-effort FIFO (${pkt.bytes} B).`); }
+    }
+  }
+
+  function startIfPossible(){
+    if(sim.tx) return;
+    if(sim.cbsQ.length && sim.credit >= -1e-6){
+      const pkt = sim.cbsQ.shift();
+      pkt.started = sim.time;
+      pkt.duration = pkt.bytes / sim.p.linkB;
+      pkt.end = sim.time + pkt.duration;
+      sim.tx = pkt;
+      sim.txHistory.push({kind:'cbs', id:pkt.id, start:pkt.started, end:pkt.end});
+      addLog(`<b>${pkt.id}</b> selected: CBS credit is non-negative.`);
+      sim.note = `${pkt.id} is transmitting. CBS is spending credit at sendSlope.`;
+    } else if(sim.beQ.length){
+      const pkt = sim.beQ.shift();
+      pkt.started = sim.time;
+      pkt.duration = pkt.bytes / sim.p.linkB;
+      pkt.end = sim.time + pkt.duration;
+      sim.tx = pkt;
+      sim.txHistory.push({kind:'be', id:pkt.id, start:pkt.started, end:pkt.end});
+      addLog(`<b>${pkt.id}</b> selected from best-effort. CBS is not eligible or has no frame.`);
+      sim.note = sim.cbsQ.length ? `Best-effort uses the port while CBS waits. CBS credit is recovering.` : `Best-effort uses otherwise idle link capacity.`;
+    }
+  }
+
+  function creditSlope(){
+    if(sim.tx && sim.tx.kind === 'cbs') return sim.p.sendB;
+    if(sim.cbsQ.length) return sim.p.idleB;
+    if(sim.credit < -1e-6) return sim.p.idleB;
+    return 0;
+  }
+
+  function applyCredit(dt){
+    let slope = creditSlope();
+    if(slope !== 0){
+      sim.credit += slope * dt;
+      if(slope > 0 && sim.credit > sim.p.hiCredit) sim.credit = sim.p.hiCredit;
+      if(slope < 0 && sim.credit < sim.p.loCredit) sim.credit = sim.p.loCredit;
+      if(!sim.cbsQ.length && !sim.tx && sim.credit > -1e-6 && sim.credit < 0) sim.credit = 0;
+      if(!sim.cbsQ.length && !(sim.tx && sim.tx.kind==='cbs') && sim.credit > 0){
+        sim.credit = 0;
+        if(!sim.lastReset){ addLog(`Positive CBS credit reset to zero because the CBS queue is empty.`); sim.lastReset = true; }
+      } else {
+        sim.lastReset = false;
+      }
+    } else {
+      if(!sim.cbsQ.length && !sim.tx && sim.credit > 0){ sim.credit=0; }
+    }
+  }
+
+  function nextArrivalTime(){
+    return sim.eventIndex < sim.sc.events.length ? sim.sc.events[sim.eventIndex].t : Infinity;
+  }
+
+  function nextCreditZeroTime(){
+    const slope = creditSlope();
+    if(slope > 0 && sim.credit < -1e-6) return sim.time + (-sim.credit / slope);
+    return Infinity;
+  }
+
+  function advance(delta){
+    const target = Math.min(sim.sc.maxTime, sim.time + delta);
+    let guard=0;
+    while(sim.time < target - 1e-9 && guard++ < 10000){
+      processArrivals();
+      startIfPossible();
+      let next = target;
+      next = Math.min(next, nextArrivalTime());
+      if(sim.tx) next = Math.min(next, sim.tx.end);
+      next = Math.min(next, nextCreditZeroTime());
+      let dt = Math.max(0, next - sim.time);
+      if(dt < 1e-9){
+        if(nextArrivalTime() <= sim.time + 1e-9) { processArrivals(); continue; }
+        if(sim.tx && sim.tx.end <= sim.time + 1e-9){ finishTx(); continue; }
+        sim.time += 0.001; continue;
+      }
+      applyCredit(dt);
+      sim.time = next;
+      sim.history.push({t:sim.time,c:sim.credit});
+      if(sim.tx && sim.tx.end <= sim.time + 1e-7) finishTx();
+      if(Math.abs(sim.credit) < 1e-6) sim.credit = 0;
+      if(sim.time >= sim.sc.maxTime - 1e-9) break;
+    }
+    processArrivals();
+    startIfPossible();
+    if(sim.time >= sim.sc.maxTime - 1e-9){ playing=false; playBtn.textContent='Play'; }
+    render();
+  }
+
+  function finishTx(){
+    const pkt = sim.tx;
+    pkt.ended = sim.time;
+    addLog(`<b>${pkt.id}</b> finished transmission. ${pkt.kind==='cbs' ? 'Credit after frame: '+sim.credit.toFixed(0)+' B.' : 'CBS credit may have recovered while this frame was on the wire.'}`);
+    sim.note = pkt.kind==='cbs'
+      ? `${pkt.id} completed. If credit is now negative, the next CBS frame must wait.`
+      : `${pkt.id} completed. If CBS credit has reached zero or positive, CBS can be selected next.`;
+    sim.tx = null;
+    if(!sim.cbsQ.length && sim.credit > 0){
+      sim.credit = 0;
+      addLog(`Positive CBS credit reset to zero because no CBS frame is waiting.`);
+    }
+  }
+
+  function renderPackets(){
+    packetLayer.innerHTML = '';
+    cbsSlots.innerHTML = '';
+    beSlots.innerHTML = '';
+
+    const drawQueue = (queue, parent, kind) => {
+      const n = Math.min(queue.length, 5);
+      // head is on the right; tail is on the left
+      for(let i=0; i<n; i++){
+        const pkt = queue[i];
+        const el = document.createElement('div');
+        el.className = `frame ${kind}`;
+        el.style.top = '13px';
+        el.style.left = `${242 - i*58}px`;
+        el.style.width = '52px';
+        el.innerHTML = `${pkt.id}<small>${pkt.bytes}B</small>`;
+        parent.appendChild(el);
+      }
+      if(queue.length > 5){
+        const more = document.createElement('div');
+        more.className = `frame ${kind}`;
+        more.style.top='13px'; more.style.left='5px'; more.style.width='42px'; more.style.opacity='.65';
+        more.innerHTML = `+${queue.length-5}`;
+        parent.appendChild(more);
+      }
+    };
+    drawQueue(sim.cbsQ, cbsSlots, 'cbs');
+    drawQueue(sim.beQ, beSlots, 'be');
+
+    if(sim.tx){
+      const pkt = sim.tx;
+      const prog = Math.max(0, Math.min(1, (sim.time - pkt.started) / pkt.duration));
+      const start = {x: 720, y: pkt.kind==='cbs' ? 132 : 212};
+      const end = {x: 940, y: 154};
+      const x = start.x + (end.x - start.x) * prog;
+      const y = start.y + (end.y - start.y) * prog;
+      const el = document.createElement('div');
+      el.className = `frame ${pkt.kind} tx`;
+      el.style.left = `${x}px`; el.style.top = `${y}px`; el.style.width='62px';
+      el.innerHTML = `${pkt.id}<small>TX</small>`;
+      packetLayer.appendChild(el);
+    }
+
+    $('cbsCount').textContent = `${sim.cbsQ.length} frame${sim.cbsQ.length===1?'':'s'}`;
+    $('beCount').textContent = `${sim.beQ.length} frame${sim.beQ.length===1?'':'s'}`;
+  }
+
+  function renderMeter(){
+    const hi = sim.p.hiCredit, lo = sim.p.loCredit;
+    const min = lo * 1.15, max = hi * 1.15;
+    const pct = c => 100 - ((c - min) / (max - min) * 100);
+    $('hiLine').style.top = `${pct(hi)}%`;
+    $('zeroLine').style.top = `${pct(0)}%`;
+    $('loLine').style.top = `${pct(lo)}%`;
+    const zero = pct(0), cur = pct(sim.credit);
+    const bar = $('creditBar');
+    if(sim.credit >= 0){
+      bar.classList.remove('neg');
+      bar.style.top = `${cur}%`; bar.style.height = `${Math.max(3, zero-cur)}%`;
+    } else {
+      bar.classList.add('neg');
+      bar.style.top = `${zero}%`; bar.style.height = `${Math.max(3, cur-zero)}%`;
+    }
+    $('creditReadout').textContent = `${sim.credit.toFixed(0)} B`;
+  }
+
+  function renderGraph(){
+    gridLayer.innerHTML = '';
+    const W=920,H=185,L=50,R=900,T=18,B=160;
+    const maxT = sim.sc.maxTime;
+    const hi = sim.p.hiCredit, lo = sim.p.loCredit;
+    const min = lo*1.15, max=hi*1.15;
+    const x = t => L + (R-L) * (t / maxT);
+    const y = c => B - (B-T) * ((c - min)/(max-min));
+    for(let i=0;i<=8;i++){
+      const gx = L + (R-L)*i/8;
+      const ln = document.createElementNS('http://www.w3.org/2000/svg','line');
+      ln.setAttribute('x1',gx);ln.setAttribute('x2',gx);ln.setAttribute('y1',T);ln.setAttribute('y2',B);ln.setAttribute('class','grid');
+      gridLayer.appendChild(ln);
+    }
+    for(let i=0;i<=4;i++){
+      const gy = T + (B-T)*i/4;
+      const ln = document.createElementNS('http://www.w3.org/2000/svg','line');
+      ln.setAttribute('x1',L);ln.setAttribute('x2',R);ln.setAttribute('y1',gy);ln.setAttribute('y2',gy);ln.setAttribute('class','grid');
+      gridLayer.appendChild(ln);
+    }
+    $('hiGraph').setAttribute('y1',y(hi)); $('hiGraph').setAttribute('y2',y(hi));
+    $('zeroGraph').setAttribute('y1',y(0)); $('zeroGraph').setAttribute('y2',y(0));
+    $('loGraph').setAttribute('y1',y(lo)); $('loGraph').setAttribute('y2',y(lo));
+    let d = '';
+    sim.history.forEach((pt,i)=>{ d += `${i?'L':'M'} ${x(pt.t).toFixed(1)} ${y(pt.c).toFixed(1)} `; });
+    creditPath.setAttribute('d', d);
+
+    txBands.innerHTML='';
+    sim.txHistory.forEach(tx=>{
+      const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+      rect.setAttribute('x',x(tx.start));rect.setAttribute('y',T);rect.setAttribute('width',Math.max(2,x(Math.min(tx.end,sim.sc.maxTime))-x(tx.start)));rect.setAttribute('height',B-T);
+      rect.setAttribute('fill', tx.kind==='cbs' ? 'rgba(14,165,233,.14)' : 'rgba(148,163,184,.10)');
+      rect.setAttribute('stroke', tx.kind==='cbs' ? 'rgba(56,189,248,.35)' : 'rgba(148,163,184,.2)');
+      txBands.appendChild(rect);
+      const text = document.createElementNS('http://www.w3.org/2000/svg','text');
+      text.setAttribute('x',x(tx.start)+4);text.setAttribute('y',tx.kind==='cbs'?30:46);text.setAttribute('class','graphLabel');text.textContent=tx.id;
+      txBands.appendChild(text);
+    });
+  }
+
+  function renderState(){
+    const p = sim.p;
+    const eligible = sim.cbsQ.length && sim.credit >= -1e-6;
+    const waiting = sim.cbsQ.length && sim.credit < -1e-6;
+    $('timeReadout').textContent = sim.time.toFixed(1);
+    $('stateCredit').textContent = `${sim.credit.toFixed(1)} B`;
+    $('stateEligibility').innerHTML = eligible ? '<span class="good">eligible: credit ≥ 0</span>' : waiting ? '<span class="bad">blocked: credit < 0</span>' : 'no CBS head frame';
+    $('statePort').textContent = sim.tx ? `transmitting ${sim.tx.id} (${sim.tx.kind.toUpperCase()})` : 'idle / selecting';
+    let why;
+    if(sim.tx && sim.tx.kind==='cbs') why = 'CBS frame is on the wire, so credit decreases at sendSlope until the frame completes.';
+    else if(sim.tx && sim.tx.kind==='be' && sim.cbsQ.length) why = 'A non-CBS frame is already using the port or CBS is not eligible. Because CBS has a waiting frame, credit increases at idleSlope.';
+    else if(waiting) why = 'The CBS head frame is preserved in FIFO order, but it cannot leave until credit recovers to zero.';
+    else if(eligible) why = 'CBS has the head frame and credit is non-negative, so the scheduler can select it.';
+    else if(sim.credit < 0) why = 'There is negative credit debt. It recovers at idleSlope until zero.';
+    else why = 'The CBS queue is empty, so credit is held at zero.';
+    $('stateWhy').textContent = why;
+    $('stepNote').textContent = sim.note;
+    $('gateLight').classList.toggle('closed', !!waiting);
+    const callout = $('callout');
+    if(sim.tx && sim.tx.kind==='cbs') callout.innerHTML = `<b>${sim.tx.id} is leaving.</b> Credit is falling at sendSlope. A following CBS frame may have to wait after this frame finishes.`;
+    else if(waiting) callout.innerHTML = `<b>CBS queue is shaped here.</b> The head frame is ready, but credit is negative. FIFO order is preserved while time spacing is inserted.`;
+    else if(sim.tx && sim.tx.kind==='be') callout.innerHTML = `<b>Best-effort is using spare time.</b> CBS is either empty or not currently eligible.`;
+    else if(eligible) callout.innerHTML = `<b>CBS can transmit.</b> Credit is non-negative and the CBS FIFO has a head frame.`;
+    else callout.innerHTML = `<b>Port idle.</b> No eligible frame is waiting at this instant.`;
+
+    $('slopesReadout').textContent = `idleSlope = ${p.idleMbps.toFixed(0)} Mb/s, sendSlope = ${p.sendMbps.toFixed(0)} Mb/s, hiCredit ≈ ${p.hiCredit.toFixed(0)} B, loCredit ≈ ${p.loCredit.toFixed(0)} B`;
+  }
+
+  function render(){
+    idleOut.textContent = `${idleSlider.value}%`;
+    renderPackets(); renderMeter(); renderGraph(); renderState();
+  }
+
+  function loop(ts){
+    if(!playing){ lastTs=ts; return; }
+    if(!lastTs) lastTs=ts;
+    const realDt = Math.min(80, ts-lastTs);
+    lastTs = ts;
+    const speed = Number(speedSelect.value);
+    // medium maps 1 ms real to 0.45 us sim, so visual motion remains understandable
+    advance(realDt * 0.45 * speed);
+    requestAnimationFrame(loop);
+  }
+
+  playBtn.addEventListener('click', () => {
+    playing = !playing;
+    playBtn.textContent = playing ? 'Pause' : 'Play';
+    if(playing){ lastTs=0; requestAnimationFrame(loop); }
+  });
+  stepBtn.addEventListener('click', () => { playing=false; playBtn.textContent='Play'; advance(20); });
+  resetBtn.addEventListener('click', () => { playing=false; playBtn.textContent='Play'; initSim(); });
+  scenarioSelect.addEventListener('change', () => { playing=false; playBtn.textContent='Play'; initSim(); });
+  idleSlider.addEventListener('input', () => { playing=false; playBtn.textContent='Play'; initSim(); });
+  linkRateSel.addEventListener('change', () => { playing=false; playBtn.textContent='Play'; initSim(); });
+  speedSelect.addEventListener('change', render);
+
+  initSim();
+})();
+</script>
+</body>
+</html>

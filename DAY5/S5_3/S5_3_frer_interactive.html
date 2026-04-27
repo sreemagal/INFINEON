@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FRER — Frame Replication and Elimination for Reliability · IEEE 802.1CB</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    font-size: 13px;
+    background: #ffffff;
+    color: #1a1a1a;
+    padding: 24px;
+    max-width: 960px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+  .subtitle { font-size: 12px; color: #666; margin-bottom: 20px; }
+  .section-label { font-size: 12px; color: #666; margin: 10px 0 5px; }
+
+  .algo-note {
+    background: #EEF3FA; border-left: 4px solid #2E5EA8;
+    padding: 10px 14px; border-radius: 0 6px 6px 0;
+    font-size: 12px; color: #1F3864; line-height: 1.7;
+    margin-bottom: 20px;
+  }
+
+  /* Controls */
+  .controls { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
+  button {
+    font-size: 12px; padding: 6px 16px; border-radius: 6px;
+    border: 1px solid #ccc; background: #f5f5f5;
+    color: #1a1a1a; cursor: pointer; font-family: inherit;
+  }
+  button:hover { background: #e8e8e8; }
+  button.primary { background: #1F3864; color: #fff; border-color: #1F3864; }
+  button.primary:hover { background: #2E5EA8; }
+  button.danger  { background: #FCEBEB; color: #791F1F; border-color: #E24B4A; }
+  button.danger:hover { background: #f5c4c4; }
+  button.restore { background: #E1F5EE; color: #085041; border-color: #0F6E56; }
+  button.restore:hover { background: #c4e8d5; }
+  button:disabled { opacity: 0.4; cursor: default; }
+
+  /* Fault banner */
+  .fault-banner {
+    background: #FCEBEB; border: 1px solid #E24B4A;
+    border-radius: 6px; padding: 8px 14px;
+    font-size: 12px; color: #791F1F; font-weight: 600;
+    margin-bottom: 12px; display: none;
+  }
+  .fault-banner.show { display: block; }
+
+  /* Pipeline */
+  .pipeline {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 6px; margin-bottom: 16px;
+  }
+  .pipe-node {
+    border-radius: 6px; padding: 8px 6px;
+    text-align: center; border-width: 1px; border-style: solid;
+    font-size: 11px; min-height: 58px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 3px;
+    transition: background 0.2s;
+  }
+  .pipe-node .node-title { font-weight: 700; font-size: 11px; }
+  .pipe-node .node-sub   { font-size: 10px; opacity: 0.85; }
+  .pipe-node.failed { background: #FCEBEB !important; border-color: #E24B4A !important; color: #791F1F !important; }
+
+  /* Frame tokens */
+  .frame-token {
+    display: inline-flex; align-items: center; justify-content: center;
+    height: 22px; min-width: 44px; border-radius: 3px;
+    font-size: 10px; font-weight: 600; padding: 0 6px;
+    border-width: 1px; border-style: solid;
+  }
+
+  /* Path rows */
+  .path-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .path-label { width: 76px; font-size: 12px; font-weight: 600; flex-shrink: 0; }
+  .path-frames { display: flex; gap: 4px; flex-wrap: wrap; flex: 1; min-height: 26px; align-items: center; }
+
+  hr { border: none; border-top: 1px solid #e0e0e0; margin: 14px 0; }
+
+  /* Recovery table */
+  .recv-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 14px; }
+  .recv-table th {
+    background: #1F3864; color: #fff; padding: 7px 10px;
+    text-align: left; font-weight: 500;
+  }
+  .recv-table td {
+    padding: 7px 10px; border-bottom: 1px solid #e0e0e0;
+    vertical-align: middle;
+  }
+  .recv-table tr:nth-child(even) td { background: #f8f8f8; }
+  .recv-table tr:last-child td { border-bottom: none; }
+  .accept  { color: #085041; font-weight: 700; }
+  .discard { color: #791F1F; font-weight: 700; }
+
+  /* Stats */
+  .stats { display: flex; gap: 20px; font-size: 12px; color: #666; margin: 10px 0; flex-wrap: wrap; }
+  .stats span { color: #1a1a1a; font-weight: 600; }
+
+  /* Log */
+  .log {
+    font-size: 12px; color: #555; background: #f8f8f8;
+    padding: 10px 12px; border-radius: 6px; border: 1px solid #e0e0e0;
+    line-height: 2; min-height: 56px; font-family: monospace;
+  }
+  .log .hi { color: #1a1a1a; font-weight: 700; }
+
+  /* R-TAG info box */
+  .rtag-box {
+    background: #F3F2FE; border: 1px solid #534AB7;
+    border-radius: 6px; padding: 10px 14px;
+    font-size: 12px; color: #26215C; line-height: 1.7;
+    margin-bottom: 20px; font-family: monospace;
+  }
+</style>
+</head>
+<body>
+
+<h1>FRER — Frame Replication and Elimination for Reliability</h1>
+<p class="subtitle">IEEE 802.1CB · R-TAG sequence numbering · disjoint path redundancy · sequence recovery</p>
+
+<div class="algo-note">
+  <strong>How FRER works end-to-end:</strong> The talker's sequence-generation function assigns a sequence number to each frame and inserts an R-TAG carrying that number. The frame is replicated onto two or more disjoint network paths. At the listener, the sequence-recovery function accepts the first copy of each sequence number and silently discards all subsequent duplicates. A single physical path failure — cable cut, switch crash, transient error — cannot interrupt the stream because the other path continues delivering.
+</div>
+
+<div class="rtag-box">
+R-TAG frame insertion: &nbsp;[Dst MAC | Src MAC | <strong>0xF1C1 | seq_num (16b) | reserved (16b)</strong> | EtherType | Payload | FCS*]<br>
+Sequence number: 16-bit, wraps 0–65535 · R-TAG removed by sequence-recovery function before delivery to application
+</div>
+
+<div class="controls">
+  <button class="primary" onclick="fstep()">Send next frame →</button>
+  <button onclick="frun()">Send 5 frames</button>
+  <button class="danger"  onclick="failPath()"    id="btn-fail">⚡ Fail Path A</button>
+  <button class="restore" onclick="restorePath()" id="btn-restore" disabled>✓ Restore Path A</button>
+  <button onclick="freset()">Reset</button>
+</div>
+
+<div class="fault-banner" id="fault-banner">
+  ⚡ PATH A FAILED — SW-A1 is down. Frames on Path A are being dropped. Stream continues uninterrupted via Path B.
+</div>
+
+<div class="section-label">Pipeline — last frame's journey through each stage:</div>
+<div class="pipeline" id="pipeline"></div>
+
+<div class="section-label">Frames in transit:</div>
+<div class="path-row">
+  <div class="path-label" style="color:#085041">Path A</div>
+  <div class="path-frames" id="inflight-a"></div>
+  <div id="path-a-status" style="font-size:11px;font-weight:700;margin-left:6px;color:#085041"></div>
+</div>
+<div class="path-row">
+  <div class="path-label" style="color:#633806">Path B</div>
+  <div class="path-frames" id="inflight-b"></div>
+</div>
+
+<hr>
+
+<div class="section-label">Sequence recovery log — decision for each frame at the listener:</div>
+<table class="recv-table">
+  <thead>
+    <tr>
+      <th style="width:70px">Seq #</th>
+      <th style="width:140px">Path A copy</th>
+      <th style="width:140px">Path B copy</th>
+      <th style="width:110px">Decision</th>
+      <th>Delivered to listener</th>
+    </tr>
+  </thead>
+  <tbody id="recv-tbody"></tbody>
+</table>
+
+<div class="stats" id="fstats"></div>
+
+<div class="section-label">Step log:</div>
+<div class="log" id="flog"></div>
+
+<script>
+const C = {
+  talker:   { bg:'#E1F5EE', bd:'#0F6E56', tx:'#085041' },
+  seqgen:   { bg:'#EEEDFE', bd:'#534AB7', tx:'#3C3489' },
+  pathA:    { bg:'#E1F5EE', bd:'#0F6E56', tx:'#085041' },
+  pathB:    { bg:'#FAEEDA', bd:'#BA7517', tx:'#633806' },
+  seqrecv:  { bg:'#EEEDFE', bd:'#534AB7', tx:'#3C3489' },
+  listener: { bg:'#E1F5EE', bd:'#0F6E56', tx:'#085041' },
+  accept:   { bg:'#E1F5EE', bd:'#0F6E56', tx:'#085041' },
+  discard:  { bg:'#FCEBEB', bd:'#E24B4A', tx:'#791F1F' },
+};
+
+let FS;
+
+function finit() {
+  FS = {
+    seqNext:       1,
+    pathAFailed:   false,
+    recoveryTable: {},
+    delivered:     [],
+    log:           [],
+    stats:         { sent:0, delivered:0, discarded:0, droppedA:0 },
+    pipeline:      null
+  };
+}
+
+function fstep() {
+  const seq = FS.seqNext++;
+  FS.stats.sent++;
+
+  FS.log.push(`Talker → stream-ID classifies as Stream X · seq-gen assigns R-TAG seq=${seq}`);
+  FS.log.push(`Frame replicated: identical copy sent on Path A and Path B`);
+
+  const entry = { a: false, b: false, droppedA: false, accepted: false, acceptedVia: '' };
+  FS.recoveryTable[seq] = entry;
+
+  // Path A
+  if (FS.pathAFailed) {
+    entry.droppedA = true;
+    FS.stats.droppedA++;
+    FS.log.push(`  Path A (SW-A1→SW-A2): seq=${seq} DROPPED — SW-A1 is down`);
+  } else {
+    entry.a = true;
+    FS.log.push(`  Path A (SW-A1→SW-A2): seq=${seq} forwarded successfully`);
+  }
+
+  // Path B always succeeds
+  entry.b = true;
+  FS.log.push(`  Path B (SW-B1→SW-B2): seq=${seq} forwarded successfully`);
+
+  // Sequence recovery — first valid copy wins
+  if (entry.a && !entry.accepted) {
+    entry.accepted = true;
+    entry.acceptedVia = 'A';
+    FS.stats.delivered++;
+    FS.delivered.push(seq);
+    FS.log.push(`  Seq-recv: Path A copy seq=${seq} → ACCEPT (first copy) → R-TAG stripped → delivered`);
+  }
+  if (entry.b) {
+    if (!entry.accepted) {
+      entry.accepted = true;
+      entry.acceptedVia = 'B';
+      FS.stats.delivered++;
+      FS.delivered.push(seq);
+      FS.log.push(`  Seq-recv: Path B copy seq=${seq} → ACCEPT (first copy, Path A failed) → delivered`);
+    } else {
+      FS.stats.discarded++;
+      FS.log.push(`  Seq-recv: Path B copy seq=${seq} → DISCARD (duplicate — already accepted via Path ${entry.acceptedVia})`);
+    }
+  }
+
+  FS.pipeline = { seq, aDropped: entry.droppedA, acceptedVia: entry.acceptedVia };
+  frender();
+}
+
+function failPath() {
+  FS.pathAFailed = true;
+  FS.log.push(`⚡ FAULT INJECTED: Path A cable cut — SW-A1 unreachable · stream continues via Path B`);
+  document.getElementById('btn-fail').disabled    = true;
+  document.getElementById('btn-restore').disabled = false;
+  document.getElementById('fault-banner').classList.add('show');
+  frender();
+}
+
+function restorePath() {
+  FS.pathAFailed = false;
+  FS.log.push(`✓ Path A restored — SW-A1 back online · both paths active · duplicates will resume`);
+  document.getElementById('btn-fail').disabled    = false;
+  document.getElementById('btn-restore').disabled = true;
+  document.getElementById('fault-banner').classList.remove('show');
+  frender();
+}
+
+function frun()   { for (let i = 0; i < 5; i++) fstep(); }
+function freset() {
+  finit();
+  document.getElementById('btn-fail').disabled    = false;
+  document.getElementById('btn-restore').disabled = true;
+  document.getElementById('fault-banner').classList.remove('show');
+  frender();
+}
+
+function ftok(seq, c) {
+  return `<div class="frame-token" style="background:${c.bg};border-color:${c.bd};color:${c.tx}">seq=${seq}</div>`;
+}
+
+function frender() {
+  const p = FS.pipeline;
+  const lastSeq = FS.seqNext - 1;
+
+  // Pipeline
+  const stages = [
+    { title:'Talker',    sub: p ? 'Stream X' : '—',                      c: C.talker,   active: !!p },
+    { title:'Seq-gen',   sub: p ? `R-TAG seq=${p.seq}` : '—',            c: C.seqgen,   active: !!p },
+    { title:'Replicate', sub: p ? '→ Path A + B' : '—',                  c: C.seqgen,   active: !!p },
+    { title:'Path A',    sub: p ? (p.aDropped ? '✗ DROPPED' : `seq=${p.seq} ✓`) : '—',
+      c: p && p.aDropped ? C.discard : C.pathA, active: !!p, failed: p && p.aDropped },
+    { title:'Path B',    sub: p ? `seq=${p.seq} ✓` : '—',               c: C.pathB,    active: !!p },
+    { title:'Seq-recv',  sub: p ? `seq=${p.seq} accepted` : '—',         c: C.seqrecv,  active: !!p },
+  ];
+
+  document.getElementById('pipeline').innerHTML = stages.map(s => {
+    const useBg = s.active || s.failed;
+    return `<div class="pipe-node ${s.failed ? 'failed' : ''}"
+      style="background:${useBg ? s.c.bg : '#f8f8f8'};
+             border-color:${useBg ? s.c.bd : '#e0e0e0'};
+             color:${useBg ? s.c.tx : '#999'}">
+      <div class="node-title">${s.title}</div>
+      <div class="node-sub">${s.sub}</div>
+    </div>`;
+  }).join('');
+
+  // In-flight
+  document.getElementById('inflight-a').innerHTML = lastSeq > 0
+    ? (FS.pathAFailed
+        ? `<span style="font-size:11px;color:#E24B4A;font-weight:600">✗ path failed — frames dropped</span>`
+        : ftok(lastSeq, C.pathA))
+    : `<span style="font-size:11px;color:#999">none in flight</span>`;
+
+  document.getElementById('inflight-b').innerHTML = lastSeq > 0
+    ? ftok(lastSeq, C.pathB)
+    : `<span style="font-size:11px;color:#999">none in flight</span>`;
+
+  const statusEl = document.getElementById('path-a-status');
+  statusEl.textContent = FS.pathAFailed ? '⚡ FAILED' : '✓ OK';
+  statusEl.style.color = FS.pathAFailed ? '#E24B4A' : '#0F6E56';
+
+  // Recovery table
+  const seqs = Object.keys(FS.recoveryTable).map(Number).sort((a,b) => a-b);
+  document.getElementById('recv-tbody').innerHTML = seqs.length
+    ? seqs.map(seq => {
+        const e = FS.recoveryTable[seq];
+
+        const aCell = e.droppedA
+          ? `<span style="color:#791F1F;font-weight:600">✗ dropped (fault)</span>`
+          : `<span class="accept">✓ received</span>${e.acceptedVia==='A' ? ' <span style="font-size:10px;color:#888">← first copy</span>' : ' <span style="font-size:10px;color:#888">← duplicate</span>'}`;
+
+        const bCell = e.b
+          ? `<span class="accept">✓ received</span>${e.acceptedVia==='B' ? ' <span style="font-size:10px;color:#888">← first copy</span>' : e.droppedA ? '' : ' <span style="font-size:10px;color:#888">← duplicate</span>'}`
+          : '—';
+
+        const decision = e.accepted
+          ? `<span class="accept">✓ ACCEPT</span>`
+          : `<span class="discard">✗ DISCARD</span>`;
+
+        const delivery = e.accepted
+          ? `<span class="accept">✓ seq=${seq} delivered to ADAS ECU (R-TAG stripped, via Path ${e.acceptedVia})</span>`
+          : `<span class="discard">dropped — duplicate already delivered</span>`;
+
+        return `<tr>
+          <td style="font-family:monospace;font-weight:700">${seq}</td>
+          <td>${aCell}</td>
+          <td>${bCell}</td>
+          <td>${decision}</td>
+          <td>${delivery}</td>
+        </tr>`;
+      }).join('')
+    : `<tr><td colspan="5" style="text-align:center;color:#999;padding:16px">No frames sent yet — press "Send next frame" to begin</td></tr>`;
+
+  // Stats
+  document.getElementById('fstats').innerHTML =
+    `Frames sent by talker: <span>${FS.stats.sent}</span>` +
+    `&nbsp;&nbsp; Delivered to listener: <span>${FS.stats.delivered}</span>` +
+    `&nbsp;&nbsp; Duplicates discarded: <span>${FS.stats.discarded}</span>` +
+    `&nbsp;&nbsp; Path A drops (fault): <span>${FS.stats.droppedA}</span>`;
+
+  // Log
+  document.getElementById('flog').innerHTML =
+    FS.log.slice(-7).map((line, i, arr) =>
+      i === arr.length - 1
+        ? `<span class="hi">${line}</span>`
+        : line
+    ).join('<br>') || 'Press "Send next frame" to begin.';
+}
+
+finit();
+frender();
+</script>
+</body>
+</html>

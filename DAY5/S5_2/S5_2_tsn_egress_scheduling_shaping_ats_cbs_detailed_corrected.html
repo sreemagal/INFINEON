@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Training material on Ethernet switch egress scheduling and shaping with ATS and CBS formulas</title>
+  <style>
+    :root {
+      --bg: #0b0f14;
+      --bg2: #101620;
+      --panel: #151b23;
+      --panel2: #1b2430;
+      --panel3: #0f1722;
+      --border: #2d3a4a;
+      --border2: #405064;
+      --text: #f8fafc;
+      --muted: #cbd5e1;
+      --soft: #94a3b8;
+      --orange: #ff3621;
+      --orange2: #ff7a45;
+      --blue: #60a5fa;
+      --green: #34d399;
+      --yellow: #fbbf24;
+      --purple: #a78bfa;
+      --red: #fb7185;
+      --code: #070b10;
+      --shadow: 0 24px 70px rgba(0,0,0,0.45);
+      --radius: 18px;
+      --w: 1240px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 4% 0%, rgba(255,54,33,0.18), transparent 38rem),
+        radial-gradient(circle at 98% 5%, rgba(96,165,250,0.16), transparent 36rem),
+        linear-gradient(180deg, #0b0f14 0%, #0b0f14 38%, #080c12 100%);
+      line-height: 1.64;
+    }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .context-bar {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      border-bottom: 1px solid rgba(255,255,255,0.10);
+      background: rgba(9, 13, 19, 0.94);
+      backdrop-filter: blur(18px);
+      box-shadow: 0 14px 45px rgba(0,0,0,0.42);
+    }
+    .context-inner {
+      max-width: var(--w);
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.76rem 1.25rem;
+    }
+    .brand { display: flex; gap: 0.8rem; align-items: center; min-width: 0; }
+    .mark {
+      width: 38px; height: 38px; flex: 0 0 auto;
+      border-radius: 11px;
+      display: grid; place-items: center;
+      font-weight: 900;
+      letter-spacing: -0.07em;
+      color: white;
+      background: linear-gradient(135deg, var(--orange), #9d1c13);
+      box-shadow: 0 12px 30px rgba(255,54,33,0.34);
+    }
+    .ctx-label { min-width: 0; }
+    .ctx-label small {
+      display: block;
+      color: var(--soft);
+      text-transform: uppercase;
+      letter-spacing: 0.13em;
+      font-size: 0.72rem;
+      line-height: 1.15;
+    }
+    #currentContext {
+      display: block;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-weight: 800;
+      color: var(--text);
+      max-width: 58vw;
+    }
+    .pills { display: flex; gap: 0.42rem; flex-wrap: wrap; justify-content: flex-end; }
+    .pills a {
+      color: var(--muted);
+      font-size: 0.78rem;
+      padding: 0.36rem 0.62rem;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.10);
+      background: rgba(255,255,255,0.04);
+      transition: all 0.16s ease;
+    }
+    .pills a.active, .pills a:hover {
+      color: #fff;
+      background: rgba(255,54,33,0.18);
+      border-color: rgba(255,54,33,0.45);
+      text-decoration: none;
+    }
+    .hero { max-width: var(--w); margin: 0 auto; padding: 4.6rem 1.25rem 2.2rem; }
+    .eyebrow { color: var(--orange2); text-transform: uppercase; letter-spacing: 0.16em; font-size: 0.78rem; font-weight: 800; margin-bottom: 1rem; }
+    h1 { font-size: clamp(2.15rem, 5vw, 4.7rem); line-height: 0.98; letter-spacing: -0.06em; margin: 0 0 1.3rem; max-width: 1100px; }
+    .hero p { max-width: 930px; color: var(--muted); font-size: 1.14rem; margin: 0.5rem 0; }
+    .badges { display: flex; flex-wrap: wrap; gap: 0.55rem; margin-top: 1.4rem; }
+    .badge { border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.05); border-radius: 999px; padding: 0.42rem 0.78rem; color: var(--muted); font-weight: 700; font-size: 0.86rem; }
+    .layout { max-width: var(--w); margin: 0 auto; display: grid; grid-template-columns: 285px minmax(0, 1fr); gap: 1.35rem; padding: 0 1.25rem 5rem; }
+    aside { position: sticky; top: 76px; align-self: start; max-height: calc(100vh - 92px); overflow: auto; padding: 1rem; border: 1px solid rgba(255,255,255,0.10); background: rgba(15, 23, 34, 0.72); border-radius: var(--radius); box-shadow: var(--shadow); }
+    aside h2 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.15em; color: var(--soft); margin: 0 0 0.75rem; }
+    .toc { display: grid; gap: 0.25rem; }
+    .toc a { display: block; color: var(--muted); padding: 0.45rem 0.55rem; border-radius: 10px; font-size: 0.9rem; line-height: 1.25; border: 1px solid transparent; }
+    .toc a.active, .toc a:hover { color: #fff; background: rgba(255,54,33,0.13); border-color: rgba(255,54,33,0.25); text-decoration: none; }
+    main { min-width: 0; }
+    section { scroll-margin-top: 92px; margin-bottom: 1.1rem; padding: 1.35rem; border: 1px solid rgba(255,255,255,0.10); background: rgba(18, 25, 36, 0.74); border-radius: var(--radius); box-shadow: var(--shadow); }
+    section.alt { background: rgba(19, 30, 44, 0.78); }
+    h2 { margin: 0 0 0.9rem; font-size: clamp(1.5rem, 3vw, 2.25rem); line-height: 1.08; letter-spacing: -0.035em; }
+    h3 { margin: 1.25rem 0 0.55rem; font-size: 1.22rem; letter-spacing: -0.025em; color: #fff; }
+    h4 { margin: 1rem 0 0.35rem; font-size: 1.02rem; color: var(--muted); }
+    p { color: var(--muted); margin: 0.6rem 0; }
+    strong { color: #fff; }
+    .grid { display: grid; gap: 1rem; }
+    .grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .card { border: 1px solid rgba(255,255,255,0.10); background: rgba(255,255,255,0.04); border-radius: 16px; padding: 1rem; }
+    .callout { border-left: 4px solid var(--orange); background: rgba(255,54,33,0.08); border-radius: 12px; padding: 0.9rem 1rem; color: var(--muted); }
+    .formula { border: 1px solid rgba(255,255,255,0.12); background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02)); border-radius: 16px; padding: 1rem; margin: 0.8rem 0; }
+    .formula .name { color: var(--orange2); font-weight: 900; text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.75rem; margin-bottom: 0.35rem; }
+    .formula code { font-size: 1rem; color: #fff; }
+    pre { overflow-x: auto; background: var(--code); border: 1px solid rgba(255,255,255,0.10); color: #e5edf8; padding: 1rem; border-radius: 14px; font-size: 0.92rem; line-height: 1.47; }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; color: #fff; }
+    table { width: 100%; border-collapse: collapse; margin: 1rem 0; overflow: hidden; border-radius: 14px; border: 1px solid rgba(255,255,255,0.10); }
+    th, td { text-align: left; padding: 0.75rem 0.8rem; vertical-align: top; border-bottom: 1px solid rgba(255,255,255,0.08); color: var(--muted); }
+    th { color: #fff; background: rgba(255,255,255,0.06); font-size: 0.86rem; text-transform: uppercase; letter-spacing: 0.08em; }
+    tr:last-child td { border-bottom: none; }
+    .mini { color: var(--soft); font-size: 0.92rem; }
+    .tag { display: inline-block; border-radius: 999px; padding: 0.18rem 0.48rem; margin-right: 0.25rem; font-size: 0.74rem; font-weight: 800; border: 1px solid rgba(255,255,255,0.12); color: #fff; }
+    .tag.orange { background: rgba(255,54,33,0.16); border-color: rgba(255,54,33,0.35); }
+    .tag.green { background: rgba(52,211,153,0.14); border-color: rgba(52,211,153,0.32); }
+    .tag.blue { background: rgba(96,165,250,0.15); border-color: rgba(96,165,250,0.35); }
+    .tag.yellow { background: rgba(251,191,36,0.13); border-color: rgba(251,191,36,0.35); }
+    .step { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 0.75rem; margin: 0.8rem 0; }
+    .num { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 11px; background: rgba(255,54,33,0.18); color: #fff; font-weight: 900; }
+    .rail { border: 1px solid rgba(255,255,255,0.10); border-radius: 16px; padding: 1rem; background: rgba(255,255,255,0.035); }
+    .timeline { display: grid; gap: 0.6rem; margin: 0.8rem 0; }
+    .event { display: grid; grid-template-columns: 110px minmax(0,1fr); gap: 0.75rem; align-items: stretch; }
+    .time { color: var(--orange2); font-weight: 900; font-family: ui-monospace, monospace; padding-top: 0.2rem; }
+    .event .box { border: 1px solid rgba(255,255,255,0.10); background: rgba(255,255,255,0.04); border-radius: 12px; padding: 0.65rem 0.75rem; color: var(--muted); }
+    .smallcaps { text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.75rem; color: var(--soft); font-weight: 800; }
+    .footnotes li { color: var(--muted); margin: 0.45rem 0; }
+    @media (max-width: 980px) {
+      .layout { grid-template-columns: 1fr; }
+      aside { position: static; max-height: none; }
+      .grid.two, .grid.three { grid-template-columns: 1fr; }
+      .context-inner { grid-template-columns: 1fr; }
+      #currentContext { max-width: 92vw; }
+      .pills { justify-content: flex-start; }
+    }
+    @media print {
+      .context-bar, aside { display: none; }
+      body { background: #fff; color: #111; }
+      .layout { display: block; }
+      section, .card, .formula, pre, table { box-shadow: none; break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="context-bar">
+    <div class="context-inner">
+      <div class="brand">
+        <div class="mark">db</div>
+        <div class="ctx-label">
+          <small>Current context</small>
+          <span id="currentContext">Egress-port scheduling and shaping</span>
+        </div>
+      </div>
+      <nav class="pills" aria-label="Top context navigation">
+        <a href="#problem" data-target="problem">Problem</a>
+        <a href="#pipeline" data-target="pipeline">Pipeline</a>
+        <a href="#cbs" data-target="cbs">CBS</a>
+        <a href="#ats" data-target="ats">ATS</a>
+        <a href="#tas" data-target="tas">TAS</a>
+        <a href="#weighted" data-target="weighted">Weighted</a>
+        <a href="#automotive" data-target="automotive">Automotive</a>
+      </nav>
+    </div>
+  </div>
+
+  <header class="hero">
+    <div class="eyebrow">IEEE 802.1 Time-Sensitive Networking training material</div>
+    <h1>Ethernet switch egress scheduling and shaping with precise ATS and CBS calculations</h1>
+    <p>This training note explains how an Ethernet switch egress port decides which frame leaves next, and how Time-Sensitive Networking mechanisms shape, gate, and arbitrate traffic. The emphasis is on implementer-level understanding: variables, formulas, state updates, numeric examples, and the difference between shaping and scheduling.</p>
+    <div class="badges">
+      <span class="badge">CBS credit formulas</span>
+      <span class="badge">ATS eligibility-time formula</span>
+      <span class="badge">BucketEmptyTime explained</span>
+      <span class="badge">TAS gate control logic</span>
+      <span class="badge">ETS, WRR, DRR comparisons</span>
+      <span class="badge">Automotive Ethernet context</span>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside>
+      <h2>Contents</h2>
+      <nav class="toc" aria-label="Table of contents">
+        <a href="#problem">1. Actual problem</a>
+        <a href="#pipeline">2. Egress pipeline</a>
+        <a href="#strict-priority">3. Strict Priority</a>
+        <a href="#cbs">4. CBS deep dive</a>
+        <a href="#cbs-formulas">5. CBS formulas and examples</a>
+        <a href="#ats">6. ATS deep dive</a>
+        <a href="#ats-formulas">7. ATS eligibility calculation</a>
+        <a href="#bucket-empty-time">8. BucketEmptyTime</a>
+        <a href="#ats-examples">9. ATS worked examples</a>
+        <a href="#compare-cbs-ats">10. CBS versus ATS</a>
+        <a href="#tas">11. TAS and GCL</a>
+        <a href="#weighted">12. ETS, WRR, DRR</a>
+        <a href="#combination">13. Combining mechanisms</a>
+        <a href="#automotive">14. Automotive context</a>
+        <a href="#checklist">15. Implementation checklist</a>
+        <a href="#references">16. References</a>
+      </nav>
+    </aside>
+
+    <main>
+      <section id="problem" data-title="Actual egress-port problem">
+        <h2>1. Start with the actual egress-port problem</h2>
+        <p>A switched Ethernet egress port is a contention point. Many frames can be waiting in different traffic-class queues, but the physical link can serialize only one frame at a time. So a bridge port must answer three separate questions.</p>
+        <div class="grid three">
+          <div class="card"><span class="tag orange">Gate</span><h3>Which queues are allowed?</h3><p>A time gate or other eligibility condition can make a queue unavailable even if it has frames.</p></div>
+          <div class="card"><span class="tag green">Shaper</span><h3>When is the frame or queue eligible?</h3><p>Credit-Based Shaper and Asynchronous Traffic Shaping control when traffic is allowed to participate, so it does not damage latency of other traffic.</p></div>
+          <div class="card"><span class="tag blue">Scheduler</span><h3>Which eligible queue wins?</h3><p>Strict Priority, Enhanced Transmission Selection, Weighted Round Robin, or Deficit Round Robin can decide among eligible queues.</p></div>
+        </div>
+        <div class="callout"><strong>Key idea:</strong> gating, shaping, and queue selection are not the same function. A real Time-Sensitive Networking design often layers them on the same egress port in the order: gate first, shaper/eligibility next, scheduler arbitration last.</div>
+      </section>
+
+      <section id="pipeline" data-title="Switch egress pipeline">
+        <h2>2. A switch-pipeline view</h2>
+        <p>It is easier to understand CBS, ATS, TAS, ETS, WRR, and DRR if you place them in an egress pipeline rather than treating them as isolated buzzwords.</p>
+        <pre>Ingress frame
+   |
+   v
+Parse Ethernet header, VLAN tag, Priority Code Point, stream identity
+   |
+   v
+Classify to stream / flow / traffic class
+   |
+   +--> optional per-stream filtering and policing
+   |
+   +--> optional ATS eligibility-time assignment per stream or shaper instance
+   |
+   v
+Enqueue into egress traffic-class queue
+   |
+   +--> TAS gate says queue open or closed
+   |
+   +--> CBS credit says shaped queue has enough credit or must wait
+   |
+   v
+Transmission selection across eligible queues
+   |       Strict Priority / ETS / WRR / DRR / vendor scheduler
+   v
+MAC serializes selected frame onto physical link</pre>
+        <p>The exact silicon architecture can vary, but the conceptual separation remains useful: <strong>ATS and CBS influence eligibility</strong>, while <strong>SP, ETS, WRR, or DRR arbitrate among eligible choices</strong>. TAS can completely suppress a queue by closing its transmission gate.</p>
+      </section>
+
+      <section id="strict-priority" data-title="Strict Priority baseline">
+        <h2>3. Strict Priority first, because it is the baseline</h2>
+        <p>Strict Priority is the simplest useful transmission-selection rule. If several queues are eligible, the highest-priority non-empty eligible queue is selected first.</p>
+        <pre>Priority 7 queue: non-empty and eligible  -> selected
+Priority 6 queue: non-empty and eligible  -> waits
+Priority 5 queue: non-empty and eligible  -> waits
+Priority 0 queue: non-empty and eligible  -> waits</pre>
+        <p>This gives excellent latency to the highest class. The danger is starvation: if a high-priority queue is continuously eligible, lower-priority queues may receive little or no service. This is why shaping, gating, and weighted allocation are added around strict priority.</p>
+      </section>
+
+      <section id="cbs" class="alt" data-title="CBS deep dive">
+        <h2>4. Credit-Based Shaper from first principles</h2>
+        <p><strong>Credit-Based Shaper (CBS)</strong>, introduced by IEEE 802.1Qav and now integrated into IEEE 802.1Q, shapes a traffic-class queue by maintaining a credit value. The queue can transmit only when its credit is non-negative and the queue also wins the normal scheduler arbitration.</p>
+        <div class="grid two">
+          <div class="card">
+            <h3>What CBS is trying to prevent</h3>
+            <p>Without CBS, a high-priority class can release a burst of back-to-back frames. Those frames can block best-effort or lower-priority traffic for a long time.</p>
+          </div>
+          <div class="card">
+            <h3>What CBS actually does</h3>
+            <p>CBS lets the class consume a configured bandwidth share over time. It allows some bursting, but the burst is bounded by the credit limits.</p>
+          </div>
+        </div>
+        <h3>CBS state variables and parameters</h3>
+        <table>
+          <tr><th>Symbol / parameter</th><th>Meaning</th><th>Implementation intuition</th></tr>
+          <tr><td><code>credit</code></td><td>Current credit of the shaped traffic-class queue.</td><td>If credit is negative, the queue has recently consumed more than its immediate allowance and must wait.</td></tr>
+          <tr><td><code>idleSlope</code></td><td>Rate at which credit increases when the queue has a waiting frame but cannot transmit.</td><td>The configured bandwidth reserved for this shaped class.</td></tr>
+          <tr><td><code>sendSlope</code></td><td>Rate at which credit changes while the queue is transmitting. It is negative.</td><td>The shaped class spends credit while it occupies the link.</td></tr>
+          <tr><td><code>hiCredit</code></td><td>Maximum positive credit.</td><td>Caps how much credit can be accumulated while the queue is blocked by interfering traffic.</td></tr>
+          <tr><td><code>loCredit</code></td><td>Minimum negative credit.</td><td>Bounds how deeply the queue can go into debt after transmitting a maximum frame.</td></tr>
+          <tr><td><code>R</code></td><td>Port transmit rate.</td><td>For example, 100 Mbit/s, 1 Gbit/s, or 2.5 Gbit/s.</td></tr>
+        </table>
+        <div class="callout"><strong>Practical rule:</strong> CBS is queue-based. It shapes a traffic class or shaped queue, not every stream independently. Multiple streams mapped into the same CBS queue share that queue's credit behavior.</div>
+      </section>
+
+      <section id="cbs-formulas" data-title="CBS formulas and numeric examples">
+        <h2>5. CBS formulas, credit evolution, and examples</h2>
+        <h3>5.1 Core slope formula</h3>
+        <div class="formula"><div class="name">CBS send slope</div><code>sendSlope = idleSlope − portTransmitRate</code></div>
+        <p>Since <code>idleSlope</code> is normally smaller than the port transmit rate, <code>sendSlope</code> is negative. This is why credit decreases while the queue transmits.</p>
+        <h3>5.2 Credit bounds</h3>
+        <div class="grid two">
+          <div class="formula"><div class="name">Maximum positive credit</div><code>hiCredit = maxInterferenceSize × idleSlope / portTransmitRate</code></div>
+          <div class="formula"><div class="name">Minimum negative credit</div><code>loCredit = maxFrameSize × sendSlope / portTransmitRate</code></div>
+        </div>
+        <p>These formulas are commonly shown in bytes when the frame sizes are in bytes. The same idea works in bits if every size is represented in bits.</p>
+        <h3>5.3 CBS transmit eligibility</h3>
+        <pre>For a CBS-shaped queue to transmit its head-of-line frame:
+
+1. The queue must contain a frame.
+2. Its transmission gate, if TAS is also configured, must be open.
+3. Its CBS credit must be greater than or equal to zero.
+4. No higher-priority eligible queue may win the local scheduler arbitration.</pre>
+        <p>This means CBS does not by itself say “transmit now.” It says “this shaped queue is allowed to compete now.”</p>
+        <h3>5.4 Credit update rules in plain language</h3>
+        <div class="timeline">
+          <div class="event"><div class="time">waiting</div><div class="box">If the CBS queue has a frame waiting but cannot transmit because another queue/frame is using the port, credit increases at <code>idleSlope</code>, up to <code>hiCredit</code>.</div></div>
+          <div class="event"><div class="time">sending</div><div class="box">While the CBS queue is transmitting, credit decreases at <code>sendSlope</code>, down to <code>loCredit</code>.</div></div>
+          <div class="event"><div class="time">negative</div><div class="box">If credit is negative, the queue is not eligible. It must wait until credit recovers to zero.</div></div>
+          <div class="event"><div class="time">empty</div><div class="box">If there is no frame waiting, CBS does not let positive credit grow forever. Practical implementations reset idle positive credit to zero.</div></div>
+        </div>
+        <h3>5.5 Worked CBS example</h3>
+        <p>Assume a 100 Mbit/s egress port and one CBS-shaped traffic class reserved at 20 Mbit/s.</p>
+        <pre>portTransmitRate R = 100 Mbit/s
+idleSlope I       = 20 Mbit/s
+sendSlope S       = I − R
+                  = 20 − 100
+                  = −80 Mbit/s</pre>
+        <p>If the maximum interfering frame is 1542 bytes and the maximum shaped frame is also 1542 bytes:</p>
+        <pre>hiCredit = 1542 × 20/100
+         = 308.4 bytes
+
+loCredit = 1542 × (−80/100)
+         = −1233.6 bytes</pre>
+        <p>Now consider a shaped 1000-byte frame. Its serialization time on the 100 Mbit/s link is:</p>
+        <pre>frameTime = 1000 bytes × 8 / 100,000,000 bit/s
+          = 80 µs</pre>
+        <p>During those 80 µs of transmission, credit changes by:</p>
+        <pre>creditChange = sendSlope × frameTime
+             = −80,000,000 bit/s × 80 µs
+             = −6400 bits
+             = −800 bytes</pre>
+        <p>After that frame, if credit is −800 bytes, the recovery time back to zero is:</p>
+        <pre>recoveryTime = 800 bytes × 8 / 20,000,000 bit/s
+             = 320 µs</pre>
+        <div class="callout"><strong>Interpretation:</strong> this CBS queue cannot send another frame immediately if its credit is negative. CBS deliberately spaces the shaped traffic to maintain the configured long-term rate.</div>
+      </section>
+
+      <section id="ats" class="alt" data-title="ATS deep dive">
+        <h2>6. Asynchronous Traffic Shaping from first principles</h2>
+        <p><strong>Asynchronous Traffic Shaping (ATS)</strong>, defined by IEEE 802.1Qcr, assigns an <strong>eligibility time</strong> to frames. A frame is not allowed to participate in transmission selection until the current time is greater than or equal to that eligibility time.</p>
+        <div class="grid two">
+          <div class="card">
+            <h3>What makes ATS different from TAS?</h3>
+            <p>ATS does not require a globally synchronized repeating gate schedule. It is local and asynchronous. Each bridge computes eligibility times based on local state and configured stream/shaper parameters.</p>
+          </div>
+          <div class="card">
+            <h3>What makes ATS different from CBS?</h3>
+            <p>ATS is normally described as per-stream or per-shaper eligibility-time assignment. CBS shapes a traffic-class queue by credit. ATS computes a timestamp for each arriving frame.</p>
+          </div>
+        </div>
+        <h3>ATS variables</h3>
+        <table>
+          <tr><th>Symbol</th><th>Name</th><th>Meaning</th></tr>
+          <tr><td><code>tA</code></td><td>arrivalTime(frame)</td><td>Local time when the frame arrives at the ATS processing point.</td></tr>
+          <tr><td><code>L</code></td><td>length(frame)</td><td>Frame length in bits, including any configured media-specific overhead.</td></tr>
+          <tr><td><code>r</code></td><td>CommittedInformationRate</td><td>Rate at which the virtual token bucket refills, in bits/s.</td></tr>
+          <tr><td><code>C</code></td><td>CommittedBurstSize</td><td>Maximum burst credit, in bits.</td></tr>
+          <tr><td><code>E</code></td><td>BucketEmptyTime</td><td>Virtual timestamp representing the shaper's current credit state.</td></tr>
+          <tr><td><code>G</code></td><td>GroupEligibilityTime</td><td>Latest assigned eligibility time for the shaper group; prevents decreasing eligibility times within the group.</td></tr>
+          <tr><td><code>M</code></td><td>MaxResidenceTime</td><td>Maximum allowed time between frame arrival and assigned eligibility. Used to discard frames that would wait too long.</td></tr>
+        </table>
+      </section>
+
+      <section id="ats-formulas" data-title="ATS eligibility-time calculation">
+        <h2>7. ATS eligibility-time calculation</h2>
+        <p>ATS converts a rate-and-burst contract into a concrete timestamp attached to each frame. The key calculation is not only “do I have tokens now?” Instead, ATS can assign a future eligibility time.</p>
+        <div class="step"><div class="num">1</div><div><h3>Compute how long the frame consumes the configured rate</h3><div class="formula"><div class="name">Length recovery duration</div><code>lengthRecoveryDuration = L / r</code></div><p>If a frame consumes <code>L</code> bits and the committed rate is <code>r</code> bits/s, then <code>L/r</code> is the time needed to recover that amount of credit.</p></div></div>
+        <div class="step"><div class="num">2</div><div><h3>Compute how long it takes to fill the bucket</h3><div class="formula"><div class="name">Empty-to-full duration</div><code>emptyToFullDuration = C / r</code></div><p>This is the maximum useful idle-credit interval. Idle time beyond this does not create unlimited burst credit.</p></div></div>
+        <div class="step"><div class="num">3</div><div><h3>Compute the shaper eligibility time</h3><div class="formula"><div class="name">Shaper eligibility time</div><code>shaperEligibilityTime = BucketEmptyTime + lengthRecoveryDuration</code></div><p>This asks: based on the current virtual bucket state, when will enough credit exist for this frame?</p></div></div>
+        <div class="step"><div class="num">4</div><div><h3>Compute the bucket full time</h3><div class="formula"><div class="name">Bucket full time</div><code>bucketFullTime = BucketEmptyTime + emptyToFullDuration</code></div><p>This is the virtual time at which the token bucket would be full. It is used when updating <code>BucketEmptyTime</code> so that idle time beyond the bucket size is not carried forward as infinite credit.</p></div></div>
+        <div class="step"><div class="num">5</div><div><h3>Assign the final eligibility time</h3><div class="formula"><div class="name">Final ATS eligibility time</div><code>eligibilityTime = max(arrivalTime(frame), GroupEligibilityTime, shaperEligibilityTime)</code></div><p>The frame cannot become eligible before it arrives. It cannot violate the shaper's rate state. It also cannot go backward relative to the shaper group's previous eligibility time.</p></div></div>
+        <div class="step"><div class="num">6</div><div><h3>Discard if the frame would wait too long</h3><div class="formula"><div class="name">Residence-time check</div><code>if eligibilityTime &gt; arrivalTime(frame) + MaxResidenceTime: discard</code></div><p>This prevents a bad or overloaded stream from building an indefinitely delayed queue.</p></div></div>
+        <div class="step"><div class="num">7</div><div><h3>Update ATS state for the next frame</h3><pre>GroupEligibilityTime = eligibilityTime
+
+if eligibilityTime &lt; bucketFullTime:
+    BucketEmptyTime = shaperEligibilityTime
+else:
+    BucketEmptyTime = shaperEligibilityTime + eligibilityTime − bucketFullTime</pre><p>The first branch is the normal case where the bucket was not full before the frame became eligible. The second branch removes excess idle time beyond the burst-size cap.</p></div></div>
+      </section>
+
+      <section id="bucket-empty-time" class="alt" data-title="BucketEmptyTime explained">
+        <h2>8. BucketEmptyTime explained clearly</h2>
+        <p><code>BucketEmptyTime</code> is the most confusing ATS variable because it sounds like a physical bucket timer. It is better understood as a <strong>virtual timestamp that stores the stream's credit state in time units</strong>.</p>
+        <div class="formula"><div class="name">Virtual credit intuition</div><code>virtualCreditAtTime(t) ≈ (t − BucketEmptyTime) × CommittedInformationRate</code></div>
+        <div class="grid three">
+          <div class="card"><span class="tag green">E in the past</span><h3>Positive credit</h3><p>If current time is after <code>BucketEmptyTime</code>, the stream has accumulated credit. The farther in the past <code>E</code> is, the more credit exists, up to the burst cap.</p></div>
+          <div class="card"><span class="tag yellow">E equals now</span><h3>Zero credit</h3><p>If <code>BucketEmptyTime</code> equals current time, the virtual bucket is empty. A new frame normally needs to wait for <code>L/r</code>.</p></div>
+          <div class="card"><span class="tag orange">E in the future</span><h3>Rate debt</h3><p>If <code>BucketEmptyTime</code> is in the future, the stream is in debt. A new frame waits until the debt plus its own length has been recovered.</p></div>
+        </div>
+        <h3>Why the name makes sense</h3>
+        <pre>Past BucketEmptyTime E                         Current time t
+        |---------------------------------------------|
+                  credit accumulated at rate r
+
+credit = (t − E) × r, limited by CommittedBurstSize</pre>
+        <p>If the bucket had zero tokens at <code>E</code>, and tokens refill at rate <code>r</code>, then by time <code>t</code> the bucket would have accumulated <code>(t − E) × r</code> tokens, capped at <code>C</code>.</p>
+      </section>
+
+      <section id="ats-examples" data-title="ATS worked examples">
+        <h2>9. ATS worked examples</h2>
+        <h3>9.1 Example 1: frame eligible immediately because credit is available</h3>
+        <pre>CommittedInformationRate r = 10 Mbit/s
+CommittedBurstSize C       = 12,000 bits
+Frame length L             = 4,000 bits
+arrivalTime tA             = 10.000 ms
+BucketEmptyTime E          = 9.000 ms
+GroupEligibilityTime G     = 9.000 ms</pre>
+        <pre>lengthRecoveryDuration = L/r
+                       = 4000 / 10,000,000
+                       = 0.400 ms
+
+emptyToFullDuration    = C/r
+                       = 12000 / 10,000,000
+                       = 1.200 ms
+
+shaperEligibilityTime  = E + L/r
+                       = 9.000 ms + 0.400 ms
+                       = 9.400 ms
+
+bucketFullTime         = E + C/r
+                       = 9.000 ms + 1.200 ms
+                       = 10.200 ms
+
+eligibilityTime        = max(10.000 ms, 9.000 ms, 9.400 ms)
+                       = 10.000 ms</pre>
+        <p>The frame is eligible immediately when it arrives. The stream had enough accumulated credit.</p>
+        <h3>9.2 Example 2: burst of four equal frames</h3>
+        <p>Use the same <code>r = 10 Mbit/s</code>, <code>C = 12,000 bits</code>, and <code>L = 4,000 bits</code>. A full bucket can absorb three frames immediately because <code>3 × 4,000 = 12,000 bits</code>. A fourth frame must wait.</p>
+        <table>
+          <tr><th>Frame</th><th>Input state before frame</th><th>Computed eligibility time</th><th>Meaning</th></tr>
+          <tr><td>1</td><td>Bucket full at 10.000 ms</td><td>10.000 ms</td><td>Uses first 4000 bits of burst credit.</td></tr>
+          <tr><td>2</td><td>Credit remains</td><td>10.000 ms</td><td>Uses second 4000 bits.</td></tr>
+          <tr><td>3</td><td>Credit remains</td><td>10.000 ms</td><td>Uses third 4000 bits. Bucket is now empty.</td></tr>
+          <tr><td>4</td><td>No burst credit remains</td><td>10.400 ms</td><td>Must wait for 4000 bits to refill at 10 Mbit/s.</td></tr>
+          <tr><td>5</td><td>After frame 4</td><td>10.800 ms</td><td>Frames now spaced by <code>L/r = 400 µs</code>.</td></tr>
+        </table>
+        <h3>9.3 Example 3: frame discarded by MaxResidenceTime</h3>
+        <pre>arrivalTime tA        = 10.000 ms
+MaxResidenceTime M    = 1.000 ms
+BucketEmptyTime E     = 12.000 ms
+Frame length L/r      = 0.400 ms
+GroupEligibilityTime  = 9.000 ms
+
+shaperEligibilityTime = 12.000 + 0.400 = 12.400 ms
+eligibilityTime       = max(10.000, 9.000, 12.400) = 12.400 ms
+latest allowed time   = arrivalTime + MaxResidenceTime = 11.000 ms
+
+12.400 ms &gt; 11.000 ms, so the frame is discarded.</pre>
+        <p>This is how ATS prevents an overloaded stream from creating a large hidden backlog.</p>
+      </section>
+
+      <section id="compare-cbs-ats" data-title="CBS versus ATS">
+        <h2>10. CBS versus ATS</h2>
+        <table>
+          <tr><th>Aspect</th><th>CBS</th><th>ATS</th></tr>
+          <tr><td>Main standard origin</td><td>IEEE 802.1Qav</td><td>IEEE 802.1Qcr</td></tr>
+          <tr><td>Main state</td><td>Queue credit</td><td>Per-shaper <code>BucketEmptyTime</code> and group eligibility state</td></tr>
+          <tr><td>Main output</td><td>Queue is eligible when credit is non-negative</td><td>Each frame receives an eligibility timestamp</td></tr>
+          <tr><td>Granularity</td><td>Traffic-class queue</td><td>Stream or ATS scheduler instance, then group/queue interaction</td></tr>
+          <tr><td>Synchronization requirement</td><td>No global time schedule required</td><td>No global time schedule required</td></tr>
+          <tr><td>Best mental model</td><td>Credit-controlled queue smoothing</td><td>Per-frame future-release-time assignment</td></tr>
+          <tr><td>Where it helps</td><td>Audio/video-style periodic shaped classes</td><td>Per-hop reshaping and burst isolation for mixed critical streams</td></tr>
+        </table>
+        <div class="callout"><strong>Very important:</strong> ATS eligibility time is not a global ordering of all frames across all traffic classes. It controls when a frame may join local transmission selection. The egress scheduler still decides among currently eligible queues.</div>
+      </section>
+
+      <section id="tas" class="alt" data-title="TAS and Gate Control List">
+        <h2>11. TAS and IEEE 802.1Qbv from first principles</h2>
+        <p><strong>Time-Aware Shaper (TAS)</strong> uses per-queue transmission gates. A closed gate makes a queue unavailable even if frames are waiting and even if the queue would otherwise win strict priority.</p>
+        <pre>Traffic Class 7 gate: OPEN    -> queue may participate
+Traffic Class 6 gate: CLOSED  -> queue cannot participate
+Traffic Class 5 gate: CLOSED  -> queue cannot participate
+Traffic Class 0 gate: OPEN    -> queue may participate</pre>
+        <h3>Gate Control List</h3>
+        <p>A <strong>Gate Control List (GCL)</strong> is a repeating time schedule of gate states. Each entry specifies which traffic-class gates are open or closed and how long that state lasts.</p>
+        <table>
+          <tr><th>GCL interval</th><th>Duration</th><th>Open queues</th><th>Typical use</th></tr>
+          <tr><td>Entry 1</td><td>100 µs</td><td>TC7 only</td><td>Scheduled control traffic</td></tr>
+          <tr><td>Entry 2</td><td>300 µs</td><td>TC5, TC4</td><td>CBS/ATS shaped traffic</td></tr>
+          <tr><td>Entry 3</td><td>600 µs</td><td>TC0-TC3</td><td>Best effort and managed background traffic</td></tr>
+        </table>
+        <p>TAS does not replace the underlying scheduler. If several gates are open at the same time, the port still needs a transmission-selection algorithm. That may be strict priority, CBS-aware priority, ETS, WRR, DRR, or another configured local scheduler.</p>
+      </section>
+
+      <section id="weighted" data-title="ETS, WRR, and DRR">
+        <h2>12. ETS, WRR, and DRR</h2>
+        <h3>12.1 Enhanced Transmission Selection</h3>
+        <p><strong>Enhanced Transmission Selection (ETS)</strong>, from IEEE 802.1Qaz, is a bandwidth-allocation framework for traffic classes. It is not exactly the same as one specific dequeue algorithm. It provides a way to allocate bandwidth among traffic classes while allowing unused bandwidth to be used by other classes.</p>
+        <h3>12.2 Weighted Round Robin</h3>
+        <p><strong>Weighted Round Robin (WRR)</strong> visits queues in turns and gives service proportional to configured weights.</p>
+        <pre>Weights:
+    Q1 weight = 1
+    Q2 weight = 2
+    Q3 weight = 3
+
+Simplified service pattern:
+    Q1, Q2, Q2, Q3, Q3, Q3, repeat</pre>
+        <p>WRR is simple, but if packet sizes differ, packet-count fairness does not always equal byte fairness.</p>
+        <h3>12.3 Deficit Round Robin</h3>
+        <p><strong>Deficit Round Robin (DRR)</strong> adds a quantum and deficit counter per queue. If a queue cannot send because its head-of-line frame is too large for the current deficit, the unused deficit carries forward.</p>
+        <pre>For each queue in each round:
+    deficit[queue] += quantum[queue]
+
+    while queue not empty and head_frame_size <= deficit[queue]:
+        send head frame
+        deficit[queue] -= head_frame_size
+
+    if frame too large:
+        keep deficit for next round</pre>
+        <p>DRR is therefore better than naive WRR when frame sizes vary widely.</p>
+      </section>
+
+      <section id="combination" class="alt" data-title="Combining TAS, CBS, ATS, and schedulers">
+        <h2>13. Combining TAS, CBS, ATS, and local schedulers</h2>
+        <p>A realistic TSN-capable switch does not usually choose exactly one mechanism. It layers mechanisms carefully.</p>
+        <pre>Frame belongs to stream S
+        |
+        v
+ATS may assign eligibilityTime to frame
+        |
+        v
+Frame is placed in traffic-class queue
+        |
+        v
+Gate stage: TAS gate for that queue must be open
+        |
+        v
+Shaper stage: ATS eligibility time reached and/or CBS credit must be >= 0
+        |
+        v
+Scheduler stage: Strict Priority / ETS / WRR / DRR chooses among eligible queues
+        |
+        v
+Frame transmitted if enough time remains before any gate-close event</pre>
+        <div class="grid two">
+          <div class="card"><h3>What TAS controls</h3><p>TAS controls <strong>when a queue is allowed to participate</strong>. Closed gate means no selection.</p></div>
+          <div class="card"><h3>What CBS controls</h3><p>CBS controls <strong>whether a shaped traffic-class queue has enough credit</strong> to compete.</p></div>
+          <div class="card"><h3>What ATS controls</h3><p>ATS controls <strong>when each frame becomes eligible</strong> based on stream/shaper rate and burst state.</p></div>
+          <div class="card"><h3>What the scheduler controls</h3><p>The scheduler controls <strong>which eligible queue/frame actually wins the port</strong>.</p></div>
+        </div>
+      </section>
+
+      <section id="automotive" data-title="Automotive Ethernet context">
+        <h2>14. Automotive Ethernet perspective</h2>
+        <p>Automotive Ethernet is not judged mainly by average throughput. It is judged by whether critical flows arrive within bounded latency and whether noncritical flows cannot disturb them beyond the engineered budget.</p>
+        <table>
+          <tr><th>Mechanism</th><th>Automotive use</th><th>Typical reason</th></tr>
+          <tr><td>TAS</td><td>Highly critical scheduled control windows</td><td>Minimal latency variation and engineered transmission windows.</td></tr>
+          <tr><td>CBS</td><td>Audio/video or periodic rate-constrained streams</td><td>Smooths traffic without fully reserving time slots.</td></tr>
+          <tr><td>ATS</td><td>Mixed event-driven and periodic streams in zonal networks</td><td>Per-hop reshaping without global TAS schedule everywhere.</td></tr>
+          <tr><td>Strict Priority</td><td>Urgent arbitration among already eligible queues</td><td>Gives the most critical eligible class first access.</td></tr>
+          <tr><td>ETS / WRR / DRR</td><td>Managed residual traffic</td><td>Shares remaining bandwidth among noncritical or less critical classes.</td></tr>
+        </table>
+        <p>In a vehicle, a good design usually says: use TAS where hard windows are justified, CBS where a class needs smooth bounded service, ATS where per-hop asynchronous reshaping is more practical, strict priority for urgent arbitration, and ETS/weighted service for the managed remainder.</p>
+      </section>
+
+      <section id="checklist" data-title="Implementation checklist">
+        <h2>15. Implementation checklist</h2>
+        <div class="grid two">
+          <div class="rail">
+            <h3>CBS checklist</h3>
+            <ul>
+              <li>Map the stream or traffic class to the correct egress queue.</li>
+              <li>Choose <code>idleSlope</code> based on reserved bandwidth.</li>
+              <li>Compute <code>sendSlope = idleSlope − portTransmitRate</code>.</li>
+              <li>Use correct frame-size accounting, including relevant Layer 1 and MAC overhead.</li>
+              <li>Compute <code>hiCredit</code> from maximum interference size.</li>
+              <li>Compute <code>loCredit</code> from maximum shaped frame size.</li>
+              <li>Verify that lower-priority traffic still receives intended service.</li>
+            </ul>
+          </div>
+          <div class="rail">
+            <h3>ATS checklist</h3>
+            <ul>
+              <li>Identify the stream or ATS scheduler instance correctly.</li>
+              <li>Configure <code>CommittedInformationRate</code> and <code>CommittedBurstSize</code>.</li>
+              <li>Include configured media-specific overhead in frame length.</li>
+              <li>Maintain <code>BucketEmptyTime</code> per ATS scheduler instance.</li>
+              <li>Maintain <code>GroupEligibilityTime</code> per shaper group.</li>
+              <li>Apply the <code>MaxResidenceTime</code> discard rule.</li>
+              <li>Ensure the egress queue selection logic respects eligibility time.</li>
+            </ul>
+          </div>
+        </div>
+        <h3>Common mistakes</h3>
+        <table>
+          <tr><th>Mistake</th><th>Correction</th></tr>
+          <tr><td>“CBS decides final packet order.”</td><td>No. CBS only controls credit-based eligibility of a shaped queue. The local scheduler still arbitrates.</td></tr>
+          <tr><td>“ATS creates one universal sorted queue for all streams.”</td><td>No. ATS assigns eligibility times. Traffic-class mapping and local scheduler rules still matter.</td></tr>
+          <tr><td>“BucketEmptyTime is a real emptying timer.”</td><td>No. It is a virtual timestamp representing credit state.</td></tr>
+          <tr><td>“TAS is the complete scheduler.”</td><td>No. TAS gates queues. Open queues still use their configured transmission-selection algorithms.</td></tr>
+          <tr><td>“WRR and ETS are identical.”</td><td>No. ETS is the standardized bandwidth-allocation framework; WRR is one possible weighted service style.</td></tr>
+        </table>
+      </section>
+
+      <section id="references" data-title="References and traceability">
+        <h2>16. References and traceability</h2>
+        <p class="mini">This page expands the earlier S5_2 training note into implementation-level material. The formulas and terminology are aligned with public IEEE and Linux TSN material where available.</p>
+        <ol class="footnotes">
+          <li>Linux <code>tc-cbs(8)</code> manual page: CBS implements the IEEE 802.1Q credit-based shaper and documents <code>idleSlope</code>, <code>sendSlope</code>, <code>hiCredit</code>, <code>loCredit</code>, and their formulas.</li>
+          <li>IEEE 802.1Qcr public draft/tutorial material: ATS uses <code>BucketEmptyTime</code>, <code>GroupEligibilityTime</code>, <code>CommittedInformationRate</code>, <code>CommittedBurstSize</code>, and <code>MaxResidenceTime</code> to assign frame eligibility times.</li>
+          <li>IEEE 802.1Qbv material: TAS uses per-queue transmission gates controlled by a Gate Control List.</li>
+          <li>IEEE 802.1Qaz material: ETS provides bandwidth allocation among traffic classes while coexisting with strict priority and shaped traffic.</li>
+        </ol>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const sections = Array.from(document.querySelectorAll('main section'));
+    const current = document.getElementById('currentContext');
+    const navLinks = Array.from(document.querySelectorAll('.toc a, .pills a'));
+    function setActive(id) {
+      const section = document.getElementById(id);
+      if (!section) return;
+      current.textContent = section.dataset.title || section.querySelector('h2')?.textContent || id;
+      navLinks.forEach(a => {
+        const href = a.getAttribute('href') || '';
+        const target = a.dataset.target;
+        a.classList.toggle('active', href === '#' + id || target === id);
+      });
+    }
+    const observer = new IntersectionObserver((entries) => {
+      const visible = entries
+        .filter(e => e.isIntersecting)
+        .sort((a,b) => b.intersectionRatio - a.intersectionRatio)[0];
+      if (visible) setActive(visible.target.id);
+    }, { rootMargin: '-18% 0px -68% 0px', threshold: [0.1, 0.25, 0.5] });
+    sections.forEach(s => observer.observe(s));
+    if (location.hash && document.querySelector(location.hash)) {
+      setActive(location.hash.slice(1));
+    } else {
+      setActive('problem');
+    }
+  </script>
+</body>
+</html>
