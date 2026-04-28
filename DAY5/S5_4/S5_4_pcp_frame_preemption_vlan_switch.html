@@ -1,0 +1,1138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PCP → Frame Preemption · Inside a VLAN Switch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#070b0e;
+  --bg-grid:#0c1318;
+  --panel:#0f1820;
+  --panel-2:#13202b;
+  --line:#1f3142;
+  --line-2:#294258;
+  --ink:#e8f1ec;
+  --muted:#7c95a3;
+  --dim:#4a6172;
+  --phos:#5cf2a6;          /* phosphor express green */
+  --phos-dim:#1e6a47;
+  --amber:#ffb347;          /* amber preemptable yellow */
+  --amber-dim:#7a4d10;
+  --violet:#8c7cff;         /* verify/respond */
+  --red:#ff5a6a;
+  --teal:#5ad6ff;
+  --warn:#ffc857;
+  --shadow:0 30px 60px -20px rgba(0,0,0,.7), 0 8px 20px -8px rgba(0,0,0,.5);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:'JetBrains Mono',ui-monospace,Menlo,monospace;font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased}
+body{
+  background:
+    radial-gradient(1200px 600px at 85% -10%, rgba(92,242,166,.07), transparent 60%),
+    radial-gradient(900px 500px at 5% 110%, rgba(255,179,71,.05), transparent 55%),
+    linear-gradient(180deg,#070b0e 0%, #050709 100%);
+  min-height:100vh;
+}
+.scan{
+  position:fixed;inset:0;pointer-events:none;z-index:1;
+  background:repeating-linear-gradient(0deg, rgba(255,255,255,.012) 0 1px, transparent 1px 3px);
+  mix-blend-mode:overlay;
+}
+.wrap{max-width:1480px;margin:0 auto;padding:32px 28px 60px;position:relative;z-index:2}
+
+/* HEADER */
+.masthead{
+  display:grid;grid-template-columns:1fr auto;gap:32px;align-items:end;
+  padding-bottom:22px;border-bottom:1px solid var(--line);
+}
+.eyebrow{
+  display:flex;gap:14px;align-items:center;
+  font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);
+  margin-bottom:14px;
+}
+.eyebrow .dot{width:8px;height:8px;border-radius:50%;background:var(--phos);box-shadow:0 0 10px var(--phos)}
+.title{
+  font-family:'Fraunces',serif;font-weight:600;font-style:italic;
+  font-size:clamp(34px,4.4vw,58px);line-height:1.02;letter-spacing:-.01em;
+  margin:0;color:var(--ink);
+}
+.title em{font-style:normal;color:var(--phos);font-weight:600}
+.title b{font-style:normal;color:var(--amber);font-weight:600}
+.lede{margin-top:14px;color:var(--muted);max-width:720px;font-size:13px;line-height:1.7}
+.spec-tag{
+  text-align:right;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);line-height:1.9
+}
+.spec-tag .v{color:var(--phos);font-weight:700}
+
+/* CHAIN OVERVIEW STRIP */
+.chain{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin-top:28px;
+  border:1px solid var(--line);border-radius:2px;overflow:hidden;
+  background:linear-gradient(180deg, var(--panel) 0%, #0a1117 100%);
+}
+.chain-link{
+  padding:14px 18px;border-right:1px solid var(--line);
+  display:flex;flex-direction:column;gap:4px;
+  position:relative;
+}
+.chain-link:last-child{border-right:0}
+.chain-link .num{font-size:10px;color:var(--dim);letter-spacing:.16em}
+.chain-link .what{font-size:13px;color:var(--ink);font-weight:600}
+.chain-link .where{font-size:10px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-top:2px}
+.chain-link::after{
+  content:'▸';position:absolute;right:-8px;top:50%;transform:translateY(-50%);
+  color:var(--line-2);background:var(--bg);width:16px;text-align:center;z-index:2;
+}
+.chain-link:last-child::after{display:none}
+
+/* SCENARIO STRIP */
+.layout{display:grid;grid-template-columns:1fr 380px;gap:24px;margin-top:28px;align-items:start}
+@media (max-width:1180px){.layout{grid-template-columns:1fr}}
+
+.stage-card{
+  background:var(--panel);border:1px solid var(--line);border-radius:3px;
+  box-shadow:var(--shadow);
+  position:relative;overflow:hidden;
+}
+.stage-head{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:14px 18px;border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg, #14202b 0%, #0e1820 100%);
+}
+.stage-head .left{display:flex;gap:14px;align-items:center}
+.scn-label{font-size:10px;letter-spacing:.18em;color:var(--muted);text-transform:uppercase}
+select,button{
+  font-family:inherit;font-size:12px;
+  background:#0a1218;border:1px solid var(--line-2);color:var(--ink);
+  padding:7px 12px;border-radius:2px;cursor:pointer;letter-spacing:.06em;
+}
+select:hover,button:hover{border-color:var(--phos);color:var(--phos)}
+button.primary{background:var(--phos);color:#031712;border:1px solid var(--phos);font-weight:700}
+button.primary:hover{background:#7dffbe;color:#031712}
+.controls{display:flex;gap:8px;align-items:center}
+.step-counter{
+  font-size:10px;letter-spacing:.18em;color:var(--muted);text-transform:uppercase;
+  padding:6px 10px;border:1px solid var(--line);border-radius:2px;background:#0a1218;
+}
+.step-counter b{color:var(--phos);font-weight:700}
+
+/* THE STAGE */
+.stage{
+  position:relative;height:680px;
+  background:
+    linear-gradient(rgba(92,242,166,.025) 1px, transparent 1px) 0 0/40px 40px,
+    linear-gradient(90deg, rgba(92,242,166,.025) 1px, transparent 1px) 0 0/40px 40px,
+    radial-gradient(1000px 500px at 50% 50%, rgba(15,28,38,.4), transparent 70%),
+    var(--bg-grid);
+}
+
+/* PIPELINE LANE */
+.lane{
+  position:absolute;
+  left:30px;right:30px;top:60px;height:140px;
+  border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg, rgba(13,22,29,.6), rgba(8,14,18,.6));
+}
+.lane-label{
+  position:absolute;left:14px;top:6px;font-size:9px;letter-spacing:.22em;color:var(--dim);text-transform:uppercase
+}
+.lane-pipe{
+  position:absolute;left:0;right:0;top:50%;height:2px;transform:translateY(-50%);
+  background:repeating-linear-gradient(90deg,
+    var(--line-2) 0 8px, transparent 8px 14px);
+  opacity:.5;
+}
+
+/* BLOCKS along the lane (lane spans y=60..200, blocks centered y=80..160) */
+.blk{
+  position:absolute;top:80px;height:90px;
+  border:1px solid var(--line-2);border-radius:2px;
+  background:linear-gradient(180deg,#152230 0%,#0c151d 100%);
+  padding:10px 12px;display:flex;flex-direction:column;gap:4px;
+  transition:all .35s cubic-bezier(.2,.7,.2,1);
+}
+.blk .blk-tag{font-size:9px;color:var(--dim);letter-spacing:.18em;text-transform:uppercase}
+.blk .blk-name{font-size:12px;color:var(--ink);font-weight:700;letter-spacing:.02em}
+.blk .blk-state{font-size:10px;color:var(--muted);margin-top:auto;line-height:1.4}
+.blk.on{
+  border-color:var(--phos);
+  background:linear-gradient(180deg,#143226 0%,#0c1f17 100%);
+  box-shadow:0 0 0 1px var(--phos-dim) inset, 0 0 24px rgba(92,242,166,.12);
+}
+.blk.on .blk-tag{color:var(--phos)}
+.blk.on .blk-state{color:#bbe9d2}
+
+/* QUEUES (vertical slot below the lane, between map and selector) */
+.queues{
+  position:absolute;top:230px;height:100px;
+  border:1px dashed var(--line-2);border-radius:2px;
+  background:linear-gradient(180deg, rgba(13,22,29,.6), rgba(8,14,18,.6));
+  padding:8px;
+  display:grid;grid-template-rows:1fr 1fr;gap:6px;
+}
+.q-slot{
+  border:1px solid var(--line);border-radius:2px;
+  padding:5px 8px;display:flex;align-items:center;gap:8px;
+  background:#0a1218;position:relative;
+}
+.q-slot .qtag{font-size:9px;letter-spacing:.16em;color:var(--dim);text-transform:uppercase;min-width:74px}
+.q-slot.express{border-left:3px solid var(--phos)}
+.q-slot.preempt{border-left:3px solid var(--amber)}
+.q-pill{
+  display:none;font-size:10px;font-weight:700;padding:3px 8px;border-radius:2px;letter-spacing:.04em;
+}
+.q-pill.show{display:inline-block}
+.q-pill.express{background:rgba(92,242,166,.15);color:var(--phos);border:1px solid var(--phos-dim)}
+.q-pill.preempt{background:rgba(255,179,71,.15);color:var(--amber);border:1px solid var(--amber-dim)}
+
+/* MAC MERGE box (bottom-left) */
+.macmerge{
+  position:absolute;left:30px;top:360px;width:380px;height:180px;
+  border:1px solid var(--line-2);border-radius:2px;
+  background:linear-gradient(180deg,#0e1a23 0%,#08111a 100%);
+  padding:14px 16px;display:flex;flex-direction:column;gap:10px;
+  transition:all .35s ease;
+}
+.macmerge .mtag{font-size:9px;color:var(--dim);letter-spacing:.22em;text-transform:uppercase}
+.macmerge .mtitle{font-size:13px;font-weight:800;color:var(--ink);letter-spacing:.04em}
+.macmerge.on{border-color:var(--phos);box-shadow:0 0 0 1px var(--phos-dim) inset, 0 0 32px rgba(92,242,166,.1)}
+.mac-row{
+  border:1px solid var(--line);border-radius:2px;background:#0a1218;
+  padding:8px 10px;display:flex;justify-content:space-between;align-items:center;font-size:11px;
+}
+.mac-row.emac{border-left:3px solid var(--phos)}
+.mac-row.pmac{border-left:3px solid var(--amber)}
+.mac-row .lbl{font-weight:700;color:var(--ink);font-size:10px;letter-spacing:.12em}
+.mac-row .val{color:var(--muted);font-size:11px;text-align:right}
+.mm-note{
+  font-size:10px;line-height:1.5;color:var(--muted);
+  border-left:2px solid var(--violet);padding:6px 10px;background:rgba(140,124,255,.04);
+  margin-top:auto;
+}
+.mm-note b{color:var(--violet);font-weight:700}
+
+/* EGRESS LINK (bottom-right area) */
+.egress{
+  position:absolute;left:430px;right:30px;top:360px;height:180px;
+  border:1px solid var(--line-2);border-radius:2px;
+  background:linear-gradient(180deg,#0e1a23 0%,#08111a 100%);
+  padding:14px 16px;display:flex;flex-direction:column;gap:10px;
+}
+.egress .mtag{font-size:9px;color:var(--dim);letter-spacing:.22em;text-transform:uppercase}
+.egress .mtitle{font-size:13px;font-weight:800;color:var(--ink);letter-spacing:.04em}
+.egress.on{border-color:var(--phos);box-shadow:0 0 0 1px var(--phos-dim) inset}
+
+/* WIRE TIMELINE */
+.wire{
+  border:1px solid var(--line);border-radius:2px;background:#06090c;
+  padding:8px;height:60px;display:flex;align-items:center;gap:3px;overflow:hidden;
+}
+.wire-empty{font-size:10px;color:var(--dim);margin:auto;letter-spacing:.16em;text-transform:uppercase}
+.seg{
+  height:42px;display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:700;letter-spacing:.04em;border-radius:1px;padding:0 10px;white-space:nowrap;
+  animation:segIn .4s ease-out both;
+}
+@keyframes segIn{from{opacity:0;transform:scaleX(.4);transform-origin:left}to{opacity:1;transform:scaleX(1)}}
+.seg.preempt{background:linear-gradient(180deg,#ffc56b,#cc8a20);color:#241500}
+.seg.express{background:linear-gradient(180deg,#7dffbe,#22a86a);color:#03110a}
+.seg.gap{background:repeating-linear-gradient(45deg,#1f3142 0 6px,#13202b 6px 12px);color:var(--muted)}
+.seg.verify{background:linear-gradient(180deg,#a99cff,#5a4ad6);color:#0a0420}
+.wire-label{font-size:9px;color:var(--dim);letter-spacing:.18em;text-transform:uppercase;margin-bottom:4px}
+
+/* PEER */
+.peer{
+  position:absolute;top:80px;width:130px;height:90px;
+  border:1px solid var(--line-2);border-radius:2px;
+  background:linear-gradient(180deg,#152230 0%,#0c151d 100%);
+  padding:10px 12px;display:flex;flex-direction:column;
+  transition:all .35s ease;
+}
+.peer.on{border-color:var(--phos);background:linear-gradient(180deg,#143226 0%,#0c1f17 100%)}
+.peer .ptag{font-size:9px;color:var(--dim);letter-spacing:.18em;text-transform:uppercase}
+.peer .pname{font-size:12px;font-weight:700;color:var(--ink);margin-top:2px}
+.peer .pstate{font-size:10px;color:var(--muted);margin-top:auto;line-height:1.4}
+.peer.on .pstate{color:#bbe9d2}
+
+/* PACKET PILLS */
+.pkt{
+  position:absolute;
+  border-radius:2px;padding:7px 11px;
+  font-size:10px;font-weight:800;letter-spacing:.06em;
+  box-shadow:0 8px 18px rgba(0,0,0,.5);
+  transform:translate(-50%,-50%);
+  transition:left .55s cubic-bezier(.45,.05,.25,1), top .55s cubic-bezier(.45,.05,.25,1), opacity .35s;
+  z-index:5;font-family:'JetBrains Mono',monospace;
+  white-space:nowrap;pointer-events:none;
+}
+.pkt.preempt{
+  background:linear-gradient(180deg,#ffd086,#cc8a20);color:#1a0e00;
+  border:1px solid #ffeec0;
+}
+.pkt.express{
+  background:linear-gradient(180deg,#7dffbe,#1ea869);color:#011a0c;
+  border:1px solid #c8ffe1;
+}
+.pkt small{display:block;font-size:8px;letter-spacing:.12em;font-weight:600;opacity:.75;margin-top:1px}
+.pkt.hide{opacity:0;transform:translate(-50%,-50%) scale(.4)}
+.pkt.glow{box-shadow:0 0 0 3px rgba(125,255,190,.25),0 8px 24px rgba(0,0,0,.5),0 0 30px rgba(92,242,166,.4)}
+.pkt.preempt.glow{box-shadow:0 0 0 3px rgba(255,179,71,.25),0 8px 24px rgba(0,0,0,.5),0 0 30px rgba(255,179,71,.35)}
+
+/* BUBBLE */
+.bubble{
+  position:absolute;left:30px;bottom:18px;max-width:430px;z-index:6;
+  border:1px solid var(--line-2);border-left:3px solid var(--phos);
+  background:rgba(8,14,18,.96);backdrop-filter:blur(6px);
+  padding:10px 14px;border-radius:2px;
+  font-size:11px;line-height:1.55;color:var(--ink);
+}
+.bubble .btag{font-size:9px;color:var(--phos);letter-spacing:.22em;text-transform:uppercase;margin-bottom:4px}
+
+/* SIDE PANEL */
+.side{display:flex;flex-direction:column;gap:14px}
+.side .pnl{
+  background:var(--panel);border:1px solid var(--line);border-radius:3px;
+  padding:18px;
+}
+.side .pnl .ptag{font-size:9px;color:var(--phos);letter-spacing:.22em;text-transform:uppercase;margin-bottom:8px}
+.side .pnl h3{
+  font-family:'Fraunces',serif;font-style:italic;font-weight:600;
+  font-size:20px;margin:0 0 8px;line-height:1.15;color:var(--ink)
+}
+.side .pnl p{margin:0 0 8px;color:var(--muted);font-size:12px;line-height:1.65}
+.side .pnl p:last-child{margin-bottom:0}
+.side .pnl p b{color:var(--ink);font-weight:700}
+.side .pnl.std{border-left:3px solid var(--violet)}
+.side .pnl.std .ptag{color:var(--violet)}
+.side .pnl.impl{border-left:3px solid var(--amber)}
+.side .pnl.impl .ptag{color:var(--amber)}
+
+/* REFERENCE PANEL UNDER STAGE */
+.refgrid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:24px}
+@media (max-width:1180px){.refgrid{grid-template-columns:1fr}}
+.refcard{
+  background:var(--panel);border:1px solid var(--line);border-radius:3px;padding:22px;
+}
+.refcard .rtag{font-size:9px;color:var(--phos);letter-spacing:.22em;text-transform:uppercase;margin-bottom:6px}
+.refcard h2{
+  font-family:'Fraunces',serif;font-style:italic;font-weight:600;
+  font-size:24px;margin:0 0 14px;line-height:1.15
+}
+.refcard h2 em{color:var(--phos);font-style:normal}
+
+/* FRAME DIAGRAM */
+.frame-diag{
+  display:flex;gap:2px;margin:14px 0;font-size:10px;
+}
+.fd{
+  flex:1;padding:10px 6px;text-align:center;font-weight:700;
+  border:1px solid var(--line-2);background:#0d171f;letter-spacing:.04em;
+  color:var(--muted);border-radius:1px;
+}
+.fd.tci{background:#3a2515;border-color:#7a4d10;color:var(--amber)}
+.fd.pcp{background:#3a2515;border-color:#7a4d10;color:var(--amber);font-size:11px}
+.fd small{display:block;color:var(--dim);font-size:8px;margin-top:3px;letter-spacing:.12em}
+
+/* MAPPING TABLE */
+table{width:100%;border-collapse:collapse;font-size:11px;margin-top:8px}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line)}
+th{font-size:9px;color:var(--dim);letter-spacing:.18em;text-transform:uppercase;font-weight:600;border-bottom:1px solid var(--line-2)}
+td{color:var(--muted)}
+tr.hi td{color:var(--phos)}
+tr.lo td{color:var(--amber)}
+td.code{font-family:'JetBrains Mono',monospace;color:var(--ink)}
+
+/* STEP LIST */
+.steplist{list-style:none;padding:0;margin:0;counter-reset:s}
+.steplist li{
+  counter-increment:s;
+  padding:10px 0 10px 38px;
+  border-bottom:1px solid var(--line);
+  position:relative;color:var(--muted);font-size:12px;line-height:1.6;
+}
+.steplist li:last-child{border-bottom:0}
+.steplist li::before{
+  content:counter(s,decimal-leading-zero);
+  position:absolute;left:0;top:10px;
+  font-size:10px;color:var(--dim);letter-spacing:.1em;font-weight:700;
+}
+.steplist li b{color:var(--ink);font-weight:700}
+.steplist li .pin{color:var(--phos)}
+.steplist li .pin.amber{color:var(--amber)}
+
+.tag-inline{
+  display:inline-block;font-size:10px;padding:1px 6px;border-radius:2px;
+  background:#1a2632;color:var(--muted);border:1px solid var(--line-2);letter-spacing:.04em;
+}
+.tag-inline.ph{background:rgba(92,242,166,.1);color:var(--phos);border-color:var(--phos-dim)}
+.tag-inline.am{background:rgba(255,179,71,.1);color:var(--amber);border-color:var(--amber-dim)}
+.tag-inline.vi{background:rgba(140,124,255,.1);color:var(--violet);border-color:#473a85}
+
+footer{margin-top:40px;padding-top:22px;border-top:1px solid var(--line);font-size:10px;color:var(--dim);letter-spacing:.04em;line-height:1.7}
+footer b{color:var(--muted)}
+
+/* Mobile */
+@media (max-width:760px){
+  .stage{height:980px}
+  .blk{font-size:10px}
+  .chain{grid-template-columns:1fr 1fr}
+  .chain-link{border-bottom:1px solid var(--line)}
+  .chain-link::after{display:none}
+}
+</style>
+</head>
+<body>
+
+<div class="scan"></div>
+
+<div class="wrap">
+
+<header class="masthead">
+  <div>
+    <div class="eyebrow"><span class="dot"></span><span>Standards walkthrough · IEEE 802.1Q · 802.1Qbu · 802.3br</span></div>
+    <h1 class="title">How a 3-bit <em>PCP</em> field<br>ends up cutting a <b>frame in half</b>.</h1>
+    <p class="lede">PCP does not, by itself, preempt anything. It is a classification value. Inside a VLAN switch it walks down a chain of mappings — Traffic Class, then express/preemptable assignment, then MAC Merge — and only at the very end does the MAC layer decide to interrupt a lower-priority frame mid-flight. This animation walks the chain stage by stage.</p>
+  </div>
+  <div class="spec-tag">
+    Animation rev <span class="v">02</span><br>
+    PDU model · 802.1Q tagged<br>
+    Egress · 1 GbE · MAC Merge active
+  </div>
+</header>
+
+<div class="chain">
+  <div class="chain-link">
+    <span class="num">01 — CLASSIFY</span>
+    <span class="what">Read PCP from VLAN tag</span>
+    <span class="where">802.1Q parser</span>
+  </div>
+  <div class="chain-link">
+    <span class="num">02 — MAP</span>
+    <span class="what">PCP → Traffic Class</span>
+    <span class="where">Bridge QoS table</span>
+  </div>
+  <div class="chain-link">
+    <span class="num">03 — ASSIGN</span>
+    <span class="what">TC → eMAC or pMAC</span>
+    <span class="where">802.1Qbu port policy</span>
+  </div>
+  <div class="chain-link">
+    <span class="num">04 — INTERRUPT</span>
+    <span class="what">Cut frame at fragment boundary</span>
+    <span class="where">802.3br MAC Merge</span>
+  </div>
+</div>
+
+<div class="layout">
+
+<!-- STAGE -->
+<div class="stage-card">
+  <div class="stage-head">
+    <div class="left">
+      <span class="scn-label">Scenario</span>
+      <select id="scenario">
+        <option value="main">A · Active preemption — large low frame</option>
+        <option value="inactive">B · Verification inactive — no preemption</option>
+        <option value="small">C · Active preemption — small low frame</option>
+      </select>
+    </div>
+    <div class="controls">
+      <span class="step-counter">Step <b id="ctr">01 / 12</b></span>
+      <select id="speed" title="Playback speed">
+        <option value="2400">Slow</option>
+        <option value="1500" selected>Normal</option>
+        <option value="900">Fast</option>
+      </select>
+      <button id="step">Step</button>
+      <button id="play" class="primary">▶ Play</button>
+      <button id="pause">Pause</button>
+      <button id="reset">Reset</button>
+    </div>
+  </div>
+
+  <div class="stage" id="stage">
+
+    <!-- pipeline lane -->
+    <div class="lane">
+      <div class="lane-label">Bridge data path · ingress → egress</div>
+      <div class="lane-pipe"></div>
+    </div>
+
+    <!-- top-row blocks (all on same y so packet slides horizontally) -->
+    <!-- positions chosen so blocks sit centered along the lane -->
+    <div class="blk" id="b-ing"  style="left:36px;  width:130px"><span class="blk-tag">01 · Ingress</span><span class="blk-name">Port</span><span class="blk-state" id="t-ing">Idle</span></div>
+    <div class="blk" id="b-par"  style="left:184px; width:140px"><span class="blk-tag">02 · Parse</span><span class="blk-name">VLAN Tag</span><span class="blk-state" id="t-par">Idle</span></div>
+    <div class="blk" id="b-map"  style="left:342px; width:150px"><span class="blk-tag">03 · QoS Map</span><span class="blk-name">PCP → TC</span><span class="blk-state" id="t-map">Idle</span></div>
+    <div class="blk" id="b-que"  style="left:510px; width:150px"><span class="blk-tag">04 · TC Queues</span><span class="blk-name">Per-class buffer</span><span class="blk-state" id="t-que">Empty</span></div>
+    <div class="blk" id="b-sel"  style="left:678px; width:150px"><span class="blk-tag">05 · Selector</span><span class="blk-name">eMAC / pMAC</span><span class="blk-state" id="t-sel">Idle</span></div>
+    <!-- Peer is the receiver, drawn separately to the right at top-row level -->
+
+    <!-- PEER block -->
+    <div class="peer" id="b-peer" style="left:866px;width:130px">
+      <span class="ptag">Peer · RX</span>
+      <span class="pname">Receiver</span>
+      <span class="pstate" id="t-peer">Waiting</span>
+    </div>
+
+    <!-- queues panel below the lane between map and sel -->
+    <div class="queues" style="left:510px;width:150px">
+      <div class="q-slot express">
+        <span class="qtag">eQ · TC7</span>
+        <span class="q-pill express" id="qpe">H · PCP6</span>
+      </div>
+      <div class="q-slot preempt">
+        <span class="qtag">pQ · TC1</span>
+        <span class="q-pill preempt" id="qpp">L · PCP1</span>
+      </div>
+    </div>
+
+    <!-- MAC Merge sublayer -->
+    <div class="macmerge" id="b-mm">
+      <span class="mtag">06 · MAC Merge sublayer · IEEE 802.3br</span>
+      <span class="mtitle">eMAC + pMAC · mPacket gateway</span>
+      <div class="mac-row emac">
+        <span class="lbl">eMAC</span>
+        <span class="val" id="t-emac">idle</span>
+      </div>
+      <div class="mac-row pmac">
+        <span class="lbl">pMAC</span>
+        <span class="val" id="t-pmac">idle</span>
+      </div>
+      <div class="mm-note" id="t-mmnote"><b>READY · </b>The peer must confirm fragment support before any frame can be cut.</div>
+    </div>
+
+    <!-- Egress link -->
+    <div class="egress" id="b-link">
+      <span class="mtag">07 · Egress link · on-wire timeline</span>
+      <span class="mtitle">PHY symbols transmitted</span>
+      <div class="wire-label" id="t-link">No data on wire</div>
+      <div class="wire" id="wire"><span class="wire-empty">— — — — —</span></div>
+    </div>
+
+    <!-- Packets -->
+    <div class="pkt preempt hide" id="pktL">L · PCP 1<small>TC1 · pMAC</small></div>
+    <div class="pkt express hide" id="pktH">H · PCP 6<small>TC7 · eMAC</small></div>
+
+    <!-- Bubble -->
+    <div class="bubble">
+      <div class="btag" id="bubtag">▸ Step note</div>
+      <div id="bubtxt">Press Play to walk the pipeline. Each step advances one stage.</div>
+    </div>
+  </div>
+</div>
+
+<!-- SIDE PANEL -->
+<div class="side">
+  <div class="pnl">
+    <div class="ptag">▸ Current step</div>
+    <h3 id="sTitle">01 · Egress port prepared</h3>
+    <p id="sText">The egress port has been configured for frame preemption: TC7 maps to the express MAC, TC1 to the preemptable MAC. The peer has completed verification, so MAC Merge is operationally active.</p>
+  </div>
+  <div class="pnl std">
+    <div class="ptag">▸ Standards meaning</div>
+    <p id="sStd">802.1Qbu binds traffic-class queues to express or preemptable MAC paths. 802.3br MAC Merge defines the actual mPacket interruption mechanism, which becomes legal only after verification mFrames complete.</p>
+  </div>
+  <div class="pnl impl">
+    <div class="ptag">▸ Implementation view</div>
+    <p id="sImpl">A practical switch holds three configuration objects per egress port: the PCP→TC table, the TC→queue mapping, and the queue-to-MAC (express or preemptable) assignment, plus the live MAC Merge state.</p>
+  </div>
+</div>
+
+</div><!-- /layout -->
+
+<!-- REFERENCE -->
+<div class="refgrid">
+  <div class="refcard">
+    <div class="rtag">▸ Reference</div>
+    <h2>The <em>PCP field</em> sits inside the VLAN tag</h2>
+    <div class="frame-diag">
+      <div class="fd">DA</div>
+      <div class="fd">SA</div>
+      <div class="fd tci">TPID<small>0x8100</small></div>
+      <div class="fd tci">TCI<small>16 bits</small></div>
+      <div class="fd">EtherType</div>
+      <div class="fd">Payload</div>
+      <div class="fd">FCS</div>
+    </div>
+    <div class="frame-diag" style="margin-top:0">
+      <div class="fd pcp" style="flex:1">PCP<small>3 bits</small></div>
+      <div class="fd tci" style="flex:1">DEI<small>1 bit</small></div>
+      <div class="fd tci" style="flex:5">VID<small>12 bits</small></div>
+    </div>
+    <p style="font-size:11px;color:var(--muted);line-height:1.7;margin-top:14px">The 3-bit Priority Code Point is the first 3 bits of the Tag Control Information. It carries 8 possible values (0–7). The bridge uses it to select an internal Traffic Class. PCP itself never appears on the on-wire fragment delimiter — it is purely a classification input.</p>
+
+    <table>
+      <thead><tr><th>PCP</th><th>Traffic Class</th><th>MAC path</th><th>Role in this demo</th></tr></thead>
+      <tbody>
+        <tr class="lo"><td class="code">1</td><td class="code">TC1</td><td class="code">pMAC</td><td>Preemptable · low frame L</td></tr>
+        <tr><td class="code">0,2-5</td><td class="code">TC0–5</td><td>port policy</td><td>Not used here</td></tr>
+        <tr class="hi"><td class="code">6</td><td class="code">TC7</td><td class="code">eMAC</td><td>Express · high frame H</td></tr>
+        <tr class="hi"><td class="code">7</td><td class="code">TC7</td><td class="code">eMAC</td><td>Highest priority class (typical)</td></tr>
+      </tbody>
+    </table>
+    <p style="font-size:10px;color:var(--dim);margin-top:10px;line-height:1.6">Mapping shown is illustrative. A conformant bridge may use a different PCP-to-TC table per port.</p>
+  </div>
+
+  <div class="refcard">
+    <div class="rtag">▸ Sequence reference</div>
+    <h2>Twelve actions, in order</h2>
+    <ol class="steplist">
+      <li><b>Port policy is configured.</b> PCP→TC table, TC→queue mapping, and queue→MAC (eMAC or pMAC) assignment are loaded. MAC Merge verification has completed with the peer. <span class="tag-inline vi">verified</span></li>
+      <li><b>Frame L arrives</b> at the ingress port carrying PCP=1 in its VLAN tag. <span class="tag-inline am">PCP 1</span></li>
+      <li><b>Parser extracts</b> TPID, PCP, DEI, VID from the 802.1Q tag and attaches them as descriptor metadata.</li>
+      <li><b>QoS map</b> applies PCP 1 → TC1. Forwarding decides this egress port. TC1 is bound to pMAC.</li>
+      <li><b>L is enqueued</b> in the preemptable queue (TC1).</li>
+      <li><b>Selector chooses pMAC</b> — no express traffic is pending. L begins MAC-level transmission as a preemptable mPacket.<span class="tag-inline am"> SMD-S0</span></li>
+      <li><b>Frame H arrives</b> at ingress while L is still on the wire. PCP=6. <span class="tag-inline ph">PCP 6</span></li>
+      <li><b>Parser extracts</b> H's tag fields.</li>
+      <li><b>QoS map</b> applies PCP 6 → TC7. TC7 is bound to eMAC.</li>
+      <li><b>H is enqueued</b> in the express queue. The selector now sees pending express traffic.</li>
+      <li><b>MAC Merge preempts L</b> at a valid fragment boundary. L's pMAC state is held; eMAC inserts H. The on-wire delimiter switches from SMD-S* to SMD-E. <span class="pin">SMD-E</span></li>
+      <li><b>L resumes</b> as a continuation fragment after H completes. The peer reassembles L from start + continuation. <span class="pin amber">SMD-C*</span></li>
+    </ol>
+  </div>
+</div>
+
+<footer>
+  <b>Standards anchors:</b> IEEE 802.1Q-2022 (VLAN tag, PCP, Traffic Class), IEEE 802.1Qbu (express/preemptable traffic-class assignment), IEEE 802.3br (MAC Merge sublayer, mPackets, SMD-E/S/C/V/R, verification).
+  This is a teaching model of one conforming implementation, not a vendor-specific design.
+</footer>
+
+</div><!-- /wrap -->
+
+<script>
+const $ = id => document.getElementById(id);
+
+// Block centerpoints (computed to align packet motion with each block)
+// Top-row blocks: top:80, height:90 → center y = 125
+// Queues panel: top:230, height:100. Express slot top half center ≈ y=265, Preempt slot bottom half center ≈ y=305
+// MAC Merge: top:360, height:180. eMAC row at ≈ y=438, pMAC row at ≈ y=478
+// Egress link: top:360, height:180. Wire roughly at y=515
+// Peer: top:74, height:92 → center y=120
+const POS = {
+  off:   {x:-200, y:-200},
+  ing:   {x:101,  y:125},
+  par:   {x:254,  y:125},
+  map:   {x:417,  y:125},
+  // Top-row queue block (used as the "entering queue" position)
+  que:   {x:585,  y:125},
+  // Queue slot centers (kept for reference; static q-pills are used to indicate residency)
+  eq:    {x:585,  y:262},
+  pq:    {x:585,  y:303},
+  sel:   {x:753,  y:125},
+  // MAC Merge interior - rows are inside left:30 width:380 → cx=220
+  emac:  {x:220,  y:445},
+  pmac:  {x:220,  y:485},
+  // Egress link wire — left:430..stage_right-30. Wire content area roughly y:520
+  wireL: {x:580,  y:520},
+  wireH: {x:730,  y:520},
+  // Peer block at left:866 width:130 → cx=931, top:80 → cy=125
+  peer:  {x:931,  y:115},
+  peerL: {x:931,  y:148},
+  // Stagger Y for second packet at same block (slightly lower so both visible)
+  ingH:  {x:101,  y:148},
+  parH:  {x:254,  y:148},
+  mapH:  {x:417,  y:148},
+};
+
+const blocks = ['ing','par','map','que','sel','peer','mm','link'];
+function setActive(list){
+  blocks.forEach(b=>{
+    const el = $('b-'+b);
+    if(el) el.classList.toggle('on', list.includes(b));
+  });
+}
+function setPkt(el, p, hide=0, glow=0){
+  el.style.left = p.x+'px';
+  el.style.top  = p.y+'px';
+  el.classList.toggle('hide', !!hide);
+  el.classList.toggle('glow', !!glow && !hide);
+}
+function clearWire(){
+  $('wire').innerHTML = '<span class="wire-empty">— — — — —</span>';
+}
+function setWire(segs){
+  if(!segs.length){ clearWire(); return; }
+  $('wire').innerHTML = segs.map(s=>`<div class="seg ${s.c}" style="width:${s.w}px">${s.t}</div>`).join('');
+}
+function showQueue(express, preempt){
+  $('qpe').classList.toggle('show', !!express);
+  $('qpp').classList.toggle('show', !!preempt);
+}
+function commonReset(){
+  $('t-ing').textContent='Idle';
+  $('t-par').textContent='Idle';
+  $('t-map').textContent='Idle';
+  $('t-que').textContent='Empty';
+  $('t-sel').textContent='Idle';
+  $('t-emac').textContent='idle';
+  $('t-pmac').textContent='idle';
+  $('t-mmnote').innerHTML='<b>READY · </b>MAC Merge operational.';
+  $('t-link').textContent='No data on wire';
+  $('t-peer').textContent='Waiting';
+  showQueue(false,false);
+  clearWire();
+}
+
+// =========================
+// SCENARIO A — main: active preemption, large L
+// 12 stages, one block of motion per step.
+// =========================
+const main = [
+  // 1
+  { c:'verified',
+    title:'01 · Port prepared and link partner has confirmed it can handle fragments',
+    text:'Three things have been set up on this egress port. PCP 6 is mapped to Traffic Class 7. PCP 1 is mapped to Traffic Class 1. TC7 is bound to the express MAC, TC1 to the preemptable MAC. There is a fourth, less obvious requirement: before this switch can ever cut a frame in half on the wire, the device at the other end of the cable must confirm it understands fragmented frames — otherwise it would treat a fragment as a corrupt frame and drop it. That confirmation is a tiny handshake: the switch sends a Verify mFrame, the peer answers with a Respond mFrame. That handshake has completed here, so cutting a frame in half on this link is now both configured and legal.',
+    std:'802.3br defines this two-stage gate explicitly. Configuration alone is the "admin" state. The peer-confirmed handshake — a Verify mFrame answered by a Respond mFrame within a timeout — establishes the "operational" state. Only when both are true is the local end permitted to transmit a fragment.',
+    impl:'A typical TSN switch exposes both states in management: an admin/enabled bit (the operator turned it on) and an operational/active bit (the peer answered Verify). The animation runs with both bits set.',
+    bubble:'Configured plus peer-confirmed. Cutting frames in half is now legal on this link.',
+    a:['mm','link'],
+    u(){
+      commonReset();
+      setPkt($('pktL'), POS.off, 1);
+      setPkt($('pktH'), POS.off, 1);
+      $('t-mmnote').innerHTML='<b>VERIFIED · </b>Peer answered Verify · cutting frames is legal here.';
+      setWire([{t:'verify ↔ respond', c:'verify', w:160}]);
+      $('t-link').textContent='Ready for interspersed express traffic';
+    }
+  },
+  // 2
+  { c:'L-ingress',
+    title:'02 · L arrives at the ingress port',
+    text:'Frame L enters the switch. Its VLAN tag carries PCP=1 inside the TCI field.',
+    std:'The 802.1Q tag is the first place the bridge can see the priority. PCP is the most significant 3 bits of the 16-bit TCI.',
+    impl:'The MAC RX block forwards the frame into the bridge fabric. The descriptor is created with raw header bytes attached.',
+    bubble:'L lands at the door. Its priority is encoded but not yet read.',
+    a:['ing'],
+    u(){
+      commonReset();
+      setPkt($('pktL'), POS.ing, 0);
+      setPkt($('pktH'), POS.off, 1);
+      $('t-ing').textContent='RX: L · DA|SA|0x8100|TCI…';
+    }
+  },
+  // 3
+  { c:'L-parse',
+    title:'03 · Parser extracts L\'s tag fields',
+    text:'The 802.1Q parser reads TPID = 0x8100, then unpacks the TCI: PCP = 1, DEI = 0, VID = 100. These are attached to L\'s descriptor as classification metadata.',
+    std:'IEEE 802.1Q defines the TCI layout. PCP occupies bits 15..13 of the TCI.',
+    impl:'Most ASICs/NPUs do this in a fixed-function header parser; software switches do it in a parse routine.',
+    bubble:'PCP = 1 is now on the descriptor. The frame body has not moved.',
+    a:['ing','par'],
+    u(){
+      commonReset();
+      setPkt($('pktL'), POS.par, 0);
+      setPkt($('pktH'), POS.off, 1);
+      $('t-ing').textContent='Frame L admitted';
+      $('t-par').textContent='Extracted: PCP=1 · DEI=0 · VID=100';
+    }
+  },
+  // 4
+  { c:'L-map',
+    title:'04 · QoS map applies PCP 1 → TC1',
+    text:'The bridge looks up PCP 1 in this port\'s PCP-to-Traffic-Class table. Result: TC1. The egress-port policy says TC1 drains through the preemptable MAC.',
+    std:'PCP-to-Traffic-Class mapping is configurable per port. Up to 8 traffic classes are supported.',
+    impl:'On hardware: a small SRAM-backed lookup table indexed by {ingress-port, PCP}. The descriptor now carries TC1.',
+    bubble:'The mapping is the moment PCP becomes a Traffic Class. Everything downstream uses TC, not PCP.',
+    a:['par','map'],
+    u(){
+      commonReset();
+      setPkt($('pktL'), POS.map, 0);
+      setPkt($('pktH'), POS.off, 1);
+      $('t-par').textContent='Tag fields stripped to descriptor';
+      $('t-map').textContent='PCP 1 → TC1 → pMAC';
+    }
+  },
+  // 5
+  { c:'L-queue',
+    title:'05 · L is enqueued in the preemptable queue',
+    text:'L is placed in the egress queue corresponding to TC1. Because TC1 is bound to pMAC, this queue is the preemptable queue.',
+    std:'TC-to-queue mapping is part of the bridge port model. Each queue is exclusively express or preemptable on a given port.',
+    impl:'A linked-list or ring-buffer per traffic class. Backpressure and shaping happen here.',
+    bubble:'L is now waiting to drain into the MAC layer.',
+    a:['map','que'],
+    u(){
+      commonReset();
+      setPkt($('pktL'), POS.que, 0);
+      setPkt($('pktH'), POS.off, 1);
+      // Show L residency in the preemptable queue slot
+      showQueue(false, true);
+      $('t-map').textContent='Result delivered: TC1';
+      $('t-que').textContent='1 frame in pQ · 0 in eQ';
+    }
+  },
+  // 6
+  { c:'L-tx',
+    title:'06 · Selector picks pMAC; L begins transmission',
+    text:'No express traffic is pending. The egress selector grants the pMAC path. L is handed to the MAC Merge sublayer, which begins emitting it as a preemptable mPacket starting with an SMD-S delimiter.',
+    std:'The selector implements strict express-over-preemptable arbitration. Since no eQ traffic exists, pMAC is free to transmit.',
+    impl:'The MAC Merge block tracks how many bytes of L have been emitted, so it can later resume from the same point.',
+    bubble:'L is on the wire. The pMAC state machine is mid-frame.',
+    a:['que','sel','mm','link'],
+    u(){
+      commonReset();
+      // First place L at the selector (visible transit), then settle at pmac
+      setPkt($('pktL'), POS.sel, 0);
+      setPkt($('pktH'), POS.off, 1);
+      showQueue(false, false);
+      $('t-que').textContent='pQ drained';
+      $('t-sel').textContent='Granted: pMAC';
+      // After short delay, move L into the MAC Merge pMAC row
+      clearTimeout(window.__t1);
+      window.__t1 = setTimeout(()=>setPkt($('pktL'), POS.pmac, 0), 480);
+      $('t-pmac').textContent='TX L · SMD-S0 · in progress';
+      $('t-emac').textContent='idle';
+      setWire([{t:'L · part 1', c:'preempt', w:200}]);
+      $('t-link').textContent='SMD-S0 · preemptable mPacket';
+      $('t-peer').textContent='Receiving SMD-S0';
+    }
+  },
+  // 7
+  { c:'H-ingress',
+    title:'07 · H arrives at ingress while L is still on the wire',
+    text:'A second VLAN-tagged frame H arrives at an ingress port. Its tag carries PCP=6. Meanwhile, L is still being emitted by pMAC.',
+    std:'Express and preemptable processing happen concurrently. Ingress classification of H does not stall L.',
+    impl:'Two pipelines run in parallel: the MAC TX path emitting L, and the ingress classifier processing H.',
+    bubble:'H has just arrived. Whether it can cut L is still undecided.',
+    a:['ing','mm','link'],
+    u(){
+      commonReset();
+      setPkt($('pktL'), POS.pmac, 0);
+      setPkt($('pktH'), POS.ingH, 0);
+      $('t-ing').textContent='RX: H · DA|SA|0x8100|TCI…';
+      $('t-pmac').textContent='TX L · still in progress';
+      setWire([{t:'L · part 1', c:'preempt', w:240}]);
+      $('t-link').textContent='L still being emitted';
+      $('t-peer').textContent='Reassembling L (so far)';
+    }
+  },
+  // 8
+  { c:'H-parse',
+    title:'08 · Parser extracts H\'s tag fields',
+    text:'The parser reads H\'s 802.1Q tag: PCP = 6, DEI = 0, VID = 100. L continues to drain unchanged on the egress link.',
+    std:'Same parsing rules as for L. PCP is read from the same TCI bit positions.',
+    impl:'The classifier writes H\'s descriptor metadata in parallel with the in-flight pMAC transmission.',
+    bubble:'PCP = 6 now sits on H\'s descriptor.',
+    a:['par','mm','link'],
+    u(){
+      commonReset();
+      setPkt($('pktL'), POS.pmac, 0);
+      setPkt($('pktH'), POS.parH, 0);
+      $('t-par').textContent='Extracted: PCP=6 · DEI=0 · VID=100';
+      $('t-pmac').textContent='TX L · still in progress';
+      setWire([{t:'L · part 1', c:'preempt', w:280}]);
+      $('t-link').textContent='L still being emitted';
+      $('t-peer').textContent='Reassembling L (so far)';
+    }
+  },
+  // 9
+  { c:'H-map',
+    title:'09 · QoS map applies PCP 6 → TC7 (express)',
+    text:'PCP 6 is looked up; the result is TC7. The port policy says TC7 is bound to eMAC. H is therefore an express frame.',
+    std:'Express vs preemptable is a property of the traffic-class-to-MAC binding, configured per port. Strictly more than one TC may be express.',
+    impl:'A single bit per TC ("express?") is enough to encode this; the selector uses it to arbitrate.',
+    bubble:'This is the moment H becomes "express." Without this binding, PCP 6 alone would be useless.',
+    a:['map','mm','link'],
+    u(){
+      commonReset();
+      setPkt($('pktL'), POS.pmac, 0);
+      setPkt($('pktH'), POS.mapH, 0);
+      $('t-map').textContent='PCP 6 → TC7 → eMAC';
+      $('t-pmac').textContent='TX L · still in progress';
+      setWire([{t:'L · part 1', c:'preempt', w:280}]);
+      $('t-link').textContent='L still being emitted';
+    }
+  },
+  // 10
+  { c:'H-queue',
+    title:'10 · H lands in the express queue',
+    text:'H is enqueued in the eQ slot for TC7. The selector now has pending express work — and a preemptable transmission in progress.',
+    std:'Strict-priority arbitration: when express becomes pending and preemption is operationally active, the selector signals MAC Merge to interrupt the in-flight pMAC frame.',
+    impl:'A simple combinational signal: eQ.nonempty AND merge.active AND pMAC.in_frame → request preempt.',
+    bubble:'eQ has 1 frame. pMAC is mid-frame. Preconditions for cutting L are now met.',
+    a:['que','sel','mm','link'],
+    u(){
+      commonReset();
+      setPkt($('pktL'), POS.pmac, 0);
+      // H sits in the queue block (slightly offset y to avoid covering label)
+      setPkt($('pktH'), {x: POS.que.x, y: POS.que.y + 20}, 0, 1);
+      // Show H residency in the express queue slot
+      showQueue(true, false);
+      $('t-que').textContent='1 in eQ · 0 in pQ';
+      $('t-sel').textContent='Express pending · request preempt';
+      $('t-pmac').textContent='TX L · still in progress';
+      setWire([{t:'L · part 1', c:'preempt', w:280}]);
+      $('t-link').textContent='L still being emitted (about to be cut)';
+    }
+  },
+  // 11
+  { c:'preempt',
+    title:'11 · MAC Merge preempts L · H takes the eMAC',
+    text:'At the next valid fragment boundary, MAC Merge suspends pMAC. L\'s state — bytes-emitted, residual CRC context — is held. eMAC takes the wire and emits H as a complete express mPacket framed by SMD-E.',
+    std:'IEEE 802.3br defines fragment boundaries and the SMD-E (express) and SMD-Cn (continuation) delimiters. The express frame is not chopped; only the preemptable frame is.',
+    impl:'The mPacket boundary is enforced in the MAC TX FIFO. The pMAC pauses cleanly so the cut is byte-aligned, not symbol-aligned mid-byte.',
+    bubble:'This is the actual MAC-level preemption. L is interrupted, never lost.',
+    a:['sel','mm','link'],
+    u(){
+      commonReset();
+      setPkt($('pktL'), POS.pmac, 0);
+      // Move H from express queue through selector, then settle at eMAC
+      setPkt($('pktH'), POS.sel, 0, 1);
+      clearTimeout(window.__t2);
+      window.__t2 = setTimeout(()=>setPkt($('pktH'), POS.emac, 0, 1), 480);
+      $('t-sel').textContent='Granted: eMAC';
+      $('t-emac').textContent='TX H · SMD-E';
+      $('t-pmac').textContent='SUSPENDED · state held';
+      $('t-mmnote').innerHTML='<b>PREEMPT · </b>L paused at fragment boundary. SMD-E inserted.';
+      setWire([
+        {t:'L · part 1', c:'preempt', w:200},
+        {t:'cut', c:'gap', w:32},
+        {t:'H · SMD-E', c:'express', w:160}
+      ]);
+      $('t-link').textContent='SMD-E · express frame on wire';
+      $('t-peer').textContent='Sees SMD-E · receives H';
+    }
+  },
+  // 12
+  { c:'resume',
+    title:'12 · L resumes; peer reassembles',
+    text:'After H completes, MAC Merge restarts pMAC at the saved offset. The remaining bytes of L are emitted as a continuation fragment with an SMD-Cn delimiter. The peer\'s 802.3br RX side stitches start-fragment + continuation back into the original L and delivers it upward.',
+    std:'SMD-Cn carries fragment-count information so the peer can verify continuity and detect lost fragments.',
+    impl:'On the receive side, the MAC Merge block buffers preemptable fragments until they are fully reassembled before passing the frame up to the bridge.',
+    bubble:'Wire order: L(part 1) · H · L(continuation). Above the MAC service interface, only one L and one H are seen.',
+    a:['mm','link','peer'],
+    u(){
+      commonReset();
+      // L starts at the wire as continuation, then arrives at peer
+      setPkt($('pktL'), POS.wireL, 0);
+      // H is already at peer (delivered earlier)
+      setPkt($('pktH'), POS.peer, 0);
+      clearTimeout(window.__t3);
+      window.__t3 = setTimeout(()=>setPkt($('pktL'), POS.peerL, 0), 600);
+      $('t-emac').textContent='done';
+      $('t-pmac').textContent='RESUMED · SMD-C1 · finishing L';
+      $('t-mmnote').innerHTML='<b>DONE · </b>L resumed and completed.';
+      setWire([
+        {t:'L · part 1', c:'preempt', w:200},
+        {t:'H · SMD-E', c:'express', w:160},
+        {t:'L · SMD-C1', c:'preempt', w:170}
+      ]);
+      $('t-link').textContent='Wire order: L₁ · H · L₂';
+      $('t-peer').textContent='Reassembled L · delivered both';
+    }
+  },
+];
+
+// =========================
+// SCENARIO B — verification inactive: H must wait for L to finish
+// =========================
+const inactive = main.map(s => ({...s}));
+inactive[0] = {
+  c:'noverify',
+  title:'01 · Configuration is on, but the link partner never confirmed it can handle fragments',
+  text:'Same PCP-to-TC table, same TC-to-MAC binding as Scenario A. The administrator has turned frame preemption on. The difference is at the other end of the cable: before this switch is allowed to cut a frame in half on the wire, both ends must agree they understand fragmented frames — otherwise the receiver would see a fragment, fail to recognise its delimiter, and treat it as a corrupt frame. The switch attempted that handshake (a Verify mFrame asking "do you support MAC Merge?") and never received the matching Respond. The peer is silent — perhaps an older switch, a NIC without 802.3br, or a misconfigured port. So the local end cannot legally fragment anything on this link.',
+  std:'802.3br defines two separate states for preemption. The "admin" state reflects what the operator configured. The "operational" state reflects whether the SMD-V / SMD-R handshake actually completed with this specific peer. Both must be true for a fragment to be transmitted. With no Respond received, the operational state stays false, and the standard requires the local end to behave as if preemption did not exist on this link.',
+  impl:'This is the most common silent failure of frame preemption in production: the configuration looks right, traffic flows, latency-sensitive frames still go out — they just never benefit from cutting a low-priority frame in half, because the link partner never agreed that fragments are safe. Diagnostic: check the operational/active register per port, not just the admin/enabled bit.',
+  bubble:'Configured to preempt — but the peer never said "I understand fragments." Until it does, this link must transmit only whole frames.',
+  a:['mm','link'],
+  u(){
+    commonReset();
+    setPkt($('pktL'), POS.off, 1);
+    setPkt($('pktH'), POS.off, 1);
+    $('t-mmnote').innerHTML='<b>UNVERIFIED · </b>Verify sent · no Respond received · fragments forbidden on this link.';
+    setWire([{t:'verify mFrame sent · awaiting respond …', c:'gap', w:280}]);
+    $('t-link').textContent='Handshake incomplete · no preemption available on this link';
+  }
+};
+// Step 5 (L begins TX) — note that pMAC is just transmitting normally (not as preemptable)
+inactive[5] = {
+  ...main[5],
+  bubble:'L is on the wire. Because preemption is inactive, this is just an ordinary frame from the MAC point of view.',
+  u(){
+    main[5].u();
+    $('t-mmnote').innerHTML='<b>UNVERIFIED · </b>L emitted as a whole frame; no SMD-S/C splits available.';
+  }
+};
+// Step 10: H is queued, but selector cannot cut L
+inactive[9] = {
+  c:'noverify',
+  title:'10 · H sits in the express queue · cannot cut L',
+  text:'H has been correctly classified as express (TC7 → eMAC). But because MAC Merge is operationally inactive, the selector cannot interrupt the ongoing pMAC frame. H must wait for L to finish.',
+  std:'Express classification by itself does not authorize mid-frame interruption. The 802.3br operational bit must also be set.',
+  impl:'Strict-priority arbitration still applies between frames — H will go next — but not within a frame.',
+  bubble:'This is the silent failure mode of misconfigured preemption.',
+  a:['que','sel','mm','link'],
+  u(){
+    commonReset();
+    setPkt($('pktL'), POS.pmac, 0);
+    setPkt($('pktH'), {x: POS.que.x, y: POS.que.y + 20}, 0);
+    showQueue(true, false);
+    $('t-que').textContent='1 in eQ · 0 in pQ';
+    $('t-sel').textContent='Express pending · cannot preempt (op inactive)';
+    $('t-emac').textContent='waiting for L to finish';
+    $('t-pmac').textContent='TX L · uninterrupted';
+    $('t-mmnote').innerHTML='<b>UNVERIFIED · </b>Cut suppressed. H must wait.';
+    setWire([{t:'L · full frame (continuing)', c:'preempt', w:380}]);
+    $('t-link').textContent='L continues end-to-end';
+    $('t-peer').textContent='Receiving L · normal frame';
+  }
+};
+// Step 11: L finishes, H now goes (no interspersal)
+inactive[10] = {
+  c:'noverify',
+  title:'11 · L finishes · only then H transmits',
+  text:'L completes its full transmission. The selector then grants the eMAC, and H goes out as the next complete frame. The wire order is L · H — there is no interspersal.',
+  std:'Wire order is L · H, not L₁ · H · L₂. The high-priority frame still runs next, but at the worst-case blocking time of one full L.',
+  impl:'This case is functionally indistinguishable from a system that lacks frame preemption entirely.',
+  bubble:'H got priority service · but not preemption.',
+  a:['sel','mm','link'],
+  u(){
+    commonReset();
+    setPkt($('pktL'), POS.off, 1);
+    setPkt($('pktH'), POS.emac, 0, 1);
+    $('t-sel').textContent='Granted: eMAC (after L)';
+    $('t-emac').textContent='TX H · normal SMD-E';
+    $('t-pmac').textContent='done';
+    $('t-mmnote').innerHTML='<b>UNVERIFIED · </b>No fragmentation occurred.';
+    setWire([
+      {t:'L · full frame', c:'preempt', w:300},
+      {t:'H', c:'express', w:140}
+    ]);
+    $('t-link').textContent='Wire order: L · H';
+    $('t-peer').textContent='Received L, then H';
+  }
+};
+// Step 12: end state · takeaway
+inactive[11] = {
+  c:'noverify',
+  title:'12 · Both delivered · H paid the full L blocking time',
+  text:'Both frames reach the peer, but H waited behind the entirety of L. This is exactly what an unverified peer costs.',
+  std:'Operational state must be checked, not just admin state.',
+  impl:'Diagnostic: monitor verify counters and MAC Merge state per port — never just admin enable.',
+  bubble:'Lesson: PCP gave H priority. Verification gives PCP teeth.',
+  a:['peer'],
+  u(){
+    commonReset();
+    setPkt($('pktL'), POS.off, 1);
+    setPkt($('pktH'), POS.off, 1);
+    setWire([
+      {t:'L · full frame', c:'preempt', w:300},
+      {t:'H', c:'express', w:140}
+    ]);
+    $('t-link').textContent='Final wire order — no fragmentation';
+    $('t-peer').textContent='Delivered both frames';
+  }
+};
+
+// =========================
+// SCENARIO C — small low frame: preemption works but gain is small
+// =========================
+const small = main.map(s => ({...s}));
+small[0] = {
+  ...main[0],
+  title:'01 · Port verified; this scenario uses a small L',
+  text:'Same setup as Scenario A: port verified, MAC Merge operationally active. The difference is that L will be a short frame, so the practical preemption gain will be small even though the mechanism still works.',
+  bubble:'Mechanism is identical — what changes is how much wire-time is saved.'
+};
+// Step 6: small L begins, smaller wire segment
+small[5] = {
+  ...main[5],
+  title:'06 · Small L begins transmission',
+  text:'Same MAC-Merge handoff as before — but L is short. The window during which it could be cut is correspondingly small.',
+  bubble:'Worst-case blocking ≈ frame size. With small L, the worst case is already small.',
+  u(){
+    main[5].u();
+    setWire([{t:'L · small', c:'preempt', w:110}]);
+    $('t-pmac').textContent='TX L · small frame · almost done';
+  }
+};
+// Step 11: preempt may not actually fire (L finished too fast)
+small[10] = {
+  c:'small',
+  title:'11 · L finishes before a cut is worthwhile',
+  text:'In this run, L was so short that it completes before the selector\'s preempt request would benefit. No fragmentation actually happens. H goes next as a complete express frame.',
+  std:'802.3br does not require preemption when no benefit exists. A minimum fragment size constraint may also forbid a cut so close to the end of L.',
+  impl:'Implementations often track "remaining bytes ≥ min fragment" before issuing the cut.',
+  bubble:'No SMD-C in this trace. Wire order: L · H.',
+  a:['sel','mm','link'],
+  u(){
+    commonReset();
+    setPkt($('pktL'), POS.off, 1);
+    setPkt($('pktH'), POS.emac, 0, 1);
+    $('t-sel').textContent='Granted: eMAC (no cut needed)';
+    $('t-emac').textContent='TX H · SMD-E';
+    $('t-pmac').textContent='done';
+    $('t-mmnote').innerHTML='<b>NO-CUT · </b>L too short to fragment usefully.';
+    setWire([
+      {t:'L · small', c:'preempt', w:110},
+      {t:'H · SMD-E', c:'express', w:160}
+    ]);
+    $('t-link').textContent='Wire order: L · H';
+  }
+};
+small[11] = {
+  c:'small',
+  title:'12 · Both delivered · the gain was tiny but real',
+  text:'Both frames reached the peer. Note: even when no actual cut occurs, H still benefited from express scheduling — it went out immediately after a short L instead of behind a long one. The benefit of preemption scales with the size of the preemptable frame in the way.',
+  std:'The 802.3br/Qbu mechanism is the same; the analysis must use the actual frame-size distribution.',
+  impl:'Worst-case latency for a TSN-sensitive flow is dominated by the largest preemptable frame in the egress queue.',
+  bubble:'Same pipeline · same mechanism · benefit depends on what is in the way.',
+  a:['peer'],
+  u(){
+    commonReset();
+    setPkt($('pktL'), POS.off, 1);
+    setPkt($('pktH'), POS.off, 1);
+    setWire([
+      {t:'L · small', c:'preempt', w:110},
+      {t:'H · SMD-E', c:'express', w:160}
+    ]);
+    $('t-link').textContent='Final wire order — no fragmentation';
+    $('t-peer').textContent='Delivered both frames';
+  }
+};
+
+// ======= runtime =======
+const scenarios = { main, inactive, small };
+let key = 'main';
+let idx = 0;
+let timer = null;
+
+function render(){
+  // Cancel any in-flight micro-animations from a previous step
+  clearTimeout(window.__t1); clearTimeout(window.__t2); clearTimeout(window.__t3);
+  const arr = scenarios[key];
+  const s = arr[idx];
+  $('ctr').textContent = String(idx+1).padStart(2,'0') + ' / ' + String(arr.length).padStart(2,'0');
+  $('sTitle').textContent = s.title;
+  $('sText').textContent = s.text;
+  $('sStd').textContent = s.std;
+  $('sImpl').textContent = s.impl;
+  $('bubtag').textContent = '▸ ' + (s.title.split('·').slice(1).join('·').trim() || 'Step note');
+  $('bubtxt').textContent = s.bubble || s.text;
+  setActive(s.a || []);
+  s.u();
+}
+function next(){
+  const arr = scenarios[key];
+  if(idx < arr.length - 1){ idx++; render(); }
+  else stop();
+}
+function play(){ stop(); timer = setInterval(next, +$('speed').value); $('play').textContent = '⏸ Playing'; }
+function stop(){ if(timer){ clearInterval(timer); timer=null; } $('play').textContent='▶ Play'; }
+function reset(){ stop(); idx=0; render(); }
+
+$('play').onclick = ()=>{ if(timer) stop(); else play(); };
+$('pause').onclick = stop;
+$('step').onclick = ()=>{ stop(); next(); };
+$('reset').onclick = reset;
+$('speed').onchange = ()=>{ if(timer) play(); };
+$('scenario').onchange = e => { stop(); key = e.target.value; idx=0; render(); };
+
+render();
+</script>
+</body>
+</html>

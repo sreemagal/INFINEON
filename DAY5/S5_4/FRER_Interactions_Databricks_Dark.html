@@ -1,0 +1,1499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>FRER Interactions Details</title>
+<style>
+:root {
+  --db-bg: #0b1220;
+  --db-bg-2: #111827;
+  --db-card: rgba(17, 24, 39, 0.82);
+  --db-card-solid: #111827;
+  --db-border: rgba(148, 163, 184, 0.22);
+  --db-border-strong: rgba(255, 255, 255, 0.18);
+  --db-text: #e5e7eb;
+  --db-muted: #a7b0c0;
+  --db-faint: #7b8496;
+  --db-orange: #ff5f46;
+  --db-red: #ff3621;
+  --db-blue: #60a5fa;
+  --db-green: #34d399;
+  --db-yellow: #fbbf24;
+  --shadow: 0 20px 70px rgba(0,0,0,0.45);
+  --radius: 18px;
+  --top-height: 118px;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  color: var(--db-text);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background:
+    radial-gradient(circle at 18% -10%, rgba(255, 54, 33, 0.16), transparent 34rem),
+    radial-gradient(circle at 90% 10%, rgba(96, 165, 250, 0.14), transparent 30rem),
+    linear-gradient(135deg, #070b12 0%, #0b1220 42%, #111827 100%);
+  line-height: 1.62;
+}
+a { color: #93c5fd; text-decoration: none; }
+a:hover { color: #bfdbfe; text-decoration: underline; }
+.top-shell {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  backdrop-filter: blur(18px);
+  background: linear-gradient(180deg, rgba(7, 11, 18, 0.95), rgba(7, 11, 18, 0.82));
+  border-bottom: 1px solid var(--db-border);
+  box-shadow: 0 10px 35px rgba(0,0,0,0.28);
+}
+.progress-wrap { height: 4px; background: rgba(148, 163, 184, 0.14); }
+.progress-bar {
+  width: 0%; height: 100%;
+  background: linear-gradient(90deg, var(--db-red), var(--db-orange), #f59e0b);
+  box-shadow: 0 0 22px rgba(255, 95, 70, 0.6);
+}
+.context-row {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 14px 22px 10px;
+  display: grid;
+  grid-template-columns: minmax(250px, 0.85fr) minmax(280px, 1.4fr) auto;
+  gap: 16px;
+  align-items: center;
+}
+.brand { display: flex; gap: 12px; align-items: center; min-width: 0; }
+.brand-mark {
+  width: 38px; height: 38px; border-radius: 12px;
+  background: linear-gradient(135deg, var(--db-red), var(--db-orange));
+  box-shadow: 0 10px 30px rgba(255, 54, 33, 0.32);
+  display: grid; place-items: center;
+  font-weight: 900;
+  color: white;
+}
+.brand-title { min-width: 0; }
+.brand-title h1 {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.15;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.brand-title .subtitle {
+  color: var(--db-muted);
+  font-size: 12px;
+  margin-top: 4px;
+}
+.context-card {
+  border: 1px solid var(--db-border);
+  background: rgba(17, 24, 39, 0.58);
+  border-radius: 14px;
+  padding: 10px 12px;
+  min-width: 0;
+}
+.context-label {
+  color: var(--db-orange);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 3px;
+}
+.context-text {
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.context-text .sep { color: var(--db-faint); padding: 0 6px; }
+.actions { display: flex; gap: 9px; align-items: center; }
+.action-btn {
+  border: 1px solid var(--db-border);
+  background: rgba(255,255,255,0.04);
+  color: var(--db-text);
+  padding: 9px 11px;
+  border-radius: 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.action-btn:hover { border-color: rgba(255, 95, 70, 0.55); background: rgba(255, 95, 70, 0.09); }
+.nav-row {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 0 22px 12px;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.nav-chip {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: var(--db-muted);
+  border: 1px solid var(--db-border);
+  background: rgba(255,255,255,0.035);
+  border-radius: 999px;
+  padding: 7px 10px;
+  text-decoration: none;
+}
+.nav-chip:hover { text-decoration: none; color: var(--db-text); border-color: rgba(255, 95, 70, 0.55); }
+.nav-chip.active {
+  color: white;
+  border-color: rgba(255, 95, 70, 0.85);
+  background: linear-gradient(135deg, rgba(255, 54, 33, 0.28), rgba(255, 95, 70, 0.10));
+}
+.layout {
+  max-width: 1320px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 24px;
+  padding: 26px 22px 80px;
+}
+.side {
+  position: sticky;
+  top: calc(var(--top-height) + 22px);
+  align-self: start;
+  max-height: calc(100vh - var(--top-height) - 40px);
+  overflow: auto;
+  border: 1px solid var(--db-border);
+  background: rgba(17, 24, 39, 0.54);
+  border-radius: var(--radius);
+  padding: 14px;
+  box-shadow: var(--shadow);
+}
+.side-title {
+  color: var(--db-orange);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 800;
+  margin: 3px 0 10px;
+}
+.side a {
+  display: block;
+  color: var(--db-muted);
+  font-size: 13px;
+  line-height: 1.35;
+  padding: 7px 9px;
+  border-radius: 10px;
+  text-decoration: none;
+  border-left: 2px solid transparent;
+}
+.side a.level-3 { padding-left: 20px; font-size: 12px; }
+.side a:hover { color: var(--db-text); background: rgba(255,255,255,0.04); }
+.side a.active {
+  color: #fff;
+  background: rgba(255, 95, 70, 0.10);
+  border-left-color: var(--db-orange);
+}
+.content { min-width: 0; }
+.article {
+  background: rgba(17, 24, 39, 0.72);
+  border: 1px solid var(--db-border);
+  border-radius: 24px;
+  box-shadow: var(--shadow);
+  padding: 34px min(4.4vw, 58px);
+}
+.article > section, .article > div.section {
+  border-top: 1px solid rgba(148, 163, 184, 0.16);
+  margin-top: 34px;
+  padding-top: 20px;
+}
+.article > section:first-child, .article > div.section:first-child { border-top: 0; margin-top: 0; padding-top: 0; }
+h1, h2, h3, h4 {
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  scroll-margin-top: calc(var(--top-height) + 22px);
+}
+h1 { font-size: clamp(32px, 5vw, 56px); margin: 0 0 20px; }
+h2 {
+  font-size: clamp(26px, 3vw, 38px);
+  margin: 30px 0 14px;
+  color: #fff;
+}
+h2::before {
+  content: "";
+  display: inline-block;
+  width: 12px; height: 12px;
+  margin-right: 10px;
+  border-radius: 4px;
+  background: linear-gradient(135deg, var(--db-red), var(--db-orange));
+  vertical-align: 3px;
+}
+h3 {
+  font-size: clamp(19px, 2vw, 25px);
+  margin: 26px 0 12px;
+  color: #f9fafb;
+}
+h4 { font-size: 17px; margin: 20px 0 8px; color: #f8fafc; }
+p { margin: 10px 0; }
+strong { color: #fff; font-weight: 800; }
+em { color: #fef3c7; }
+ul, ol { padding-left: 1.4rem; }
+li { margin: 6px 0; }
+blockquote {
+  margin: 18px 0;
+  padding: 14px 18px;
+  border-left: 4px solid var(--db-orange);
+  background: rgba(255, 95, 70, 0.08);
+  border-radius: 12px;
+}
+table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+  border: 1px solid var(--db-border);
+  border-radius: 14px;
+  margin: 18px 0 24px;
+  background: rgba(2, 6, 23, 0.42);
+}
+th, td {
+  padding: 12px 14px;
+  vertical-align: top;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+  border-right: 1px solid rgba(148, 163, 184, 0.12);
+}
+th:last-child, td:last-child { border-right: 0; }
+tr:last-child td { border-bottom: 0; }
+th {
+  color: #fff;
+  background: linear-gradient(180deg, rgba(255, 95, 70, 0.18), rgba(255, 95, 70, 0.06));
+  font-size: 13px;
+  text-align: left;
+  letter-spacing: 0.03em;
+}
+code {
+  color: #fef3c7;
+  background: rgba(251, 191, 36, 0.10);
+  border: 1px solid rgba(251, 191, 36, 0.18);
+  padding: 0.12em 0.34em;
+  border-radius: 7px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.92em;
+}
+pre {
+  margin: 18px 0;
+  padding: 16px 18px;
+  overflow-x: auto;
+  border-radius: 16px;
+  background: #050914;
+  border: 1px solid var(--db-border-strong);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+}
+pre code { background: transparent; border: 0; padding: 0; color: #dbeafe; }
+.callout {
+  border: 1px solid rgba(52, 211, 153, 0.22);
+  background: rgba(52, 211, 153, 0.08);
+  border-radius: 16px;
+  padding: 14px 16px;
+  margin: 18px 0;
+}
+.kicker {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  color: #fed7aa;
+  background: rgba(255, 95, 70, 0.12);
+  border: 1px solid rgba(255, 95, 70, 0.24);
+  border-radius: 999px;
+  padding: 7px 10px;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 14px;
+}
+.hero-card {
+  margin-bottom: 22px;
+  border: 1px solid var(--db-border);
+  border-radius: 22px;
+  background: linear-gradient(135deg, rgba(255, 54, 33, 0.14), rgba(96, 165, 250, 0.08));
+  padding: 22px;
+}
+.hero-card p { color: var(--db-muted); max-width: 850px; }
+hr { border: 0; border-top: 1px solid var(--db-border); margin: 28px 0; }
+@media print {
+  .top-shell, .side { display: none; }
+  body { background: white; color: black; }
+  .layout { display: block; padding: 0; }
+  .article { border: 0; box-shadow: none; padding: 0; background: white; }
+  a { color: black; }
+}
+@media (max-width: 980px) {
+  :root { --top-height: 152px; }
+  .context-row { grid-template-columns: 1fr; gap: 10px; }
+  .actions { display: none; }
+  .layout { grid-template-columns: 1fr; }
+  .side { position: relative; top: auto; max-height: 260px; }
+  .article { padding: 24px 18px; }
+}
+</style>
+</head>
+<body>
+<header class="top-shell">
+  <div class="progress-wrap"><div class="progress-bar" id="progressBar"></div></div>
+  <div class="context-row">
+    <div class="brand">
+      <div class="brand-mark">DB</div>
+      <div class="brand-title">
+        <h1>FRER Interactions Details</h1>
+        <div class="subtitle">Databricks dark theme • PSFP, gates, meters, IPV, SDU</div>
+      </div>
+    </div>
+    <div class="context-card">
+      <div class="context-label">Current context</div>
+      <div class="context-text" id="contextText">FRER Interactions Details</div>
+    </div>
+    <div class="actions">
+      <button class="action-btn" onclick="window.print()">Print / Save PDF</button>
+      <button class="action-btn" onclick="window.scrollTo({top:0,behavior:'smooth'})">Top</button>
+    </div>
+  </div>
+  <nav class="nav-row" aria-label="Major sections">
+    <a class="nav-chip" href="#stream-filter-instance" data-target="stream-filter-instance">Stream Filter Instance</a>
+<a class="nav-chip" href="#maximum-sdu-filter" data-target="maximum-sdu-filter">Maximum SDU Filter</a>
+<a class="nav-chip" href="#stream-gate" data-target="stream-gate">Stream Gate</a>
+<a class="nav-chip" href="#ipv-result" data-target="ipv-result">IPV Result</a>
+<a class="nav-chip" href="#flow-meter" data-target="flow-meter">Flow Meter</a>
+  </nav>
+</header>
+<main class="layout">
+  <aside class="side" aria-label="Table of contents">
+    <div class="side-title">Contents</div>
+    <div id="toc"></div>
+  </aside>
+  <article class="content">
+    <div class="hero-card">
+      <div class="kicker">Training note</div>
+      <p>This standalone page preserves the converted Markdown content and adds top-bar context tracking. As you scroll, the header shows the active major section and subsection.</p>
+    </div>
+    <div class="article" id="article">
+<section id="frer-interactions-details" class="level1">
+<h1>FRER Interactions Details</h1>
+<section id="stream-filter-instance" class="level2">
+<h2>Stream Filter Instance</h2>
+<p>PSFP is the IEEE 802.1Qci mechanism that applies per-stream checks
+such as stream gates, flow meters, and maximum Service Data Unit size
+filtering. AUTOSAR’s Ethernet Switch Driver specification also describes
+stream filtering as the selection process that determines the stream
+gate, flow meter, maximum SDU filtering, and internal priority handling
+for a received frame.</p>
+<section id="1-what-a-stream-filter-instance-is" class="level3">
+<h3>1. What a stream filter instance is</h3>
+<p>A <strong>stream filter instance</strong> is the table entry that
+says:</p>
+<p>“For frames matching this stream handle and priority condition, apply
+this gate, this meter, this maximum SDU rule, and these
+counters/actions.”</p>
+<p>Conceptually:</p>
+<p>Frame arrives</p>
+<p>↓</p>
+<p>Ingress parser</p>
+<p>↓</p>
+<p>Stream identification assigns stream_handle</p>
+<p>↓</p>
+<p>Stream filter instance is selected</p>
+<p>↓</p>
+<p>Apply:</p>
+<ul>
+<li><p>stream gate</p></li>
+<li><p>flow meter</p></li>
+<li><p>maximum SDU check</p></li>
+<li><p>counters</p></li>
+<li><p>blocked-state logic</p></li>
+</ul>
+<p>↓</p>
+<p>Forward, drop, mark, or block</p>
+<p>So the stream filter instance is not the first classifier. It
+normally uses a <strong>stream handle</strong> that was already assigned
+by stream identification.</p>
+</section>
+<section id="2-meaning-of-each-field" class="level3">
+<h3>2. Meaning of each field</h3>
+<table>
+<thead>
+<tr class="header">
+<th><strong>Field</strong></th>
+<th><strong>Meaning</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Filter ID</strong></td>
+<td>Identifier of this stream filter table entry.</td>
+</tr>
+<tr class="even">
+<td><strong>stream_handle spec</strong></td>
+<td>Says which stream handle this filter applies to. It may be exact or
+wildcard-like depending on implementation/configuration.</td>
+</tr>
+<tr class="odd">
+<td><strong>priority spec</strong></td>
+<td>Says which priority values match. It may be a specific priority, for
+example priority 5, or wildcard priority, meaning any priority.</td>
+</tr>
+<tr class="even">
+<td><strong>gate ID</strong></td>
+<td>Points to the stream gate to use. The gate decides whether the frame
+is allowed by time window, open/closed state, optional IPV, and optional
+interval octet maximum.</td>
+</tr>
+<tr class="odd">
+<td><strong>meter ID</strong></td>
+<td>Points to the flow meter to use. The meter checks bandwidth behavior
+using CIR, CBS, EIR, EBS, color mode, and drop rules.</td>
+</tr>
+<tr class="even">
+<td><strong>maximum SDU size</strong></td>
+<td>Maximum allowed Service Data Unit size for frames matching this
+filter. Oversized frames are dropped.</td>
+</tr>
+<tr class="odd">
+<td><strong>counters</strong></td>
+<td>Counts passed frames, dropped frames, oversized frames, meter drops,
+gate drops, etc., depending on implementation.</td>
+</tr>
+<tr class="even">
+<td><strong>blocked-due-to-oversize controls</strong></td>
+<td>Optional behavior where an oversize violation can latch the stream
+into a blocked state.</td>
+</tr>
+</tbody>
+</table>
+<p>The IEEE 802.1Qcr draft material describes PSFP managed objects in
+terms of stream filters, stream gates, and stream filter specifications,
+which is the same conceptual structure: filters select the treatment,
+while gates and meters perform the actual gate/meter behavior. (<a
+href="https://1.ieee802.org/wp-content/uploads/2019/03/802-1Qcr-D0-5.pdf?utm_source=chatgpt.com">IEEE
+802</a>)</p>
+</section>
+<section id="3-simple-example" class="level3">
+<h3>3. Simple example</h3>
+<p>Assume the switch has already identified an incoming AVTP Control
+Format stream and assigned it a stream handle:</p>
+<p>stream_handle = ACF_STEERING_STATUS_A</p>
+<p>The stream filter table may contain:</p>
+<p>Filter ID: 17</p>
+<p>stream_handle: ACF_STEERING_STATUS_A</p>
+<p>priority spec: wildcard</p>
+<p>gate ID: Gate_5</p>
+<p>meter ID: Meter_5</p>
+<p>maximum SDU: 256 bytes</p>
+<p>This means:</p>
+<p>Any frame with stream_handle ACF_STEERING_STATUS_A</p>
+<p>regardless of received priority</p>
+<p>must pass Gate_5,</p>
+<p>must be checked by Meter_5,</p>
+<p>must not exceed 256 bytes.</p>
+<p>So the stream filter instance is the point where the stream’s
+<strong>policy package</strong> is attached.</p>
+</section>
+<section id="4-now-connect-this-to-frer" class="level3">
+<h3>4. Now connect this to FRER</h3>
+<p>With <strong>Frame Replication and Elimination for
+Reliability</strong>, or <strong>FRER</strong>, one original stream is
+replicated into multiple member streams.</p>
+<p>Original stream S</p>
+<p>↓</p>
+<p>FRER replication</p>
+<p>↓</p>
+<p>Member stream S-A over Path A</p>
+<p>Member stream S-B over Path B</p>
+<p>Ideally, the switch should treat the member streams
+intentionally.</p>
+<p>For example:</p>
+<p>S-A → stream_handle = ACF_STEERING_STATUS_A → Filter 17 → Meter_A</p>
+<p>S-B → stream_handle = ACF_STEERING_STATUS_B → Filter 18 → Meter_B</p>
+<p>or, if the design intentionally meters the recovered compound stream
+later:</p>
+<p>S-A and S-B pass toward FRER recovery</p>
+<p>FRER eliminates duplicate</p>
+<p>Recovered stream is metered once</p>
+<p>The dangerous case is accidental grouping.</p>
+</section>
+<section id="5-what-too-broad-wildcarding-means" class="level3">
+<h3>5. What “too broad wildcarding” means</h3>
+<p>Suppose the stream filter is configured too broadly:</p>
+<p>Filter ID: 30</p>
+<p>stream_handle: ANY</p>
+<p>priority spec: wildcard</p>
+<p>gate ID: Gate_ACF</p>
+<p>meter ID: Meter_ACF</p>
+<p>maximum SDU: 256 bytes</p>
+<p>This may accidentally match both FRER member streams:</p>
+<p>ACF_STEERING_STATUS_A → matches Filter 30</p>
+<p>ACF_STEERING_STATUS_B → matches Filter 30</p>
+<p>Now both redundant copies are sent through the <strong>same gate and
+same meter</strong>.</p>
+<p>Copy A, sequence 100 → Filter 30 → Meter_ACF</p>
+<p>Copy B, sequence 100 → Filter 30 → Meter_ACF</p>
+<p>The flow meter sees two frames, even though they are duplicates of
+the same original packet.</p>
+</section>
+<section id="6-why-this-is-a-problem" class="level3">
+<h3>6. Why this is a problem</h3>
+<p>Assume the original stream rate is:</p>
+<p>100 packets per second</p>
+<p>After FRER replication:</p>
+<p>Member stream A = 100 packets per second</p>
+<p>Member stream B = 100 packets per second</p>
+<p>If both are accidentally matched to the same filter and same meter
+before duplicate elimination, the meter sees:</p>
+<p>200 packets per second</p>
+<p>If the meter was configured for only the original 100 packets per
+second, then the replicated traffic may be wrongly classified as
+excessive.</p>
+<p>Result:</p>
+<p>Copy A consumes meter tokens</p>
+<p>Copy B consumes more meter tokens</p>
+<p>Later frames become yellow/red</p>
+<p>Red frames are dropped</p>
+<p>Yellow frames may be dropped if DropOnYellow is enabled</p>
+<p>So a perfectly valid FRER-protected stream can be damaged by a bad
+filter configuration.</p>
+</section>
+<section id="7-incorrect-stream-identification-case" class="level3">
+<h3>7. Incorrect stream identification case</h3>
+<p>The same problem can happen even without wildcarding if stream
+identification itself is wrong.</p>
+<p>Example intended mapping:</p>
+<p>Path A copy → stream_handle = STEERING_A</p>
+<p>Path B copy → stream_handle = STEERING_B</p>
+<p>Incorrect mapping:</p>
+<p>Path A copy → stream_handle = STEERING</p>
+<p>Path B copy → stream_handle = STEERING</p>
+<p>Now both member streams look identical to the stream filter
+stage:</p>
+<p>STEERING → Filter 10 → Meter_10</p>
+<p>STEERING → Filter 10 → Meter_10</p>
+<p>The stream filter cannot know that this grouping was accidental. It
+simply applies the configured policy.</p>
+</section>
+<section id="8-gate-related-accident" class="level3">
+<h3>8. Gate-related accident</h3>
+<p>The issue is not only metering. A too-broad filter can also attach
+the wrong stream gate.</p>
+<p>Suppose Path A and Path B have different expected arrival
+windows:</p>
+<p>Member stream A expected window: 100 µs to 130 µs</p>
+<p>Member stream B expected window: 140 µs to 170 µs</p>
+<p>Correct configuration:</p>
+<p>S-A → Gate_A</p>
+<p>S-B → Gate_B</p>
+<p>Incorrect wildcard configuration:</p>
+<p>S-A → Gate_A</p>
+<p>S-B → Gate_A</p>
+<p>Now member stream B may arrive correctly for its own path, but
+incorrectly for Gate_A:</p>
+<p>S-B arrives at 150 µs</p>
+<p>Gate_A closed at 150 µs</p>
+<p>S-B dropped</p>
+<p>This is a false timing violation created by wrong stream filter
+association.</p>
+</section>
+<section id="9-maximum-sdu-related-accident" class="level3">
+<h3>9. Maximum SDU-related accident</h3>
+<p>The same applies to maximum SDU size.</p>
+<p>Suppose two different member streams or stream classes have different
+expected sizes:</p>
+<p>Control ACF stream: max SDU = 128 bytes</p>
+<p>Diagnostic ACF stream: max SDU = 512 bytes</p>
+<p>A broad wildcard filter may accidentally apply the 128-byte rule to
+both:</p>
+<p>ACF_CONTROL_* and ACF_DIAG_* → same filter → max SDU 128 bytes</p>
+<p>Then a valid 300-byte diagnostic frame gets dropped as oversized,
+even though it is valid for its own stream contract.</p>
+</section>
+<section id="10-summary" class="level3">
+<h3>10. Summary</h3>
+<p>A <strong>stream filter instance</strong> selects the per-stream
+treatment for a frame after stream identification.</p>
+<p>It matches using a stream-handle specification and priority
+specification, then applies the configured stream gate, flow meter,
+maximum SDU check, counters, and optional blocked-state behavior.</p>
+<p>In an FRER design, this configuration must be precise.</p>
+<p>If stream identification is wrong, or if wildcard matching is too
+broad, multiple FRER member streams may accidentally share the same
+filter, gate, or meter.</p>
+<p>Then duplicate copies can consume the same meter budget, be tested
+against the wrong gate window, or be dropped by an inappropriate maximum
+SDU rule before FRER recovery has a chance to eliminate duplicates.</p>
+</section>
+</section>
+<section id="maximum-sdu-filter" class="level2">
+<h2>Maximum SDU Filter</h2>
+<p><strong>Maximum SDU filter</strong> means:</p>
+<p>For this identified stream, the switch is told: “Do not allow frames
+whose service data unit is larger than this configured size.”</p>
+<p>Here <strong>SDU</strong> means <strong>Service Data Unit</strong>.
+In simple terms, it is the useful payload portion being checked for that
+stream, not the whole physical Ethernet frame including every link-layer
+overhead byte.</p>
+<section id="1-what-the-filter-does" class="level3">
+<h3>1. What the filter does</h3>
+<p>Suppose a stream is configured like this:</p>
+<p>Stream: ACF_BRAKE_STATUS</p>
+<p>Maximum SDU size: 128 bytes</p>
+<p>Action: Drop if SDU &gt; 128 bytes</p>
+<p>Then:</p>
+<p>Frame with SDU = 80 bytes → pass</p>
+<p>Frame with SDU = 120 bytes → pass</p>
+<p>Frame with SDU = 180 bytes → drop</p>
+<p>This is useful because many deterministic streams should have a known
+maximum size. For example, a small control-status stream should not
+suddenly send a 900-byte payload.</p>
+</section>
+<section id="2-where-the-confusion-comes-from" class="level3">
+<h3>2. Where the confusion comes from</h3>
+<p>You wrote:</p>
+<p>FRER cannot recover a talker-wide oversize fault because both
+redundant copies contain the same oversize frame.</p>
+<p>This means the fault is created <strong>before</strong> Frame
+Replication and Elimination for Reliability, or <strong>FRER</strong>,
+has a chance to help.</p>
+<p>FRER works like this:</p>
+<p>Talker sends one valid frame</p>
+<p>↓</p>
+<p>FRER sequence generation / replication</p>
+<p>↓</p>
+<p>Copy A goes on path A</p>
+<p>Copy B goes on path B</p>
+<p>↓</p>
+<p>Listener / recovery function accepts first good copy</p>
+<p>and discards the duplicate</p>
+<p>FRER protects against problems such as:</p>
+<p>Path A loses the frame</p>
+<p>Path B still delivers it</p>
+<p>→ FRER recovers</p>
+<p>But it cannot protect against:</p>
+<p>Talker creates an invalid oversized frame</p>
+<p>Both replicated copies are oversized</p>
+<p>Both copies violate the Maximum SDU filter</p>
+<p>Both copies are dropped</p>
+<p>→ no valid copy remains</p>
+</section>
+<section id="3-concrete-example" class="level3">
+<h3>3. Concrete example</h3>
+<p>Assume this stream contract:</p>
+<p>Stream name: ACF_CAN_TUNNEL_01</p>
+<p>Expected maximum SDU: 256 bytes</p>
+<p>FRER replication: enabled</p>
+<p>Path A: Switch 1 → Switch 3</p>
+<p>Path B: Switch 2 → Switch 4</p>
+<p>Normal case:</p>
+<p>Talker creates SDU = 180 bytes</p>
+<p>copy A = 180 bytes → passes Maximum SDU filter</p>
+<p>Talker</p>
+<p>copy B = 180 bytes → passes Maximum SDU filter</p>
+<p>FRER recovery accepts one copy and discards the duplicate.</p>
+<p>Oversize fault case:</p>
+<p>Talker bug creates SDU = 400 bytes</p>
+<p>copy A = 400 bytes → dropped by Maximum SDU filter</p>
+<p>Talker</p>
+<p>copy B = 400 bytes → dropped by Maximum SDU filter</p>
+<p>FRER recovery receives no acceptable copy.</p>
+<p>So the issue is not that one redundant path failed. The issue is that
+the <strong>source produced a bad frame</strong>, and FRER faithfully
+replicated that bad frame.</p>
+</section>
+<section id="4-why-this-is-called-a-talker-wide-fault" class="level3">
+<h3>4. Why this is called a talker-wide fault</h3>
+<p>A <strong>talker-wide fault</strong> means the error is already
+present at the Talker output.</p>
+<p>Bad frame generated once</p>
+<p>↓</p>
+<p>FRER creates two copies of the same bad frame</p>
+<p>↓</p>
+<p>Both copies are bad</p>
+<p>This is different from a path-specific fault:</p>
+<p>Good frame generated once</p>
+<p>↓</p>
+<p>FRER creates two good copies</p>
+<p>↓</p>
+<p>Path A corrupts/drops one copy</p>
+<p>Path B delivers one good copy</p>
+<p>↓</p>
+<p>FRER succeeds</p>
+<p>FRER is excellent for <strong>path diversity faults</strong>. It is
+not a cure for <strong>common-mode faults</strong>, where every
+replicated copy has the same defect.</p>
+</section>
+<section id="5-what-optionally-latch-a-stream-blocked-state-means"
+class="level3">
+<h3>5. What “optionally latch a stream-blocked state” means</h3>
+<p>Some configurations do more than simply drop the oversized frame.</p>
+<p>They may say:</p>
+<p>If this stream ever sends an oversized SDU,</p>
+<p>mark the stream as blocked.</p>
+<p>Then the switch behavior becomes:</p>
+<p>First oversized frame arrives</p>
+<p>↓</p>
+<p>Drop that frame</p>
+<p>↓</p>
+<p>Set stream-blocked state</p>
+<p>↓</p>
+<p>Drop future frames from the same stream,</p>
+<p>even if later frames are normal,</p>
+<p>until management/reset clears the blocked state</p>
+<p>This is useful for safety/security because a stream that violates its
+size contract may indicate:</p>
+<p>faulty Talker software</p>
+<p>wrong configuration</p>
+<p>malicious injection</p>
+<p>wrong encapsulation</p>
+<p>broken gateway</p>
+</section>
+<section id="6-why-frer-cannot-fix-this" class="level3">
+<h3>6. Why FRER cannot fix this</h3>
+<p>FRER does not:</p>
+<p>shrink oversized frames</p>
+<p>fragment oversized frames</p>
+<p>repair invalid payload sizes</p>
+<p>generate a replacement frame</p>
+<p>override stream policing</p>
+<p>FRER only says:</p>
+<p>If multiple valid redundant copies arrive,</p>
+<p>accept one and eliminate duplicates.</p>
+<p>But in the oversize case:</p>
+<p>copy A is invalid</p>
+<p>copy B is invalid</p>
+<p>So there is no valid copy for FRER to select.</p>
+</section>
+<section id="7-summary" class="level3">
+<h3>7. Summary</h3>
+<p><strong>The Maximum SDU filter enforces the stream’s allowed packet
+size. If the Talker itself creates an oversized frame, FRER replicates
+the same oversized frame onto all redundant paths. Since every copy
+violates the same size rule, every copy is dropped, so FRER has nothing
+left to recover.</strong></p>
+</section>
+</section>
+<section id="stream-gate" class="level2">
+<h2>Stream Gate</h2>
+<p>A <strong>stream gate</strong> can independently block or pass each
+replicated FRER member stream. If one redundant copy arrives at a switch
+at the wrong time, that copy may be dropped by its stream gate, but the
+other redundant copy on the other path may still arrive inside its valid
+gate window and reach the FRER recovery point.</p>
+<section id="1-what-a-stream-gate-is" class="level3">
+<h3>1. What a stream gate is</h3>
+<p>A <strong>stream gate</strong> is a per-stream decision point in
+<strong>Per-Stream Filtering and Policing</strong>, often called
+<strong>PSFP</strong> or <strong>IEEE 802.1Qci</strong>.</p>
+<p>After a frame is identified as belonging to a stream, the stream
+filter can point to a stream gate. The gate can then decide whether the
+frame is allowed to continue.</p>
+<p>Conceptually:</p>
+<p>Ingress frame</p>
+<p>↓</p>
+<p>Stream identification</p>
+<p>↓</p>
+<p>Stream filter</p>
+<p>↓</p>
+<p>Stream gate</p>
+<p>↓</p>
+<p>Pass or drop</p>
+<p>A stream gate can have:</p>
+<table>
+<thead>
+<tr class="header">
+<th><strong>Stream gate property</strong></th>
+<th><strong>Meaning</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Open / closed state</strong></td>
+<td>If open, matching frames can pass. If closed, matching frames are
+blocked.</td>
+</tr>
+<tr class="even">
+<td><strong>IPV</strong></td>
+<td>Internal Priority Value used for traffic-class selection. AUTOSAR
+describes EthSwtStreamGateIPV as the internal priority value that
+determines the assigned traffic class, with range 0 to 7.</td>
+</tr>
+<tr class="odd">
+<td><strong>Optional control list</strong></td>
+<td>A time schedule saying when the gate is open or closed.</td>
+</tr>
+<tr class="even">
+<td><strong>Optional interval octet maximum</strong></td>
+<td>A byte budget for a gate interval. Even if the gate is open, too
+many bytes in that interval can cause later frames to be blocked or
+dropped.</td>
+</tr>
+</tbody>
+</table>
+<p>AUTOSAR’s switch model shows the same processing idea: PSFP is an
+optional frame-processing stage, and a stream gate table contains stream
+gate configurations referenced by stream filter entries. (<a
+href="https://www.autosar.org/fileadmin/standards/R23-11/CP/AUTOSAR_CP_SWS_EthernetSwitchDriver.pdf">autosar.org</a>)</p>
+</section>
+<section id="2-simple-example-without-frer" class="level3">
+<h3>2. Simple example without FRER</h3>
+<p>Assume a stream gate is configured like this:</p>
+<p>Stream: ACF_BRAKE_STATUS</p>
+<p>Gate open window: 100 µs to 140 µs in every cycle</p>
+<p>Gate closed outside that window</p>
+<p>Now frames arrive:</p>
+<p>Frame arrives at 110 µs → gate open → pass</p>
+<p>Frame arrives at 155 µs → gate closed → drop</p>
+<p>This is a <strong>timing mismatch</strong>. The frame may be
+semantically correct, its sequence number may be correct, and its size
+may be correct. But it arrived outside the gate’s allowed time
+window.</p>
+</section>
+<section id="3-now-add-frer" class="level3">
+<h3>3. Now add FRER</h3>
+<p>With <strong>Frame Replication and Elimination for
+Reliability</strong>, or <strong>FRER</strong>, one original stream is
+replicated into multiple <strong>member streams</strong> sent over
+different paths. IEEE describes 802.1CB as supporting identification and
+replication of frames for redundant transmission, identification of
+duplicates, and elimination of duplicates. (<a
+href="https://1.ieee802.org/tsn/802-1cb/?utm_source=chatgpt.com">IEEE
+802</a>)</p>
+<p>Example:</p>
+<p>Original stream S</p>
+<p>↓</p>
+<p>FRER replication</p>
+<p>↓</p>
+<p>Member stream S-A → Path A</p>
+<p>Member stream S-B → Path B</p>
+<p>At the receiver or recovery point:</p>
+<p>If S-A arrives first and is valid → accept S-A, discard later
+duplicate S-B</p>
+<p>If S-A is lost/dropped but S-B arrives → accept S-B</p>
+<p>If both are dropped → recovery fails</p>
+<p>If one member stream may be blocked by a timing mismatch while the
+other member stream still recovers the packet.</p>
+<p>Original packet sequence number = 51</p>
+<p>FRER creates two copies:</p>
+<p>Copy A: member stream S-A, path A</p>
+<p>Copy B: member stream S-B, path B</p>
+<p>Now each path has its own stream gate behavior.</p>
+<p>Path A gate window: 100 µs to 140 µs</p>
+<p>Path B gate window: 130 µs to 170 µs</p>
+<p>Actual arrival:</p>
+<p>Copy A arrives at 150 µs</p>
+<p>→ Path A stream gate is closed</p>
+<p>→ Copy A is dropped</p>
+<p>Copy B arrives at 145 µs</p>
+<p>→ Path B stream gate is open</p>
+<p>→ Copy B passes</p>
+<p>→ FRER recovery receives sequence number 51</p>
+<p>→ Packet is recovered</p>
+<p>One redundant copy was blocked because it arrived outside its
+configured gate window.</p>
+<p>The other redundant copy still passed through its own gate.</p>
+<p>Therefore FRER still had one valid copy to deliver.</p>
+</section>
+<section id="5-why-this-is-different-from-the-maximum-sdu-case"
+class="level3">
+<h3>5. Why this is different from the Maximum SDU case</h3>
+<p>This is the key distinction.</p>
+</section>
+<section id="maximum-sdu-oversize-fault" class="level3">
+<h3>Maximum SDU oversize fault</h3>
+<p>Talker creates bad oversized packet</p>
+<p>↓</p>
+<p>FRER replicates bad packet</p>
+<p>↓</p>
+<p>Copy A oversized → dropped</p>
+<p>Copy B oversized → dropped</p>
+<p>↓</p>
+<p>No recovery</p>
+<p>That is a <strong>common-mode fault</strong>. Both copies are bad
+before path separation.</p>
+</section>
+<section id="stream-gate-timing-mismatch" class="level3">
+<h3>Stream gate timing mismatch</h3>
+<p>Talker creates valid packet</p>
+<p>↓</p>
+<p>FRER replicates valid packet</p>
+<p>↓</p>
+<p>Copy A arrives at wrong gate time → dropped</p>
+<p>Copy B arrives at correct gate time → passes</p>
+<p>↓</p>
+<p>FRER recovery succeeds</p>
+<p>That is a <strong>path-specific timing fault</strong>. One redundant
+path failed the timing rule, but the other path did not.</p>
+</section>
+<section id="6-interval-octet-maximum-case" class="level3">
+<h3>6. Interval octet maximum case</h3>
+<p>A stream gate may also have an <strong>interval octet
+maximum</strong>, meaning a byte budget for a time interval.</p>
+<p>Example:</p>
+<p>Gate interval: 100 µs to 200 µs</p>
+<p>Interval octet maximum: 500 bytes</p>
+<p>Frames in that interval:</p>
+<p>Frame 1 = 200 bytes → pass, used budget = 200</p>
+<p>Frame 2 = 200 bytes → pass, used budget = 400</p>
+<p>Frame 3 = 200 bytes → exceeds 500-byte budget → drop</p>
+<p>In FRER:</p>
+<p>Path A gate budget already consumed</p>
+<p>Copy A exceeds interval octet maximum → dropped</p>
+<p>Path B gate budget still available</p>
+<p>Copy B passes → FRER recovers</p>
+<p>So the same idea applies: <strong>one member stream can be blocked by
+its local gate condition, while the other member stream
+survives.</strong></p>
+</section>
+<section id="7-summary-1" class="level3">
+<h3>7. Summary</h3>
+<p>A <strong>stream gate</strong> is a per-stream pass/drop control
+point. It may block frames because the gate is closed, because the frame
+arrived outside its scheduled open window, or because the interval byte
+budget has been exceeded. In an FRER design, each redundant copy is
+carried as a separate member stream on a separate path. Therefore, one
+member stream can be dropped by a stream gate on one path, while the
+other member stream passes through a different gate on another path.
+FRER can then recover the packet from the surviving copy.</p>
+</section>
+</section>
+<section id="ipv-result" class="level2">
+<h2>IPV Result</h2>
+<p>The <strong>IPV result</strong> is the priority value produced by the
+stream gate. It can either be <strong>null</strong>, meaning “do not
+override priority,” or a configured <strong>internal priority
+value</strong>, meaning “use this priority inside the switch for
+traffic-class and queue selection.”</p>
+<p>Here <strong>IPV</strong> means <strong>Internal Priority
+Value</strong>.</p>
+<section id="1-what-null-or-internal-priority-value-means"
+class="level3">
+<h3>1. What “null or internal priority value” means</h3>
+<p>A stream gate can produce one of two outcomes:</p>
+<p>IPV result = null</p>
+<p>or:</p>
+<p>IPV result = 0, 1, 2, 3, 4, 5, 6, or 7</p>
+<p>If the IPV result is <strong>null</strong>, the switch continues
+using the frame’s normal priority. That normal priority may have come
+from the received VLAN <strong>PCP</strong>, or from ingress default
+priority, or from priority regeneration.</p>
+<p>If the IPV result is a number, the switch uses that number as the
+<strong>internal priority</strong> for traffic-class selection.</p>
+</section>
+<section id="2-what-overrides-received-priority-means" class="level3">
+<h3>2. What “overrides received priority” means</h3>
+<p>Suppose an incoming AVTP/ACF frame arrives with:</p>
+<p>Received VLAN PCP = 2</p>
+<p>Normally the switch may do:</p>
+<p>PCP 2 → internal priority 2 → Traffic Class 2 → Queue 2</p>
+<p>But if the stream gate says:</p>
+<p>IPV result = 5</p>
+<p>then the switch does:</p>
+<p>Received PCP 2</p>
+<p>↓</p>
+<p>Stream filter matches protected stream</p>
+<p>↓</p>
+<p>Stream gate gives IPV = 5</p>
+<p>↓</p>
+<p>Use internal priority 5 for traffic-class selection</p>
+<p>↓</p>
+<p>Traffic Class 5 → Queue 5</p>
+<p>So the frame came in with <strong>PCP 2</strong>, but inside the
+switch it is treated as priority <strong>5</strong> for selecting the
+queue.</p>
+</section>
+<section id="3-for-traffic-class-selection-only-is-very-important"
+class="level3">
+<h3>3. “For traffic-class selection only” is very important</h3>
+<p>This does <strong>not automatically mean</strong> the switch rewrites
+the outgoing VLAN PCP field.</p>
+<p>It means:</p>
+<p>Use IPV to choose internal traffic class / queue / scheduler
+treatment.</p>
+<p>It does not necessarily mean:</p>
+<p>Change the VLAN PCP bits in the transmitted Ethernet frame.</p>
+<p>Those are separate operations.</p>
+<table>
+<thead>
+<tr class="header">
+<th><strong>Operation</strong></th>
+<th><strong>Meaning</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>IPV override</strong></td>
+<td>Internal decision: which traffic class or queue should this frame
+use?</td>
+</tr>
+<tr class="even">
+<td><strong>PCP rewrite / remarking</strong></td>
+<td>External on-wire decision: what PCP value should be transmitted in
+the outgoing VLAN tag?</td>
+</tr>
+</tbody>
+</table>
+<p>So this is possible:</p>
+<p>Ingress PCP = 2</p>
+<p>IPV = 5</p>
+<p>Internal queue = TC5</p>
+<p>Egress PCP still = 2</p>
+<p>Or, if the switch is separately configured to remark PCP:</p>
+<p>Ingress PCP = 2</p>
+<p>IPV = 5</p>
+<p>Internal queue = TC5</p>
+<p>Egress PCP rewritten to 5</p>
+<p>But the IPV itself is about <strong>internal traffic-class
+selection</strong>.</p>
+</section>
+<section id="4-why-this-is-useful-for-protected-streams" class="level3">
+<h3>4. Why this is useful for protected streams</h3>
+<p>Now consider a protected FRER stream.</p>
+<p>A Talker sends the same packet through two redundant paths:</p>
+<p>Original stream</p>
+<p>↓</p>
+<p>FRER replication</p>
+<p>↓</p>
+<p>Member stream A over Path A</p>
+<p>Member stream B over Path B</p>
+<p>Because of VLAN translation, ingress port defaults, or PCP rewriting,
+the two copies may arrive with different PCP values:</p>
+<p>Copy A arrives with PCP 3</p>
+<p>Copy B arrives with PCP 5</p>
+<p>Without IPV override, the switch may place them into different
+queues:</p>
+<p>Copy A → PCP 3 → TC3</p>
+<p>Copy B → PCP 5 → TC5</p>
+<p>That can create unequal delay, jitter, or even cause one copy to miss
+a gate window.</p>
+<p>With IPV configured:</p>
+<p>Stream gate IPV = 5</p>
+<p>both copies can be forced into the intended internal traffic
+class:</p>
+<p>Copy A: PCP 3 → IPV 5 → TC5</p>
+<p>Copy B: PCP 5 → IPV 5 → TC5</p>
+<p>This keeps the protected stream’s internal treatment consistent even
+if the received PCP is not consistent.</p>
+</section>
+<section id="5-example-with-acf-and-frer" class="level3">
+<h3>5. Example with ACF and FRER</h3>
+<p>Assume:</p>
+<p>Stream: ACF_STEERING_STATUS</p>
+<p>Expected queue: TC5</p>
+<p>FRER: enabled</p>
+<p>Path A copy arrives:</p>
+<p>VLAN PCP = 3</p>
+<p>Stream ID = ACF_STEERING_STATUS_A</p>
+<p>Path B copy arrives:</p>
+<p>VLAN PCP = 4</p>
+<p>Stream ID = ACF_STEERING_STATUS_B</p>
+<p>The switch stream gate is configured:</p>
+<p>For both member streams:</p>
+<p>IPV result = 5</p>
+<p>Then the switch behavior is:</p>
+<p>Copy A:</p>
+<p>PCP 3 received</p>
+<p>stream gate IPV = 5</p>
+<p>TC5 selected</p>
+<p>Copy B:</p>
+<p>PCP 4 received</p>
+<p>stream gate IPV = 5</p>
+<p>TC5 selected</p>
+<p>So even though the two copies arrived with different PCP values, both
+receive the same internal queue treatment.</p>
+</section>
+<section id="6-why-this-matters-with-pcp-rewriting" class="level3">
+<h3>6. Why this matters with PCP rewriting</h3>
+<p>PCP may be changed at network boundaries. For example:</p>
+<p>ECU sends PCP 5</p>
+<p>Gateway rewrites PCP to 3</p>
+<p>Switch ingress default maps untagged frame to priority 2</p>
+<p>Another bridge regenerates priority differently</p>
+<p>If your safety or time-sensitive stream depends only on received PCP,
+this is fragile.</p>
+<p>IPV allows the stream filter/gate to say:</p>
+<p>I have already identified this as the protected stream.</p>
+<p>Regardless of the received PCP, put it in the intended internal
+queue.</p>
+<p>This is why the line says:</p>
+<p>Useful when a protected stream must be placed in a specific queue
+regardless of PCP rewriting.</p>
+</section>
+<section id="7-summary-2" class="level3">
+<h3>7. Summary</h3>
+<p><strong>The IPV result is the stream gate’s optional
+internal-priority override. If it is null, the switch uses the frame’s
+normal regenerated priority. If it is a configured value, the switch
+uses that value to select the traffic class and queue. This is useful
+for FRER/TSN protected streams because the stream can be classified into
+the intended queue even if the received VLAN PCP has been changed,
+removed, or regenerated differently along the path.</strong></p>
+</section>
+</section>
+<section id="flow-meter" class="level2">
+<h2>Flow Meter</h2>
+<p>A <strong>flow meter</strong> checks whether a stream is using more
+bandwidth than allowed. If <strong>Frame Replication and Elimination for
+Reliability</strong>, or <strong>FRER</strong>, duplicate copies are
+metered <strong>before duplicate elimination</strong>, both copies can
+consume the meter’s token budget even though only one copy will finally
+be delivered.</p>
+<section id="1-what-the-flow-meter-does" class="level3">
+<h3>1. What the flow meter does</h3>
+<p>A <strong>flow meter</strong> is part of <strong>Per-Stream Filtering
+and Policing</strong>, also called <strong>PSFP</strong> or <strong>IEEE
+802.1Qci</strong>.</p>
+<p>It checks whether a stream is behaving within its configured
+bandwidth profile.</p>
+<p>Conceptually:</p>
+<p>Frame arrives</p>
+<p>↓</p>
+<p>Stream identification</p>
+<p>↓</p>
+<p>Stream filter</p>
+<p>↓</p>
+<p>Stream gate</p>
+<p>↓</p>
+<p>Flow meter</p>
+<p>↓</p>
+<p>Pass, mark, or drop</p>
+<p>The flow meter is usually based on a token-bucket style model.</p>
+</section>
+<section id="2-meaning-of-cir-cbs-eir-ebs" class="level3">
+<h3>2. Meaning of CIR, CBS, EIR, EBS</h3>
+<table>
+<thead>
+<tr class="header">
+<th><strong>Parameter</strong></th>
+<th><strong>Expansion</strong></th>
+<th><strong>Meaning</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>CIR</strong></td>
+<td>Committed Information Rate</td>
+<td>The guaranteed/expected rate for the stream</td>
+</tr>
+<tr class="even">
+<td><strong>CBS</strong></td>
+<td>Committed Burst Size</td>
+<td>How much committed burst traffic is allowed</td>
+</tr>
+<tr class="odd">
+<td><strong>EIR</strong></td>
+<td>Excess Information Rate</td>
+<td>Extra rate allowed above committed rate</td>
+</tr>
+<tr class="even">
+<td><strong>EBS</strong></td>
+<td>Excess Burst Size</td>
+<td>How much excess burst traffic is allowed</td>
+</tr>
+</tbody>
+</table>
+<p>A simplified two-bucket view is:</p>
+<p>Committed bucket:</p>
+<p>filled at CIR</p>
+<p>maximum size = CBS</p>
+<p>Excess bucket:</p>
+<p>filled at EIR</p>
+<p>maximum size = EBS</p>
+<p>When a frame arrives, the meter checks whether enough tokens
+exist.</p>
+<p>Enough committed tokens → green frame</p>
+<p>No committed tokens,</p>
+<p>but enough excess tokens → yellow frame</p>
+<p>Not enough tokens → red frame</p>
+<p>Then the configuration decides what to do.</p>
+<p>green → pass</p>
+<p>yellow → pass or drop, depending on DropOnYellow</p>
+<p>red → drop</p>
+</section>
+<section id="3-what-the-controls-mean" class="level3">
+<h3>3. What the controls mean</h3>
+</section>
+<section id="cir-and-cbs" class="level3">
+<h3>CIR and CBS</h3>
+<p>These define the normal allowed bandwidth.</p>
+<p>Example:</p>
+<p>CIR = 10 Mb/s</p>
+<p>CBS = 1500 bytes</p>
+<p>This means the stream is expected to behave like a 10 Mb/s stream,
+with a limited burst allowance.</p>
+</section>
+<section id="eir-and-ebs" class="level3">
+<h3>EIR and EBS</h3>
+<p>These define additional excess bandwidth.</p>
+<p>Example:</p>
+<p>EIR = 2 Mb/s</p>
+<p>EBS = 500 bytes</p>
+<p>This means the stream may temporarily exceed the committed rate, but
+only within the excess allowance.</p>
+</section>
+<section id="coupling-flag" class="level3">
+<h3>Coupling flag</h3>
+<p>The <strong>coupling flag</strong> controls interaction between the
+committed bucket and the excess bucket.</p>
+<p>A practical way to understand it:</p>
+<p>If the committed bucket is already full,</p>
+<p>can unused committed-rate token generation help the excess
+bucket?</p>
+<p>Depending on the configured coupling behavior, unused committed
+capacity may or may not contribute to excess allowance.</p>
+</section>
+<section id="color-mode" class="level3">
+<h3>Color mode</h3>
+<p>The meter can be:</p>
+<p>color-blind</p>
+<p>or:</p>
+<p>color-aware</p>
+<p>In <strong>color-blind</strong> mode, the meter ignores any previous
+color/classification and meters the frame afresh.</p>
+<p>In <strong>color-aware</strong> mode, the frame may already carry an
+internal color state such as green, yellow, or red from an earlier
+policing stage, and the meter takes that into account.</p>
+</section>
+<section id="droponyellow" class="level3">
+<h3>DropOnYellow</h3>
+<p>This controls whether yellow frames are allowed.</p>
+<p>DropOnYellow = false</p>
+<p>green passes</p>
+<p>yellow passes</p>
+<p>red drops</p>
+<p>DropOnYellow = true</p>
+<p>green passes</p>
+<p>yellow drops</p>
+<p>red drops</p>
+<p>So <strong>DropOnYellow</strong> makes the meter stricter.</p>
+</section>
+<section id="markallframesred" class="level3">
+<h3>MarkAllFramesRed</h3>
+<p>This is a control that forces all frames to be treated as red.</p>
+<p>In effect:</p>
+<p>MarkAllFramesRed enabled</p>
+<p>↓</p>
+<p>all matching frames become red</p>
+<p>↓</p>
+<p>red frames are discarded</p>
+<p>This can be used for blocking, diagnostics, fault containment, or
+management-controlled shutdown of a stream.</p>
+</section>
+<section id="4-now-connect-this-to-frer-1" class="level3">
+<h3>4. Now connect this to FRER</h3>
+<p>With <strong>FRER</strong>, the same original packet is
+replicated.</p>
+<p>Original packet, sequence number 100</p>
+<p>↓</p>
+<p>FRER replication</p>
+<p>↓</p>
+<p>Copy A, sequence number 100 → Path A</p>
+<p>Copy B, sequence number 100 → Path B</p>
+<p>At the recovery point, FRER should accept one copy and discard the
+duplicate.</p>
+<p>Copy A arrives first → accept</p>
+<p>Copy B arrives later → duplicate, discard</p>
+<p>That is normal FRER behavior.</p>
+</section>
+<section id="5-the-problem-meter-before-recovery" class="level3">
+<h3>5. The problem: meter before recovery</h3>
+<p>Now assume the flow meter is placed <strong>before</strong> the FRER
+recovery function.</p>
+<p>Copy A arrives</p>
+<p>↓</p>
+<p>Flow meter</p>
+<p>↓</p>
+<p>FRER recovery</p>
+<p>Copy B arrives</p>
+<p>↓</p>
+<p>Flow meter</p>
+<p>↓</p>
+<p>FRER recovery</p>
+<p>The meter does not yet know that Copy B will later be eliminated as a
+duplicate. To the meter, Copy B is just another frame consuming
+bandwidth.</p>
+<p>So both copies may consume meter budget.</p>
+<p>Copy A consumes tokens</p>
+<p>Copy B also consumes tokens</p>
+<p>FRER later discards Copy B as duplicate</p>
+<p><strong>Duplicate copies may consume meter budget before duplicate
+elimination if the meter is before recovery.</strong></p>
+</section>
+<section id="6-concrete-example" class="level3">
+<h3>6. Concrete example</h3>
+<p>Assume:</p>
+<p>Original stream rate: 100 frames per second</p>
+<p>FRER replication: 2 copies per original frame</p>
+<p>Meter placed before FRER recovery</p>
+<p>Meter budget: sized for 100 frames per second</p>
+<p>The Talker sends:</p>
+<p>Packet 1 → replicated into Copy A1 and Copy B1</p>
+<p>Packet 2 → replicated into Copy A2 and Copy B2</p>
+<p>Packet 3 → replicated into Copy A3 and Copy B3</p>
+<p>The meter sees:</p>
+<p>A1, B1, A2, B2, A3, B3 ...</p>
+<p>So the meter sees <strong>200 frames per second</strong>, even though
+the application intended only <strong>100 original packets per
+second</strong>.</p>
+<p>Result:</p>
+<p>Meter budget is consumed twice as fast</p>
+<p>Some valid copies may become yellow or red</p>
+<p>Red copies are dropped</p>
+<p>Yellow copies may also be dropped if DropOnYellow is enabled</p>
+<p>This can cause false policing.</p>
+</section>
+<section id="7-why-this-matters" class="level3">
+<h3>7. Why this matters</h3>
+<p>Suppose the meter has enough tokens for only one 500-byte packet in
+the current interval.</p>
+<p>Available committed tokens = 500 bytes</p>
+<p>Packet size = 500 bytes</p>
+<p>FRER copies arrive:</p>
+<p>Copy A = 500 bytes</p>
+<p>Copy B = 500 bytes</p>
+<p>Meter-before-recovery behavior:</p>
+<p>Copy A:</p>
+<p>consumes 500 tokens</p>
+<p>marked green</p>
+<p>passes</p>
+<p>Copy B:</p>
+<p>no committed tokens left</p>
+<p>may become yellow or red</p>
+<p>may be dropped</p>
+<p>FRER recovery:</p>
+<p>accepts Copy A</p>
+<p>would have discarded Copy B anyway</p>
+<p>Here, the immediate packet still survives.</p>
+<p>But now consider the next original packet:</p>
+<p>Copy A of next packet arrives</p>
+<p>tokens are still depleted</p>
+<p>frame may become yellow or red</p>
+<p>may be dropped</p>
+<p>So the duplicate copy wasted meter budget and can indirectly harm
+later non-duplicate frames.</p>
+</section>
+<section id="8-better-ordering-recovery-before-meter" class="level3">
+<h3>8. Better ordering: recovery before meter</h3>
+<p>If the design allows FRER recovery before metering, the pipeline
+becomes:</p>
+<p>Copy A arrives</p>
+<p>↓</p>
+<p>FRER recovery accepts sequence 100</p>
+<p>↓</p>
+<p>Flow meter meters one delivered packet</p>
+<p>Copy B arrives</p>
+<p>↓</p>
+<p>FRER recovery detects duplicate sequence 100</p>
+<p>↓</p>
+<p>Duplicate discarded before flow meter</p>
+<p>Now the meter only sees:</p>
+<p>one frame per original packet</p>
+<p>That is usually the cleaner behavior if the meter is intended to
+police the <strong>compound recovered stream</strong>, not the
+individual member streams.</p>
+</section>
+<section id="9-but-sometimes-metering-before-recovery-is-intentional"
+class="level3">
+<h3>9. But sometimes metering before recovery is intentional</h3>
+<p>Metering before recovery is not automatically wrong.</p>
+<p>It may be intentional if the designer wants to police each
+<strong>member stream</strong> separately.</p>
+<p>Example:</p>
+<p>Member stream A on Path A has its own meter</p>
+<p>Member stream B on Path B has its own meter</p>
+<p>Then each path is checked independently:</p>
+<p>Path A meter checks whether member stream A is behaving</p>
+<p>Path B meter checks whether member stream B is behaving</p>
+<p>This can be useful when each redundant path has its own bandwidth
+contract.</p>
+<p>The danger appears when duplicated traffic is metered as if every
+copy were an independent original packet, especially when the meter
+budget was configured for the original stream rate rather than the
+replicated rate.</p>
+</section>
+<section id="10-summary-1" class="level3">
+<h3>10. Summary</h3>
+<p>A <strong>flow meter</strong> enforces the bandwidth contract of a
+stream using committed and excess token-bucket parameters. Frames are
+classified as green, yellow, or red. Red frames are discarded, and
+yellow frames may also be discarded depending on configuration. In an
+FRER system, if the flow meter is located before the FRER recovery
+function, both redundant copies of the same original packet can consume
+meter tokens. The later duplicate may be eliminated by FRER, but by then
+it has already consumed meter budget. This can cause unnecessary
+yellow/red marking or drops unless the meter is sized for replicated
+traffic, applied separately per member stream, or placed after duplicate
+elimination.</p>
+</section>
+</section>
+</section>
+
+    </div>
+  </article>
+</main>
+<script>
+const headings = [{"level": 1, "text": "FRER Interactions Details", "id": "frer-interactions-details"}, {"level": 2, "text": "Stream Filter Instance", "id": "stream-filter-instance"}, {"level": 3, "text": "1. What a stream filter instance is", "id": "1-what-a-stream-filter-instance-is"}, {"level": 3, "text": "2. Meaning of each field", "id": "2-meaning-of-each-field"}, {"level": 3, "text": "3. Simple example", "id": "3-simple-example"}, {"level": 3, "text": "4. Now connect this to FRER", "id": "4-now-connect-this-to-frer"}, {"level": 3, "text": "5. What “too broad wildcarding” means", "id": "5-what-too-broad-wildcarding-means"}, {"level": 3, "text": "6. Why this is a problem", "id": "6-why-this-is-a-problem"}, {"level": 3, "text": "7. Incorrect stream identification case", "id": "7-incorrect-stream-identification-case"}, {"level": 3, "text": "8. Gate-related accident", "id": "8-gate-related-accident"}, {"level": 3, "text": "9. Maximum SDU-related accident", "id": "9-maximum-sdu-related-accident"}, {"level": 3, "text": "10. Summary", "id": "10-summary"}, {"level": 2, "text": "Maximum SDU Filter", "id": "maximum-sdu-filter"}, {"level": 3, "text": "1. What the filter does", "id": "1-what-the-filter-does"}, {"level": 3, "text": "2. Where the confusion comes from", "id": "2-where-the-confusion-comes-from"}, {"level": 3, "text": "3. Concrete example", "id": "3-concrete-example"}, {"level": 3, "text": "4. Why this is called a talker-wide fault", "id": "4-why-this-is-called-a-talker-wide-fault"}, {"level": 3, "text": "6. Why FRER cannot fix this", "id": "6-why-frer-cannot-fix-this"}, {"level": 3, "text": "7. Summary", "id": "7-summary"}, {"level": 2, "text": "Stream Gate", "id": "stream-gate"}, {"level": 3, "text": "1. What a stream gate is", "id": "1-what-a-stream-gate-is"}, {"level": 3, "text": "2. Simple example without FRER", "id": "2-simple-example-without-frer"}, {"level": 3, "text": "3. Now add FRER", "id": "3-now-add-frer"}, {"level": 3, "text": "Maximum SDU oversize fault", "id": "maximum-sdu-oversize-fault"}, {"level": 3, "text": "Stream gate timing mismatch", "id": "stream-gate-timing-mismatch"}, {"level": 3, "text": "6. Interval octet maximum case", "id": "6-interval-octet-maximum-case"}, {"level": 3, "text": "7. Summary", "id": "7-summary-1"}, {"level": 2, "text": "IPV Result", "id": "ipv-result"}, {"level": 3, "text": "2. What “overrides received priority” means", "id": "2-what-overrides-received-priority-means"}, {"level": 3, "text": "4. Why this is useful for protected streams", "id": "4-why-this-is-useful-for-protected-streams"}, {"level": 3, "text": "5. Example with ACF and FRER", "id": "5-example-with-acf-and-frer"}, {"level": 3, "text": "6. Why this matters with PCP rewriting", "id": "6-why-this-matters-with-pcp-rewriting"}, {"level": 3, "text": "7. Summary", "id": "7-summary-2"}, {"level": 2, "text": "Flow Meter", "id": "flow-meter"}, {"level": 3, "text": "1. What the flow meter does", "id": "1-what-the-flow-meter-does"}, {"level": 3, "text": "2. Meaning of CIR, CBS, EIR, EBS", "id": "2-meaning-of-cir-cbs-eir-ebs"}, {"level": 3, "text": "3. What the controls mean", "id": "3-what-the-controls-mean"}, {"level": 3, "text": "CIR and CBS", "id": "cir-and-cbs"}, {"level": 3, "text": "EIR and EBS", "id": "eir-and-ebs"}, {"level": 3, "text": "Coupling flag", "id": "coupling-flag"}, {"level": 3, "text": "Color mode", "id": "color-mode"}, {"level": 3, "text": "DropOnYellow", "id": "droponyellow"}, {"level": 3, "text": "MarkAllFramesRed", "id": "markallframesred"}, {"level": 3, "text": "4. Now connect this to FRER", "id": "4-now-connect-this-to-frer-1"}, {"level": 3, "text": "5. The problem: meter before recovery", "id": "5-the-problem-meter-before-recovery"}, {"level": 3, "text": "6. Concrete example", "id": "6-concrete-example"}, {"level": 3, "text": "7. Why this matters", "id": "7-why-this-matters"}, {"level": 3, "text": "8. Better ordering: recovery before meter", "id": "8-better-ordering-recovery-before-meter"}, {"level": 3, "text": "10. Summary", "id": "10-summary-1"}];
+const contextText = document.getElementById('contextText');
+const progressBar = document.getElementById('progressBar');
+const toc = document.getElementById('toc');
+const navChips = Array.from(document.querySelectorAll('.nav-chip'));
+let currentMajor = 'FRER Interactions Details';
+let currentMinor = '';
+
+function buildTOC() {
+  toc.innerHTML = headings
+    .filter(h => h.level <= 3)
+    .map(h => `<a href="#${h.id}" class="level-${h.level}" data-id="${h.id}">${h.text}</a>`)
+    .join('');
+}
+
+function updateContext(activeId) {
+  const index = headings.findIndex(h => h.id === activeId);
+  if (index < 0) return;
+  let h = headings[index];
+  if (h.level === 1) { currentMajor = h.text; currentMinor = ''; }
+  if (h.level === 2) { currentMajor = h.text; currentMinor = ''; }
+  if (h.level === 3) {
+    currentMinor = h.text;
+    for (let i = index - 1; i >= 0; i--) {
+      if (headings[i].level === 2) { currentMajor = headings[i].text; break; }
+    }
+  }
+  contextText.innerHTML = currentMinor
+    ? `${currentMajor} <span class="sep">›</span> ${currentMinor}`
+    : currentMajor;
+
+  document.querySelectorAll('#toc a').forEach(a => a.classList.toggle('active', a.dataset.id === activeId));
+  const activeMajor = (() => {
+    if (h.level === 2) return h.id;
+    for (let i = index - 1; i >= 0; i--) if (headings[i].level === 2) return headings[i].id;
+    return h.id;
+  })();
+  navChips.forEach(a => a.classList.toggle('active', a.dataset.target === activeMajor));
+}
+
+function updateProgress() {
+  const doc = document.documentElement;
+  const scrollTop = doc.scrollTop || document.body.scrollTop;
+  const scrollHeight = doc.scrollHeight - doc.clientHeight;
+  const pct = scrollHeight > 0 ? (scrollTop / scrollHeight) * 100 : 0;
+  progressBar.style.width = `${pct}%`;
+}
+
+buildTOC();
+const headingEls = headings.map(h => document.getElementById(h.id)).filter(Boolean);
+const observer = new IntersectionObserver((entries) => {
+  const visible = entries
+    .filter(e => e.isIntersecting)
+    .sort((a,b) => a.boundingClientRect.top - b.boundingClientRect.top);
+  if (visible.length) updateContext(visible[0].target.id);
+}, { rootMargin: '-130px 0px -72% 0px', threshold: [0, 1] });
+headingEls.forEach(el => observer.observe(el));
+window.addEventListener('scroll', updateProgress, { passive: true });
+window.addEventListener('load', () => {
+  updateProgress();
+  const first = headingEls[0];
+  if (first) updateContext(first.id);
+});
+</script>
+</body>
+</html>
