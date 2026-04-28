@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MACsec vs IPsec vs TLS — Standards, PDUs, Headers and Scenarios</title>
+<style>
+:root{
+  --bg:#0b0f14;
+  --panel:#111827;
+  --panel2:#151d2b;
+  --panel3:#0f1722;
+  --text:#e8edf7;
+  --muted:#a9b4c6;
+  --faint:#738198;
+  --line:#263348;
+  --accent:#ff5f2e;
+  --accent2:#ff9f1c;
+  --cyan:#48d6ff;
+  --green:#32d583;
+  --red:#ff5c7a;
+  --violet:#b48cff;
+  --yellow:#ffe08a;
+  --code:#07111f;
+  --shadow:0 18px 50px rgba(0,0,0,.35);
+  --radius:18px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;
+  background:
+    radial-gradient(circle at 15% -10%, rgba(255,95,46,.24), transparent 30%),
+    radial-gradient(circle at 85% 5%, rgba(72,214,255,.13), transparent 24%),
+    linear-gradient(180deg,#090d13 0%,#0b0f14 42%,#080b10 100%);
+  color:var(--text);
+  font-family:Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  line-height:1.58;
+}
+a{color:#8bdcff;text-decoration:none}
+a:hover{text-decoration:underline}
+.hero{
+  padding:44px 28px 28px;
+  border-bottom:1px solid rgba(255,255,255,.08);
+  background:linear-gradient(135deg, rgba(255,95,46,.12), rgba(16,24,39,.2) 55%, rgba(72,214,255,.07));
+}
+.hero-inner{max-width:1320px;margin:0 auto;display:grid;grid-template-columns:1.3fr .7fr;gap:22px;align-items:stretch}
+.badge{display:inline-flex;gap:8px;align-items:center;padding:6px 10px;border:1px solid rgba(255,95,46,.45);border-radius:999px;color:#ffd2c4;background:rgba(255,95,46,.1);font-size:13px;font-weight:700;letter-spacing:.02em}
+h1{font-size:clamp(32px,5vw,58px);line-height:1.03;margin:16px 0 12px;letter-spacing:-.04em}
+.subtitle{font-size:clamp(17px,2vw,21px);color:var(--muted);max-width:920px;margin:0}
+.hero-card{background:rgba(17,24,39,.82);border:1px solid rgba(255,255,255,.10);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;display:flex;flex-direction:column;gap:12px}
+.hero-card .metric{display:grid;grid-template-columns:80px 1fr;gap:8px;padding:10px;border-radius:14px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.06)}
+.metric strong{color:#fff}.metric span{color:var(--muted)}
+.contextbar{
+  position:sticky;top:0;z-index:50;
+  background:rgba(9,13,19,.92);
+  backdrop-filter:blur(14px);
+  border-bottom:1px solid rgba(255,255,255,.09);
+}
+.progress{height:3px;width:0;background:linear-gradient(90deg,var(--accent),var(--accent2),var(--cyan));transition:width .08s linear}
+.ctx-inner{max-width:1320px;margin:0 auto;padding:10px 22px;display:grid;grid-template-columns:240px 1fr;gap:16px;align-items:center}
+.ctx-label{font-size:12px;text-transform:uppercase;letter-spacing:.14em;color:var(--faint)}
+#currentContext{display:block;font-size:14px;font-weight:800;color:#fff;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.navchips{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;scrollbar-width:thin}
+.navchips a{white-space:nowrap;padding:8px 11px;border:1px solid rgba(255,255,255,.09);border-radius:999px;background:rgba(255,255,255,.035);color:var(--muted);font-size:13px;font-weight:700;text-decoration:none}
+.navchips a.active{background:rgba(255,95,46,.16);border-color:rgba(255,95,46,.55);color:#ffd2c4}
+main{max-width:1320px;margin:0 auto;padding:28px 22px 60px}
+section{scroll-margin-top:94px;margin:0 0 26px}
+.section-card{background:linear-gradient(180deg,rgba(17,24,39,.92),rgba(15,23,34,.92));border:1px solid rgba(255,255,255,.09);border-radius:var(--radius);box-shadow:var(--shadow);padding:24px}
+h2{font-size:clamp(25px,3vw,34px);line-height:1.12;margin:0 0 12px;letter-spacing:-.02em}
+h3{font-size:21px;margin:22px 0 8px;color:#fff} h4{font-size:16px;margin:16px 0 8px;color:#fff}
+p{margin:10px 0;color:var(--muted)}
+.lead{font-size:18px;color:#d5dceb}.tight{margin-top:4px}.small{font-size:13px;color:var(--faint)}
+.grid{display:grid;gap:16px}.grid-3{grid-template-columns:repeat(3,minmax(0,1fr))}.grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}.grid-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.card{background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:16px;min-width:0}
+.card h3,.card h4{margin-top:0}.card.mac{border-color:rgba(255,95,46,.35)}.card.ip{border-color:rgba(72,214,255,.30)}.card.tls{border-color:rgba(50,213,131,.32)}
+.kicker{font-size:12px;text-transform:uppercase;letter-spacing:.14em;color:var(--accent2);font-weight:900}.ip .kicker{color:var(--cyan)}.tls .kicker{color:var(--green)}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#dce6f7;font-size:12px;font-weight:800;margin:3px 4px 3px 0}.pill.warn{border-color:rgba(255,224,138,.4);color:var(--yellow)}.pill.good{border-color:rgba(50,213,131,.4);color:var(--green)}.pill.bad{border-color:rgba(255,92,122,.4);color:var(--red)}
+table{width:100%;border-collapse:collapse;margin:14px 0 6px;overflow:hidden;border-radius:14px;border:1px solid rgba(255,255,255,.09)}
+th,td{padding:12px 13px;border-bottom:1px solid rgba(255,255,255,.08);vertical-align:top}th{background:rgba(255,255,255,.06);text-align:left;color:#fff;font-size:13px;text-transform:uppercase;letter-spacing:.08em}td{color:var(--muted)}tr:last-child td{border-bottom:0}
+.code{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace;background:var(--code);border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:13px;color:#d8e8ff;overflow:auto;white-space:pre}
+.stack{display:flex;flex-direction:column;gap:8px;margin:14px 0}.layer{border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:10px 12px;background:rgba(255,255,255,.04);display:flex;justify-content:space-between;gap:10px}.layer strong{color:#fff}.layer span{color:var(--muted);font-size:13px}
+.frame{display:flex;align-items:stretch;gap:3px;overflow-x:auto;padding:12px;background:rgba(2,6,12,.55);border:1px solid rgba(255,255,255,.08);border-radius:16px;margin:12px 0;scrollbar-width:thin}
+.field{min-width:74px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;border:1px solid rgba(255,255,255,.13);border-radius:10px;padding:10px 8px;position:relative;background:rgba(255,255,255,.04)}
+.field .name{font-weight:900;color:#fff;font-size:13px}.field .size{font-size:11px;color:var(--faint);margin-top:2px}.field.wide{min-width:140px}.field.xwide{min-width:230px}.field.macf{background:rgba(255,95,46,.10);border-color:rgba(255,95,46,.30)}.field.ipf{background:rgba(72,214,255,.10);border-color:rgba(72,214,255,.28)}.field.tlsf{background:rgba(50,213,131,.10);border-color:rgba(50,213,131,.28)}.field.plain{background:rgba(255,255,255,.055)}.field.enc{background:rgba(180,140,255,.13);border-color:rgba(180,140,255,.33)}.field.auth{box-shadow:inset 0 -3px 0 rgba(50,213,131,.65)}.field.clear{box-shadow:inset 0 -3px 0 rgba(255,224,138,.75)}
+.tooltip{position:relative;cursor:help}.tooltip:hover::after{content:attr(data-tip);position:absolute;left:50%;top:calc(100% + 8px);transform:translateX(-50%);width:280px;z-index:20;background:#050a12;border:1px solid rgba(255,255,255,.14);border-radius:12px;padding:10px;color:#e8edf7;font-size:12px;line-height:1.4;box-shadow:0 18px 40px rgba(0,0,0,.45)}
+.legend{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.legend span{font-size:12px;color:var(--muted)}.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px}.d-mac{background:var(--accent)}.d-ip{background:var(--cyan)}.d-tls{background:var(--green)}.d-enc{background:var(--violet)}.d-clear{background:var(--yellow)}
+.callout{border-left:4px solid var(--accent);background:rgba(255,95,46,.08);border-radius:14px;padding:14px 16px;margin:16px 0;color:#f7d4c8}.callout.ip{border-left-color:var(--cyan);background:rgba(72,214,255,.08);color:#d8f5ff}.callout.tls{border-left-color:var(--green);background:rgba(50,213,131,.08);color:#dcfbe9}.callout.warn{border-left-color:var(--yellow);background:rgba(255,224,138,.08);color:#fff1b7}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.tabbtn{border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:var(--muted);border-radius:999px;padding:9px 13px;font-weight:850;cursor:pointer}.tabbtn.active{background:rgba(255,95,46,.18);border-color:rgba(255,95,46,.55);color:#ffd2c4}.tabpanel{display:none}.tabpanel.active{display:block}
+.timeline{position:relative;margin:18px 0;padding-left:20px}.timeline::before{content:"";position:absolute;left:5px;top:6px;bottom:6px;width:2px;background:linear-gradient(var(--accent),var(--cyan),var(--green))}.step{position:relative;margin:0 0 12px;padding:12px 14px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);border-radius:14px}.step::before{content:"";position:absolute;left:-20px;top:18px;width:10px;height:10px;border-radius:50%;background:var(--accent2);box-shadow:0 0 0 4px rgba(255,159,28,.16)}.step strong{color:#fff}
+.compare-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.bigword{font-size:34px;font-weight:950;letter-spacing:-.04em;color:#fff;margin:4px 0}.footnotes li{margin-bottom:8px;color:var(--muted)}
+.source-list li{margin-bottom:10px;color:var(--muted)}
+.print-note{display:none}
+@media(max-width:960px){.hero-inner,.grid-3,.grid-2,.grid-4,.compare-cards{grid-template-columns:1fr}.ctx-inner{grid-template-columns:1fr}.hero{padding:32px 18px 20px}main{padding:20px 14px 42px}.section-card{padding:18px}.field{min-width:86px}}
+@media print{body{background:#fff;color:#111}.contextbar{display:none}.section-card,.card{box-shadow:none;background:#fff;border-color:#ddd}.field{background:#fff!important;color:#111}.field .name,h1,h2,h3,h4,th{color:#111}p,td,.small{color:#333}.print-note{display:block}.hero{background:#fff}.subtitle{color:#333}}
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="hero-inner">
+    <div>
+      <span class="badge">Databricks dark theme • standards-oriented training note</span>
+      <h1>MACsec vs IPsec vs TLS</h1>
+      <p class="subtitle">A protocol-engineering comparison of where each security mechanism sits, what its PDU/header looks like, what it hides, what it exposes, and how it behaves in automotive Ethernet, enterprise, and cloud-connected designs.</p>
+    </div>
+    <aside class="hero-card">
+      <div class="metric"><strong>MACsec</strong><span>IEEE 802.1AE link-layer frame protection using SecTAG, packet number, secure channel, secure association and ICV.</span></div>
+      <div class="metric"><strong>IPsec</strong><span>IETF IP-layer protection using AH/ESP, SPI, sequence number, security association database and IKEv2.</span></div>
+      <div class="metric"><strong>TLS</strong><span>IETF session protection above transport, with TLS 1.3 AEAD records and application/server identity.</span></div>
+    </aside>
+  </div>
+</header>
+<nav class="contextbar">
+  <div class="progress" id="progress"></div>
+  <div class="ctx-inner">
+    <div><span class="ctx-label">Current context</span><span id="currentContext">Orientation</span></div>
+    <div class="navchips" id="navchips">
+      <a href="#orientation">Orientation</a>
+      <a href="#standards">Standards</a>
+      <a href="#layering">Layering</a>
+      <a href="#pdu-summary">PDU summary</a>
+      <a href="#macsec">MACsec header</a>
+      <a href="#ipsec">IPsec header</a>
+      <a href="#tls">TLS header</a>
+      <a href="#what-is-visible">Visible vs hidden</a>
+      <a href="#keying">Keying</a>
+      <a href="#scenarios">Scenarios</a>
+      <a href="#decision">Decision matrix</a>
+      <a href="#sources">Sources</a>
+    </div>
+  </div>
+</nav>
+<main>
+  <section id="orientation" data-title="Orientation">
+    <div class="section-card">
+      <h2>1. The simplest correct mental model</h2>
+      <p class="lead">MACsec, IPsec and TLS are not three names for the same security function. They are three different places where cryptographic protection can be inserted into the communication stack.</p>
+      <div class="compare-cards">
+        <div class="card mac">
+          <div class="kicker">MACsec</div>
+          <div class="bigword">Link lock</div>
+          <p>Protects Ethernet frames as they cross a LAN link or MAC service. It is excellent when the attack is a physical tap, rogue device, or link-local frame injection on an Ethernet segment.</p>
+          <span class="pill">Layer 2</span><span class="pill">EtherType 0x88E5</span><span class="pill">SecTAG + ICV</span>
+        </div>
+        <div class="card ip">
+          <div class="kicker">IPsec</div>
+          <div class="bigword">IP tunnel / IP shield</div>
+          <p>Protects IP datagrams at the network layer. It can secure host-to-host, gateway-to-gateway, or gateway-to-host traffic without each application being modified.</p>
+          <span class="pill">Layer 3</span><span class="pill">ESP protocol 50</span><span class="pill">AH protocol 51</span>
+        </div>
+        <div class="card tls">
+          <div class="kicker">TLS</div>
+          <div class="bigword">Application session lock</div>
+          <p>Protects an application stream above TCP. It is the usual answer for HTTPS, service APIs, diagnostic clients, OTA servers and application-level identity.</p>
+          <span class="pill">Above TCP</span><span class="pill">TLS 1.3 RFC 8446</span><span class="pill">AEAD records</span>
+        </div>
+      </div>
+      <div class="callout warn"><strong>Important:</strong> In a real vehicle, data center, or cloud design, these can be stacked. A diagnostic session may run DoIP over TLS, inside an IPsec tunnel, over MACsec-protected Ethernet links. Each layer solves a different exposure problem.</div>
+    </div>
+  </section>
+
+  <section id="standards" data-title="Standards anchor points">
+    <div class="section-card">
+      <h2>2. Standards anchor points</h2>
+      <table>
+        <thead><tr><th>Mechanism</th><th>Main standards</th><th>What the standard family defines</th><th>Identifier on the wire</th></tr></thead>
+        <tbody>
+          <tr><td><strong>MACsec</strong></td><td>IEEE 802.1AE for MAC Security; IEEE 802.1X MKA for key agreement.</td><td>MAC Security Entity (SecY), Secure Channel (SC), Secure Association (SA), Secure Association Key (SAK), SecTAG, packet number, replay protection and ICV.</td><td>MACsec EtherType <strong>0x88E5</strong> in the SecTAG.</td></tr>
+          <tr><td><strong>IPsec</strong></td><td>RFC 4301 architecture, RFC 4302 AH, RFC 4303 ESP, RFC 7296 IKEv2, plus algorithm RFCs.</td><td>Security Policy Database (SPD), Security Association Database (SAD), AH/ESP processing, SPI, sequence number, tunnel/transport mode, anti-replay and IKEv2 negotiation.</td><td>ESP uses IP protocol/Next Header <strong>50</strong>; AH uses <strong>51</strong>. IKEv2 normally uses UDP 500 and NAT traversal uses UDP 4500.</td></tr>
+          <tr><td><strong>TLS</strong></td><td>RFC 8446 for TLS 1.3; DTLS is a related datagram variant, not ordinary TLS over TCP.</td><td>Handshake, authentication, key schedule, cipher suites, record protection, alerts, session resumption and application data protection.</td><td>No IP protocol number of its own. It is carried by an application transport, commonly TCP port 443 for HTTPS.</td></tr>
+        </tbody>
+      </table>
+      <p class="small">In automotive AUTOSAR R24-11 terminology, MACsec Key Agreement is treated as a Basic Software module around MKA/SecY integration, while IPsec requirements explicitly align with the IETF RFC 4301, 4302, 4303 and IKEv2 family. This reinforces the same architectural split: MACsec at Ethernet link/MAC service level, IPsec at IP level, TLS at application session level.</p>
+    </div>
+  </section>
+
+  <section id="layering" data-title="Where protection is inserted">
+    <div class="section-card">
+      <h2>3. Where the protection is inserted in the stack</h2>
+      <div class="grid grid-3">
+        <div class="card mac">
+          <div class="kicker">MACsec placement</div>
+          <div class="stack">
+            <div class="layer"><strong>Application</strong><span>Unchanged</span></div>
+            <div class="layer"><strong>TCP/UDP/IP</strong><span>May be opaque to link observer</span></div>
+            <div class="layer"><strong>MAC client / bridge logic</strong><span>Above SecY</span></div>
+            <div class="layer" style="border-color:rgba(255,95,46,.55)"><strong>MACsec SecY</strong><span>Protect/validate frame</span></div>
+            <div class="layer"><strong>Ethernet PHY</strong><span>Transmits protected frame</span></div>
+          </div>
+          <p>MACsec is transparent to higher-layer protocols when the Ethernet port or switch pipeline is designed to terminate or originate MACsec below the MAC client.</p>
+        </div>
+        <div class="card ip">
+          <div class="kicker">IPsec placement</div>
+          <div class="stack">
+            <div class="layer"><strong>Application</strong><span>Usually unchanged</span></div>
+            <div class="layer"><strong>TCP/UDP</strong><span>Protected in tunnel; partly exposed in transport mode</span></div>
+            <div class="layer" style="border-color:rgba(72,214,255,.55)"><strong>IPsec</strong><span>Policy + SA + AH/ESP</span></div>
+            <div class="layer"><strong>IP forwarding</strong><span>Outer IP remains visible in tunnel mode</span></div>
+            <div class="layer"><strong>Ethernet</strong><span>Ordinary L2 carriage</span></div>
+          </div>
+          <p>IPsec is often invisible to applications. The operating system or gateway applies policy based on traffic selectors, then emits AH or ESP packets.</p>
+        </div>
+        <div class="card tls">
+          <div class="kicker">TLS placement</div>
+          <div class="stack">
+            <div class="layer"><strong>Application</strong><span>Calls TLS library or stack</span></div>
+            <div class="layer" style="border-color:rgba(50,213,131,.55)"><strong>TLS record layer</strong><span>Encrypts app bytes</span></div>
+            <div class="layer"><strong>TCP</strong><span>Ports visible</span></div>
+            <div class="layer"><strong>IP</strong><span>Addresses visible</span></div>
+            <div class="layer"><strong>Ethernet</strong><span>L2 headers visible</span></div>
+          </div>
+          <p>TLS gives the application a secure channel. It does not hide IP addresses, TCP ports, packet sizes, or the fact that a TCP connection exists.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="pdu-summary" data-title="PDU and encapsulation summary">
+    <div class="section-card">
+      <h2>4. PDU and encapsulation summary</h2>
+      <div class="legend"><span><i class="dot d-clear"></i>visible/clear header</span><span><i class="dot d-enc"></i>encrypted or cryptographically protected payload</span><span><i class="dot d-mac"></i>MACsec field</span><span><i class="dot d-ip"></i>IPsec field</span><span><i class="dot d-tls"></i>TLS field</span></div>
+      <h3>4.1 Original unprotected Ethernet/IP/TCP/application frame</h3>
+      <div class="frame">
+        <div class="field clear"><span class="name">DA</span><span class="size">6 B</span></div>
+        <div class="field clear"><span class="name">SA</span><span class="size">6 B</span></div>
+        <div class="field clear"><span class="name">EtherType</span><span class="size">2 B</span></div>
+        <div class="field wide clear"><span class="name">IP header</span><span class="size">20/40 B</span></div>
+        <div class="field wide clear"><span class="name">TCP/UDP</span><span class="size">var</span></div>
+        <div class="field xwide clear"><span class="name">Application data</span><span class="size">var</span></div>
+        <div class="field clear"><span class="name">FCS</span><span class="size">4 B</span></div>
+      </div>
+      <h3>4.2 MACsec protected Ethernet frame</h3>
+      <div class="frame">
+        <div class="field clear"><span class="name">DA</span><span class="size">6 B</span></div>
+        <div class="field clear"><span class="name">SA</span><span class="size">6 B</span></div>
+        <div class="field macf tooltip" data-tip="The SecTAG identifies this as a MACsec frame, carries control bits, association number, short length, packet number and optionally SCI."><span class="name">SecTAG</span><span class="size">8 or 16 B</span></div>
+        <div class="field xwide enc auth"><span class="name">Secure Data</span><span class="size">encrypted or integrity protected</span></div>
+        <div class="field macf auth"><span class="name">ICV</span><span class="size">typically 16 B</span></div>
+        <div class="field clear"><span class="name">FCS</span><span class="size">4 B</span></div>
+      </div>
+      <h3>4.3 IPsec ESP tunnel-mode packet over Ethernet</h3>
+      <div class="frame">
+        <div class="field clear"><span class="name">L2 hdr</span><span class="size">DA/SA</span></div>
+        <div class="field wide clear"><span class="name">Outer IP</span><span class="size">src/dst gateways</span></div>
+        <div class="field ipf tooltip" data-tip="ESP is indicated by IP Protocol/Next Header value 50."><span class="name">ESP hdr</span><span class="size">SPI + Seq</span></div>
+        <div class="field xwide enc auth"><span class="name">Inner IP packet + upper layers</span><span class="size">encrypted/authenticated</span></div>
+        <div class="field ipf auth"><span class="name">ESP trailer</span><span class="size">Pad Len + Next Hdr</span></div>
+        <div class="field ipf auth"><span class="name">ICV</span><span class="size">algorithm dependent</span></div>
+      </div>
+      <h3>4.4 TLS 1.3 record inside TCP/IP</h3>
+      <div class="frame">
+        <div class="field clear"><span class="name">L2 hdr</span><span class="size">visible</span></div>
+        <div class="field wide clear"><span class="name">IP header</span><span class="size">visible</span></div>
+        <div class="field wide clear"><span class="name">TCP header</span><span class="size">visible</span></div>
+        <div class="field tlsf clear tooltip" data-tip="TLS 1.3 encrypted records carry an outer type of application_data (23), legacy version 0x0303 and length."><span class="name">TLS record hdr</span><span class="size">5 B</span></div>
+        <div class="field xwide enc auth"><span class="name">Encrypted TLSInnerPlaintext</span><span class="size">content + inner type + padding + tag</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="macsec" data-title="MACsec PDU and header format">
+    <div class="section-card">
+      <h2>5. MACsec frame format and field semantics</h2>
+      <p class="lead">MACsec adds a Security Tag (SecTAG) after the Ethernet source address in the canonical MACsec frame, protects the MAC service data as Secure Data, and appends an Integrity Check Value (ICV). It provides connectionless integrity, origin authenticity, replay protection and, when enabled, confidentiality.</p>
+      <div class="callout"><strong>Practical automotive interpretation:</strong> A MACsec-protected switch port can reject unauthenticated frames before they enter the trusted bridge pipeline. This is valuable for physical-link attacks, rogue ECUs, debug-port abuse and compromised wiring harness segments.</div>
+      <h3>5.1 Canonical MACsec protected frame</h3>
+      <div class="frame">
+        <div class="field clear"><span class="name">Destination MAC</span><span class="size">6 octets</span></div>
+        <div class="field clear"><span class="name">Source MAC</span><span class="size">6 octets</span></div>
+        <div class="field macf"><span class="name">SecTAG</span><span class="size">8 or 16 octets</span></div>
+        <div class="field xwide enc auth"><span class="name">Secure Data</span><span class="size">original MSDU, optionally encrypted</span></div>
+        <div class="field macf auth"><span class="name">ICV</span><span class="size">integrity check</span></div>
+        <div class="field clear"><span class="name">FCS</span><span class="size">media FCS</span></div>
+      </div>
+      <h3>5.2 SecTAG layout</h3>
+      <div class="frame">
+        <div class="field macf tooltip" data-tip="Identifies the frame as MACsec. Commonly shown as EtherType 0x88E5."><span class="name">MACsec EtherType</span><span class="size">2 B</span></div>
+        <div class="field macf tooltip" data-tip="Tag Control Information bits plus 2-bit Association Number. TCI carries version and control bits such as SCI present, encrypted and changed-text indicators."><span class="name">TCI / AN</span><span class="size">1 B</span></div>
+        <div class="field macf tooltip" data-tip="Short Length. Used when the protected data is shorter than the minimum frame size, so padding can be distinguished from real data."><span class="name">SL</span><span class="size">1 B</span></div>
+        <div class="field macf tooltip" data-tip="Packet Number. Used with the Secure Association to form nonces and provide replay protection. Extended packet numbering is a cipher-suite extension."><span class="name">PN</span><span class="size">4 B</span></div>
+        <div class="field macf wide tooltip" data-tip="Secure Channel Identifier. Optional in the frame when it can be inferred, commonly 6-octet system identifier plus 2-octet port identifier."><span class="name">SCI</span><span class="size">optional 8 B</span></div>
+      </div>
+      <table>
+        <thead><tr><th>Field</th><th>Meaning</th><th>Design consequence</th></tr></thead>
+        <tbody>
+          <tr><td>TCI / AN</td><td>Tag Control Information plus 2-bit Association Number. The Association Number selects which Secure Association under the Secure Channel is used.</td><td>Supports key rollover because more than one receive SA can be valid while a new SAK is being installed.</td></tr>
+          <tr><td>PN</td><td>Per-SA packet number. The receiver uses it for replay checking and cryptographic nonce construction.</td><td>Never reuse the same cryptographic nonce/key combination. High-throughput links need rekeying or extended packet numbering.</td></tr>
+          <tr><td>SCI</td><td>Identifies the transmit Secure Channel when required. It can be omitted when the receiver can infer the channel from the port/source context.</td><td>Useful for shared media, multiple peers, multi-channel designs, and strict replay protection when traffic classes can be reordered.</td></tr>
+          <tr><td>ICV</td><td>Integrity Check Value produced by the selected cipher suite, usually an AES-GCM authentication tag.</td><td>A frame with a wrong ICV is discarded before being delivered as trusted traffic.</td></tr>
+        </tbody>
+      </table>
+      <h3>5.3 What MACsec protects and what it does not automatically protect</h3>
+      <div class="grid grid-2">
+        <div class="card"><h4>Strong points</h4><p><span class="pill good">Physical tap resistance</span><span class="pill good">Rogue L2 frame rejection</span><span class="pill good">Low latency</span><span class="pill good">Transparent to applications</span></p><p>MACsec is often implemented in hardware close to the Ethernet MAC. It can therefore run at line rate with deterministic latency, which matters for time-sensitive automotive Ethernet links.</p></div>
+        <div class="card"><h4>Caveats</h4><p><span class="pill warn">Usually link/local domain</span><span class="pill warn">Router/switch termination may be required</span><span class="pill warn">L2 metadata may remain visible</span></p><p>Do not treat MACsec as a replacement for application identity. It proves that a frame came from an authorized MACsec peer on that secure connectivity association, not that a remote cloud service or application user is authorized.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="ipsec" data-title="IPsec PDU and header format">
+    <div class="section-card">
+      <h2>6. IPsec AH and ESP packet formats</h2>
+      <p class="lead">IPsec is a suite. The architecture defines security policies and associations, while AH and ESP define the actual packet protection. In modern deployments, ESP is the dominant data-plane protocol because it can provide confidentiality plus integrity.</p>
+      <div class="callout ip"><strong>Practical automotive interpretation:</strong> IPsec is attractive when you want an ECU, zone controller, gateway or telematics unit to secure IP flows without every application implementing its own cryptographic session. It is especially natural for gateway-to-gateway, gateway-to-cloud and host-to-gateway traffic.</div>
+      <h3>6.1 ESP top-level format</h3>
+      <div class="frame">
+        <div class="field clear wide"><span class="name">Outer IP header</span><span class="size">Protocol/Next Header = 50</span></div>
+        <div class="field ipf tooltip" data-tip="Security Parameters Index. Together with destination and protocol, identifies the Security Association."><span class="name">SPI</span><span class="size">4 B</span></div>
+        <div class="field ipf tooltip" data-tip="Sequence Number used for anti-replay. Extended Sequence Numbers maintain a 64-bit counter while transmitting the low 32 bits."><span class="name">Sequence Number</span><span class="size">4 B</span></div>
+        <div class="field xwide enc auth tooltip" data-tip="Payload Data has algorithm-dependent structure. It may include an explicit IV or nonce material."><span class="name">Payload Data</span><span class="size">variable</span></div>
+        <div class="field enc auth"><span class="name">Padding</span><span class="size">0..255 B</span></div>
+        <div class="field enc auth"><span class="name">Pad Length</span><span class="size">1 B</span></div>
+        <div class="field enc auth"><span class="name">Next Header</span><span class="size">1 B</span></div>
+        <div class="field ipf auth"><span class="name">ICV</span><span class="size">variable</span></div>
+      </div>
+      <table>
+        <thead><tr><th>ESP field</th><th>Meaning</th><th>Common engineering mistake</th></tr></thead>
+        <tbody>
+          <tr><td>SPI</td><td>Identifies which Security Association and therefore which keys, algorithms and replay window to use.</td><td>Thinking the SPI alone is globally unique. The receiver interprets it in SA context.</td></tr>
+          <tr><td>Sequence Number</td><td>Monotonically incremented per SA for replay detection.</td><td>Ignoring high-rate exhaustion. Extended Sequence Numbers or rekeying are required in long-lived/high-throughput systems.</td></tr>
+          <tr><td>Payload Data</td><td>Contains protected upper-layer data in transport mode, or the whole inner IP packet in tunnel mode.</td><td>Confusing transport and tunnel visibility. Tunnel mode hides the original source/destination IP addresses; transport mode does not.</td></tr>
+          <tr><td>Pad Length + Next Header</td><td>Allows alignment and tells the receiver what the decrypted payload represents.</td><td>Forgetting that these trailer bytes are inside the encrypted/authenticated part in ESP confidentiality deployments.</td></tr>
+          <tr><td>ICV</td><td>Authentication data over ESP-protected material, depending on algorithm and SA.</td><td>Using encryption without integrity. Modern profiles strongly avoid encryption-only ESP.</td></tr>
+        </tbody>
+      </table>
+      <h3>6.2 ESP transport mode vs tunnel mode</h3>
+      <div class="grid grid-2">
+        <div class="card">
+          <h4>Transport mode</h4>
+          <div class="frame"><div class="field clear wide"><span class="name">Original IP hdr</span><span class="size">visible</span></div><div class="field ipf"><span class="name">ESP</span><span class="size">SPI+Seq</span></div><div class="field xwide enc auth"><span class="name">TCP/UDP + data</span><span class="size">protected</span></div><div class="field ipf auth"><span class="name">ICV</span><span class="size">auth</span></div></div>
+          <p>Efficient for host-to-host protection. The original IP header remains visible and routable.</p>
+        </div>
+        <div class="card">
+          <h4>Tunnel mode</h4>
+          <div class="frame"><div class="field clear wide"><span class="name">New outer IP</span><span class="size">visible</span></div><div class="field ipf"><span class="name">ESP</span><span class="size">SPI+Seq</span></div><div class="field xwide enc auth"><span class="name">Original IP packet</span><span class="size">protected</span></div><div class="field ipf auth"><span class="name">ICV</span><span class="size">auth</span></div></div>
+          <p>Natural for VPNs and gateway-to-gateway designs. The inner IP addresses and transport ports are hidden from the transit network.</p>
+        </div>
+      </div>
+      <h3>6.3 AH format and why it is less common in many practical deployments</h3>
+      <div class="frame">
+        <div class="field clear wide"><span class="name">IP header</span><span class="size">Protocol/Next Header = 51</span></div>
+        <div class="field ipf"><span class="name">Next Header</span><span class="size">1 B</span></div>
+        <div class="field ipf"><span class="name">Payload Len</span><span class="size">1 B</span></div>
+        <div class="field ipf"><span class="name">Reserved</span><span class="size">2 B</span></div>
+        <div class="field ipf"><span class="name">SPI</span><span class="size">4 B</span></div>
+        <div class="field ipf"><span class="name">Sequence</span><span class="size">4 B</span></div>
+        <div class="field ipf auth wide"><span class="name">Authentication Data / ICV</span><span class="size">variable</span></div>
+      </div>
+      <p>AH provides integrity, data-origin authentication and replay protection, but no confidentiality. It authenticates as much of the IP header as possible, excluding fields that legitimately change in transit. This is useful conceptually, but NAT and address/field changes make AH less convenient in many routed deployments. ESP with authentication is therefore more common.</p>
+    </div>
+  </section>
+
+  <section id="tls" data-title="TLS PDU and header format">
+    <div class="section-card">
+      <h2>7. TLS 1.3 record format and field semantics</h2>
+      <p class="lead">TLS secures an application byte stream. The TLS record layer fragments data, protects records with AEAD once keys are active, and delivers verified plaintext to the application.</p>
+      <div class="callout tls"><strong>Practical automotive interpretation:</strong> TLS is the right mental model for application-specific trust: DoIP diagnostics to a tester, OTA update client to backend, service API to cloud, or an ECU application that needs server certificates, client certificates, PSK-based authentication, or explicit application authorization.</div>
+      <h3>7.1 TLSPlaintext before record protection</h3>
+      <div class="frame">
+        <div class="field tlsf"><span class="name">ContentType</span><span class="size">1 B</span></div>
+        <div class="field tlsf"><span class="name">legacy_record_version</span><span class="size">2 B</span></div>
+        <div class="field tlsf"><span class="name">length</span><span class="size">2 B</span></div>
+        <div class="field xwide clear"><span class="name">fragment</span><span class="size">up to 2^14 B</span></div>
+      </div>
+      <h3>7.2 TLSCiphertext after record protection</h3>
+      <div class="frame">
+        <div class="field tlsf tooltip" data-tip="For TLS 1.3 encrypted records this outer value is application_data (23), even for encrypted handshake/alert content."><span class="name">opaque_type</span><span class="size">1 B</span></div>
+        <div class="field tlsf tooltip" data-tip="TLS 1.3 uses 0x0303 here for compatibility with middleboxes accustomed to TLS 1.2."><span class="name">legacy_record_version</span><span class="size">2 B</span></div>
+        <div class="field tlsf"><span class="name">length</span><span class="size">2 B</span></div>
+        <div class="field xwide enc auth tooltip" data-tip="The encrypted record contains TLSInnerPlaintext: content, the real inner content type, optional zero padding and the AEAD authentication tag."><span class="name">encrypted_record</span><span class="size">ciphertext + tag</span></div>
+      </div>
+      <table>
+        <thead><tr><th>TLS field</th><th>Meaning</th><th>Consequence</th></tr></thead>
+        <tbody>
+          <tr><td>ContentType / opaque_type</td><td>Identifies record content. In TLS 1.3, encrypted records outwardly use application_data to improve compatibility.</td><td>After encryption starts, an observer cannot directly distinguish application data from encrypted handshake or alert records based only on the outer type.</td></tr>
+          <tr><td>legacy_record_version</td><td>Historical compatibility field, not the real negotiated version in TLS 1.3.</td><td>Do not infer negotiated TLS 1.3 from this field alone in packet captures.</td></tr>
+          <tr><td>length</td><td>Length of the following fragment or encrypted record.</td><td>Record sizes remain visible unless padding is deliberately used.</td></tr>
+          <tr><td>encrypted_record</td><td>AEAD-protected TLSInnerPlaintext.</td><td>Provides confidentiality, integrity and record origin under the negotiated traffic keys.</td></tr>
+        </tbody>
+      </table>
+      <h3>7.3 What TLS does not hide</h3>
+      <p>TLS does not hide Ethernet headers, IP addresses, TCP ports, TCP sequence behavior, routing metadata, or packet timing. In base TLS 1.3, much of the ClientHello is visible. Later handshake and application data are protected after the key schedule activates. Server Name Indication privacy requires additional mechanisms such as encrypted ClientHello and should not be assumed from “TLS 1.3” alone.</p>
+    </div>
+  </section>
+
+  <section id="what-is-visible" data-title="What is visible and what is hidden">
+    <div class="section-card">
+      <h2>8. What an observer can still see</h2>
+      <table>
+        <thead><tr><th>Question</th><th>MACsec</th><th>IPsec ESP tunnel</th><th>TLS 1.3 over TCP</th></tr></thead>
+        <tbody>
+          <tr><td>Can an Ethernet tap see application payload?</td><td>No, if confidentiality is enabled and SecY is correctly placed.</td><td>No, if the tap is outside the IPsec endpoint pair.</td><td>No, after TLS record protection starts.</td></tr>
+          <tr><td>Can an Ethernet switch still forward?</td><td>Yes, at least using visible L2 headers. Whether VLAN/PCP and deeper fields are visible depends on SecY placement and clear-tag/EDE design.</td><td>Yes, as normal IP/Ethernet traffic. A switch only needs L2; routers see outer IP in tunnel mode.</td><td>Yes. L2/L3/L4 forwarding is unaffected.</td></tr>
+          <tr><td>Are original source/destination IP addresses hidden?</td><td>Only if they are inside encrypted Secure Data and not needed by the forwarding device.</td><td>Yes in tunnel mode, no in transport mode.</td><td>No. IP addresses are below TLS and remain visible.</td></tr>
+          <tr><td>Are TCP/UDP ports hidden?</td><td>Possibly, if inside Secure Data and not exposed for classification.</td><td>Yes in ESP tunnel mode, no in ESP transport mode.</td><td>No. TCP ports remain visible.</td></tr>
+          <tr><td>Are frame/packet sizes and timing hidden?</td><td>Not fully. Padding/privacy amendments can help but are not the default mental model.</td><td>Limited traffic-flow confidentiality is possible but sizes/timing still leak unless padding/tunneling policy handles it.</td><td>Record padding can reduce size leakage, but TCP/IP timing and connection metadata remain visible.</td></tr>
+          <tr><td>Can middleboxes inspect application data?</td><td>Only if they terminate MACsec before inspection, or if data is not encrypted at MACsec.</td><td>Only at IPsec endpoints or after decryption.</td><td>Only at TLS endpoints or explicit TLS-terminating proxies.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="keying" data-title="Keying and security contexts">
+    <div class="section-card">
+      <h2>9. Key establishment and security-context vocabulary</h2>
+      <div class="grid grid-3">
+        <div class="card mac">
+          <div class="kicker">MACsec vocabulary</div>
+          <ul class="footnotes">
+            <li><strong>SecY</strong> — MAC Security Entity that protects and validates frames.</li>
+            <li><strong>CA</strong> — Secure Connectivity Association among MACsec participants.</li>
+            <li><strong>SC</strong> — Secure Channel, usually unidirectional.</li>
+            <li><strong>SA</strong> — Secure Association under a Secure Channel.</li>
+            <li><strong>SAK</strong> — Secure Association Key used to protect frames.</li>
+            <li><strong>MKA</strong> — MACsec Key Agreement protocol, responsible for peer discovery, election and SAK distribution.</li>
+          </ul>
+        </div>
+        <div class="card ip">
+          <div class="kicker">IPsec vocabulary</div>
+          <ul class="footnotes">
+            <li><strong>SPD</strong> — Security Policy Database deciding bypass, discard, or protect.</li>
+            <li><strong>SAD</strong> — Security Association Database containing active SAs.</li>
+            <li><strong>SA</strong> — Directional set of algorithms, keys, SPI, sequence state and lifetime.</li>
+            <li><strong>SPI</strong> — On-wire identifier for selecting an SA.</li>
+            <li><strong>IKEv2</strong> — Negotiates authentication, keys and Child SAs.</li>
+            <li><strong>ESN</strong> — Extended Sequence Number support for high-rate SAs.</li>
+          </ul>
+        </div>
+        <div class="card tls">
+          <div class="kicker">TLS vocabulary</div>
+          <ul class="footnotes">
+            <li><strong>Handshake</strong> — Negotiates version, cipher suite, keys and peer authentication.</li>
+            <li><strong>Certificate/PSK</strong> — Authentication input for server and optionally client.</li>
+            <li><strong>Traffic secrets</strong> — Derived keys for protecting records in each direction.</li>
+            <li><strong>Record sequence number</strong> — Implicit per direction and used in nonce construction.</li>
+            <li><strong>AEAD</strong> — Unified encryption and authentication for TLS 1.3 records.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="callout warn"><strong>Operational difference:</strong> MACsec and IPsec can be policy-driven by the platform/network stack. TLS is normally application-visible, because the application chooses the server identity, certificate policy, hostname, ALPN, client authentication and authorization model.</div>
+    </div>
+  </section>
+
+  <section id="scenarios" data-title="Elucidative scenarios">
+    <div class="section-card">
+      <h2>10. Interesting scenarios that expose the differences</h2>
+      <div class="tabs" role="tablist">
+        <button class="tabbtn active" data-tab="s1">Automotive TSN backbone</button>
+        <button class="tabbtn" data-tab="s2">Gateway VPN to cloud</button>
+        <button class="tabbtn" data-tab="s3">DoIP diagnostics</button>
+        <button class="tabbtn" data-tab="s4">Rogue laptop on service port</button>
+        <button class="tabbtn" data-tab="s5">Layered defense</button>
+      </div>
+      <div id="s1" class="tabpanel active">
+        <h3>Scenario A — Automotive TSN backbone with strict latency classes</h3>
+        <p>An ADAS ECU sends sensor-fusion messages across two Ethernet switches to a zone controller. The network uses VLAN Priority Code Point (PCP), time-aware scheduling and policing.</p>
+        <div class="timeline">
+          <div class="step"><strong>MACsec option:</strong> Each physical link is protected. A malicious tap cannot read or inject accepted frames. The switch port decrypts/validates before trusted forwarding logic, or the design intentionally exposes selected tags for scheduling.</div>
+          <div class="step"><strong>IPsec option:</strong> The IP payload can be protected host-to-host or gateway-to-gateway, but IPsec may hide transport ports and inner addresses in tunnel mode. This can complicate network-layer inspection and diagnostics.</div>
+          <div class="step"><strong>TLS option:</strong> Useful if the application protocol is TCP-based and needs end-to-end application identity. It does not protect non-TCP L2 control traffic or stop link-local L2 injection outside the TLS session.</div>
+        </div>
+        <div class="callout">Best engineering answer: use MACsec for link integrity/confidentiality in the in-vehicle Ethernet fabric, then add TLS only for application sessions that need end-to-end application identity or cloud trust.</div>
+      </div>
+      <div id="s2" class="tabpanel">
+        <h3>Scenario B — Telematics gateway builds a secure tunnel to cloud backend</h3>
+        <p>The vehicle has many internal IP services, but only the telematics control unit has cellular connectivity to the backend.</p>
+        <div class="timeline">
+          <div class="step"><strong>MACsec:</strong> Protects in-vehicle Ethernet links, but stops at the Ethernet segment. It cannot secure the cellular/wide-area routed path by itself.</div>
+          <div class="step"><strong>IPsec:</strong> Natural gateway-to-cloud VPN. ESP tunnel mode hides inner vehicle service addresses and gives one platform-level security policy for multiple applications.</div>
+          <div class="step"><strong>TLS:</strong> Still valuable for each cloud API, especially when application identity, certificates, authorization scopes and service-level logging matter.</div>
+        </div>
+        <div class="callout ip">Best engineering answer: IPsec for network tunnel protection, plus TLS for critical backend APIs if application-layer identity and zero-trust style controls are required.</div>
+      </div>
+      <div id="s3" class="tabpanel">
+        <h3>Scenario C — Diagnostics over IP from service tester to ECU</h3>
+        <p>A workshop tester connects to a vehicle Ethernet port and runs diagnostic sessions to several ECUs.</p>
+        <div class="timeline">
+          <div class="step"><strong>MACsec only:</strong> Can authenticate the directly attached tester or switch peer at L2. Good for excluding random devices, but not enough to express diagnostic application permissions.</div>
+          <div class="step"><strong>IPsec:</strong> Can protect IP communication to a gateway or ECU, but authorization of diagnostic services still needs higher-layer policy.</div>
+          <div class="step"><strong>TLS:</strong> Maps naturally to a diagnostic client/server trust relationship. The ECU can validate tester certificates and the application can authorize diagnostic service levels.</div>
+        </div>
+        <div class="callout tls">Best engineering answer: MACsec for port/link admission where available, TLS for diagnostic endpoint identity and application authorization.</div>
+      </div>
+      <div id="s4" class="tabpanel">
+        <h3>Scenario D — Rogue laptop plugged into an unused Ethernet branch</h3>
+        <p>An attacker physically accesses a connector and tries ARP spoofing, DHCP abuse, SOME/IP service discovery flooding or frame injection.</p>
+        <div class="timeline">
+          <div class="step"><strong>MACsec:</strong> The strongest first gate. Without MKA/SecY authorization and valid ICV, injected frames are discarded at the link boundary.</div>
+          <div class="step"><strong>IPsec:</strong> Protects selected IP flows, but unauthenticated L2/L3 noise may still hit parts of the network unless additional filtering exists.</div>
+          <div class="step"><strong>TLS:</strong> Protects individual TCP application sessions, but does not stop the rogue node from sending unrelated L2/L3 traffic.</div>
+        </div>
+        <div class="callout">Best engineering answer: MACsec plus switch access control and rate limiting. TLS/IPsec protect valuable sessions but are not port-admission mechanisms by themselves.</div>
+      </div>
+      <div id="s5" class="tabpanel">
+        <h3>Scenario E — Full layered defense for OTA update</h3>
+        <p>An OTA client downloads software over cellular, passes through a vehicle gateway, and distributes update artifacts to ECUs.</p>
+        <div class="timeline">
+          <div class="step"><strong>TLS:</strong> Protects the OTA HTTPS/API session, authenticates backend endpoints and prevents tampering on the application channel.</div>
+          <div class="step"><strong>IPsec:</strong> Optional VPN tunnel between vehicle gateway and backend to hide internal addressing and consolidate policy.</div>
+          <div class="step"><strong>MACsec:</strong> Protects in-vehicle Ethernet links during distribution from gateway to target ECUs, reducing risk from local physical taps and injection.</div>
+          <div class="step"><strong>Still required:</strong> Signed update packages and secure boot. Channel security does not replace artifact authenticity and rollback protection.</div>
+        </div>
+        <div class="callout warn">Best engineering answer: use channel security plus signed artifacts. TLS/IPsec/MACsec protect transport paths; software signing protects the payload after storage, forwarding and reboot.</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="decision" data-title="Decision matrix">
+    <div class="section-card">
+      <h2>11. Decision matrix</h2>
+      <table>
+        <thead><tr><th>Design need</th><th>Prefer MACsec</th><th>Prefer IPsec</th><th>Prefer TLS</th></tr></thead>
+        <tbody>
+          <tr><td>Stop physical Ethernet tapping/injection on a link</td><td>Excellent fit</td><td>Only for protected IP flows</td><td>Only for protected application sessions</td></tr>
+          <tr><td>Secure all traffic between two routed networks</td><td>Poor fit beyond local links</td><td>Excellent fit with ESP tunnel mode</td><td>Poor fit unless every application is TLS-aware</td></tr>
+          <tr><td>Authenticate application server/client identity</td><td>Not sufficient</td><td>Can authenticate gateways/hosts, not app semantics</td><td>Excellent fit</td></tr>
+          <tr><td>Keep application code unchanged</td><td>Usually yes</td><td>Usually yes</td><td>No, application or middleware must use TLS</td></tr>
+          <tr><td>Work naturally across NAT and web infrastructure</td><td>No</td><td>Possible with NAT-T, operationally more complex</td><td>Excellent fit</td></tr>
+          <tr><td>Preserve TSN/L2 scheduling visibility</td><td>Good if SecY placement supports required classification</td><td>L2 PCP remains, but inner L3/L4 may be hidden</td><td>L2/L3/L4 metadata remains mostly visible</td></tr>
+          <tr><td>Protect UDP multicast/broadcast style traffic</td><td>Possible in a MACsec connectivity association</td><td>Possible but more specialized</td><td>Ordinary TLS is not a multicast/broadcast security protocol</td></tr>
+          <tr><td>Best for DoIP diagnostic endpoint trust</td><td>Useful as link admission</td><td>Useful as network policy</td><td>Best fit for diagnostic client/server authentication</td></tr>
+        </tbody>
+      </table>
+      <div class="grid grid-3">
+        <div class="card mac"><h3>Choose MACsec when…</h3><p>You control the Ethernet links, need low-latency L2 protection, must reject rogue frame injection at the port, and want protection transparent to IP/application software.</p></div>
+        <div class="card ip"><h3>Choose IPsec when…</h3><p>You need to protect many IP flows between hosts or gateways, especially across routed networks, without modifying every application.</p></div>
+        <div class="card tls"><h3>Choose TLS when…</h3><p>The application needs authenticated server/client identity, certificates, API-level authorization, web compatibility, or end-to-end protection across untrusted intermediaries.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="cheatsheet" data-title="Cheat sheet">
+    <div class="section-card">
+      <h2>12. One-page cheat sheet</h2>
+      <div class="code">MACsec = protect Ethernet frames on a link or MAC service
+  On wire: DA | SA | SecTAG | Secure Data | ICV | FCS
+  Header identity: EtherType 0x88E5, TCI/AN, SL, PN, optional SCI
+  Best at: link-local confidentiality/integrity, anti-injection, low latency
+  Weak at: application identity, routed end-to-end security
+
+IPsec = protect IP datagrams according to IP security policy
+  ESP on wire: Outer IP(protocol 50) | SPI | Seq | Payload Data | Pad | PadLen | NextHdr | ICV
+  AH on wire: IP(protocol 51) | NextHdr | PayloadLen | Reserved | SPI | Seq | AuthData
+  Best at: VPNs, host/gateway security, app-transparent IP protection
+  Weak at: application authorization, NAT simplicity, L2 admission control
+
+TLS = protect an application byte stream above transport
+  TLS 1.3 ciphertext: type=23 | legacy_version=0x0303 | length | encrypted_record
+  Best at: HTTPS/API/DoIP endpoint identity and application-layer trust
+  Weak at: hiding IP/TCP metadata, protecting non-TLS traffic, L2/L3 admission control</div>
+    </div>
+  </section>
+
+  <section id="sources" data-title="Standards and source trail">
+    <div class="section-card">
+      <h2>13. Standards and source trail</h2>
+      <ul class="source-list">
+        <li>IEEE 802.1AE project page: MACsec provides connectionless user-data confidentiality, integrity, origin authenticity and privacy protection, and uses MKA from IEEE 802.1X to discover authenticated MACsec peers and distribute SAKs.</li>
+        <li>IEEE 802.1AE-2018 project page: 802.1AE-2018 incorporates the base 802.1AE standard and amendments such as GCM-AES-256, extended packet numbering and Ethernet Data Encryption devices.</li>
+        <li>RFC 4301: IPsec architecture, IP-layer services, AH/ESP architecture, anti-replay, confidentiality and limited traffic-flow confidentiality.</li>
+        <li>RFC 4302: Authentication Header format and AH services.</li>
+        <li>RFC 4303: ESP top-level packet format and ESP protocol value 50.</li>
+        <li>RFC 8446: TLS 1.3 record layer, TLSPlaintext and TLSCiphertext structures, AEAD record protection and opaque outer record type.</li>
+        <li>AUTOSAR R24-11 local project files consulted: CP SWS MACsec Key Agreement and FO RS IPsec Protocol, used for automotive framing and terminology.</li>
+      </ul>
+      <p class="small">This training artifact is written as engineering explanation, not as a replacement for the normative standards. For implementation, always check the exact version and conformance profile required by your program.</p>
+    </div>
+  </section>
+</main>
+<script>
+const sections=[...document.querySelectorAll('section[data-title]')];
+const chips=[...document.querySelectorAll('.navchips a')];
+const current=document.getElementById('currentContext');
+const progress=document.getElementById('progress');
+function updateProgress(){
+  const scrollTop=window.scrollY||document.documentElement.scrollTop;
+  const docHeight=document.documentElement.scrollHeight-window.innerHeight;
+  progress.style.width=(docHeight>0?scrollTop/docHeight*100:0)+'%';
+}
+const obs=new IntersectionObserver(entries=>{
+  const visible=entries.filter(e=>e.isIntersecting).sort((a,b)=>b.intersectionRatio-a.intersectionRatio)[0];
+  if(!visible) return;
+  const id=visible.target.id;
+  current.textContent=visible.target.dataset.title;
+  chips.forEach(c=>c.classList.toggle('active',c.getAttribute('href')==='#'+id));
+},{rootMargin:'-18% 0px -70% 0px', threshold:[0.01,0.1,0.2,0.5]});
+sections.forEach(s=>obs.observe(s));
+window.addEventListener('scroll',updateProgress,{passive:true});updateProgress();
+
+document.querySelectorAll('.tabbtn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const tab=btn.dataset.tab;
+    document.querySelectorAll('.tabbtn').forEach(b=>b.classList.toggle('active',b===btn));
+    document.querySelectorAll('.tabpanel').forEach(p=>p.classList.toggle('active',p.id===tab));
+  });
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MACsec Integrity-only vs Encryption Modes</title>
+<style>
+:root{
+  --bg:#070b12;
+  --panel:#0f1724;
+  --panel2:#111c2d;
+  --panel3:#0b1220;
+  --ink:#e8edf8;
+  --muted:#9fb0c7;
+  --dim:#718096;
+  --border:#26364f;
+  --brand:#ff3621;
+  --brand2:#ff8b7b;
+  --blue:#2aa7ff;
+  --green:#36d399;
+  --amber:#fbbf24;
+  --violet:#a78bfa;
+  --cyan:#22d3ee;
+  --red:#fb7185;
+  --shadow: 0 22px 60px rgba(0,0,0,.45);
+  --radius:22px;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;
+  font-family:var(--sans);
+  background:
+    radial-gradient(1100px 560px at 18% -5%, rgba(255,54,33,.23), transparent 60%),
+    radial-gradient(900px 500px at 105% 5%, rgba(42,167,255,.16), transparent 58%),
+    linear-gradient(180deg, #070b12 0%, #09111e 44%, #05070d 100%);
+  color:var(--ink);
+  line-height:1.55;
+}
+a{color:#93c5fd;text-decoration:none}
+a:hover{text-decoration:underline}
+.topbar{
+  position:sticky;top:0;z-index:1000;
+  border-bottom:1px solid rgba(255,255,255,.08);
+  background:rgba(7,11,18,.86);
+  backdrop-filter: blur(16px);
+}
+.progress{height:4px;background:#101827;overflow:hidden}
+.progress span{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--brand),var(--blue));transition:width .08s linear}
+.ctx{display:grid;grid-template-columns:auto 1fr auto;gap:18px;align-items:center;padding:12px 22px;max-width:1500px;margin:0 auto}
+.logo{display:flex;align-items:center;gap:10px;font-weight:900;letter-spacing:.2px;white-space:nowrap}
+.logo-mark{width:31px;height:31px;border-radius:9px;background:linear-gradient(135deg,var(--brand),#ff744f);box-shadow:0 0 22px rgba(255,54,33,.45);display:grid;place-items:center;font-family:var(--mono);font-size:16px;color:#fff}
+.context-title{min-width:0}
+.context-title small{display:block;color:var(--dim);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+.context-title strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:15px}
+.ctx-tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.pill{border:1px solid var(--border);background:rgba(255,255,255,.04);color:var(--muted);border-radius:999px;padding:7px 10px;font-size:12px;white-space:nowrap}
+.pill.hot{background:rgba(255,54,33,.12);border-color:rgba(255,54,33,.45);color:#ffd3ce}
+.btn{border:1px solid var(--border);background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.03));color:var(--ink);padding:9px 12px;border-radius:12px;cursor:pointer;font-weight:700;font-size:13px}
+.btn:hover{border-color:#3a5277;background:rgba(255,255,255,.09)}
+.hero{max-width:1500px;margin:0 auto;padding:58px 22px 28px;display:grid;grid-template-columns:1.1fr .9fr;gap:26px;align-items:center}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;color:#ffd0ca;background:rgba(255,54,33,.11);border:1px solid rgba(255,54,33,.34);padding:8px 12px;border-radius:999px;font-size:13px;font-weight:800;letter-spacing:.04em;text-transform:uppercase}
+h1{font-size:clamp(34px,5.2vw,76px);line-height:.96;margin:18px 0 18px;letter-spacing:-.055em}
+h1 span{color:var(--brand2)}
+.lead{font-size:clamp(17px,2vw,23px);color:#c7d4e8;max-width:920px;margin:0 0 22px}
+.hero-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:24px}
+.metric{padding:16px;border:1px solid var(--border);background:rgba(15,23,36,.72);border-radius:18px;box-shadow:var(--shadow)}
+.metric b{display:block;font-size:26px;color:#fff}.metric span{color:var(--muted);font-size:13px}
+.hero-card{border:1px solid var(--border);background:linear-gradient(180deg,rgba(17,28,45,.9),rgba(8,14,24,.9));border-radius:var(--radius);padding:22px;box-shadow:var(--shadow)}
+.mode-switch{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0 18px}
+.mode-chip{flex:1 1 120px;text-align:center;border:1px solid var(--border);border-radius:15px;padding:12px;background:rgba(255,255,255,.04);cursor:pointer;color:var(--muted);font-weight:900}
+.mode-chip.active{border-color:rgba(255,54,33,.75);box-shadow:0 0 0 1px rgba(255,54,33,.35),0 0 24px rgba(255,54,33,.14);color:#fff;background:rgba(255,54,33,.12)}
+.layout{max-width:1500px;margin:0 auto;padding:20px 22px 80px;display:grid;grid-template-columns:300px minmax(0,1fr);gap:24px}
+.toc{position:sticky;top:76px;align-self:start;border:1px solid var(--border);background:rgba(9,15,26,.74);border-radius:20px;padding:14px;max-height:calc(100vh - 96px);overflow:auto}
+.toc h3{margin:4px 8px 12px;font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim)}
+.toc a{display:block;color:#aebdd1;border-left:3px solid transparent;padding:9px 10px;margin:2px 0;border-radius:10px;font-size:13px}
+.toc a.active{color:#fff;background:rgba(255,54,33,.12);border-left-color:var(--brand)}
+main{min-width:0}.section{scroll-margin-top:92px;margin:0 0 24px;border:1px solid var(--border);background:rgba(15,23,36,.72);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}.section-header{padding:24px 28px;border-bottom:1px solid var(--border);background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.01))}.section-header h2{margin:0;font-size:clamp(24px,3vw,38px);letter-spacing:-.03em}.section-header p{margin:8px 0 0;color:var(--muted)}.section-body{padding:26px 28px}
+h3{font-size:24px;margin:26px 0 12px;letter-spacing:-.02em}h4{font-size:17px;margin:18px 0 8px}p{margin:10px 0;color:#d8e2f0}.muted{color:var(--muted)}.dim{color:var(--dim)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.card{border:1px solid var(--border);background:rgba(9,16,28,.7);border-radius:18px;padding:18px}.card h3,.card h4{margin-top:0}.callout{border:1px solid rgba(255,54,33,.38);background:linear-gradient(135deg,rgba(255,54,33,.13),rgba(42,167,255,.08));padding:18px;border-radius:18px;margin:16px 0}.ok{border-color:rgba(54,211,153,.35);background:rgba(54,211,153,.08)}.warn{border-color:rgba(251,191,36,.38);background:rgba(251,191,36,.08)}.bad{border-color:rgba(251,113,133,.38);background:rgba(251,113,133,.08)}.info{border-color:rgba(42,167,255,.36);background:rgba(42,167,255,.08)}
+code,.mono{font-family:var(--mono);font-size:.95em;color:#dbeafe}.tag{font-family:var(--mono);font-size:12px;border:1px solid var(--border);background:rgba(255,255,255,.05);border-radius:999px;padding:4px 8px;color:#b8c7dd;display:inline-block;margin:2px}.kbd{font-family:var(--mono);border:1px solid var(--border);background:#0a101b;border-radius:8px;padding:2px 6px;color:#fff}
+.tablewrap{overflow:auto;border:1px solid var(--border);border-radius:16px;margin:14px 0}table{width:100%;border-collapse:collapse;min-width:800px;background:rgba(8,13,22,.75)}th,td{padding:12px 14px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}th{background:#101a2a;color:#fff;font-size:13px;text-transform:uppercase;letter-spacing:.04em}td{color:#d8e2f0}tr:last-child td{border-bottom:0}.nowrap{white-space:nowrap}
+.frame{border:1px solid var(--border);border-radius:18px;padding:16px;background:linear-gradient(180deg,rgba(7,13,23,.9),rgba(10,16,27,.9));overflow:auto}.bytes{display:flex;align-items:stretch;gap:5px;min-width:max-content;margin:8px 0}.field{position:relative;min-height:66px;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.13);display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;box-shadow:inset 0 0 20px rgba(255,255,255,.02)}.field b{font-size:13px}.field small{color:#c5d3e8;font-size:11px}.field.da,.field.sa{background:rgba(42,167,255,.14)}.field.vlan{background:rgba(167,139,250,.14)}.field.sectag{background:rgba(255,54,33,.19);border-color:rgba(255,54,33,.5)}.field.secure{background:rgba(54,211,153,.12);border-color:rgba(54,211,153,.38)}.field.cipher{background:rgba(167,139,250,.18);border-color:rgba(167,139,250,.5)}.field.icv{background:rgba(251,191,36,.14);border-color:rgba(251,191,36,.45)}.field.fcs{background:rgba(148,163,184,.12)}.field.plain{background:rgba(34,211,238,.12);border-color:rgba(34,211,238,.42)}.field.clearprefix{background:linear-gradient(135deg,rgba(34,211,238,.18),rgba(167,139,250,.11));border-color:rgba(34,211,238,.45)}.w6{width:112px}.w2{width:78px}.w4{width:90px}.w8{width:120px}.w16{width:170px}.wdata{width:320px}.wlong{width:420px}
+.field:hover::after{content:attr(data-tip);position:absolute;left:50%;bottom:calc(100% + 10px);transform:translateX(-50%);width:260px;background:#050813;border:1px solid #3a5277;color:#eaf2ff;border-radius:12px;padding:10px;font-size:12px;line-height:1.35;z-index:20;box-shadow:var(--shadow);white-space:normal}.legend{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.legend span{display:inline-flex;gap:6px;align-items:center;color:var(--muted);font-size:12px}.dot{width:10px;height:10px;border-radius:99px;display:inline-block}.dot.red{background:var(--brand)}.dot.green{background:var(--green)}.dot.violet{background:var(--violet)}.dot.amber{background:var(--amber)}.dot.blue{background:var(--blue)}
+.bitrow{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;margin:10px 0}.bit{border:1px solid var(--border);background:rgba(255,255,255,.05);border-radius:12px;padding:10px;text-align:center;min-height:78px}.bit b{display:block;color:#fff;font-family:var(--mono);font-size:18px}.bit small{color:var(--muted);font-size:11px}.bit.on{border-color:rgba(255,54,33,.65);background:rgba(255,54,33,.14)}.bit.warnbit{border-color:rgba(251,191,36,.55);background:rgba(251,191,36,.10)}
+.flow{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:12px 0}.step{border:1px solid var(--border);background:rgba(255,255,255,.04);border-radius:14px;padding:12px;min-width:135px;flex:1;text-align:center}.arrow{color:var(--brand2);font-weight:900}.split{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:stretch}.vs{display:grid;place-items:center;color:#fff;font-weight:900;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:999px;width:46px;height:46px;align-self:center}
+.mode-panel{border:1px solid var(--border);border-radius:18px;padding:18px;background:rgba(8,14,24,.78)}
+.scenario{border:1px solid var(--border);border-radius:18px;overflow:hidden;background:rgba(9,16,28,.78);margin:16px 0}.scenario-head{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:14px 16px;background:#101a2a;border-bottom:1px solid var(--border)}.scenario-head h4{margin:0}.scenario-body{padding:16px}.scenario-steps{display:grid;grid-template-columns:280px 1fr;gap:14px}.steps-list{display:flex;flex-direction:column;gap:8px}.sbtn{text-align:left;border:1px solid var(--border);background:rgba(255,255,255,.04);color:var(--muted);border-radius:12px;padding:10px;cursor:pointer}.sbtn.active{background:rgba(255,54,33,.12);border-color:rgba(255,54,33,.5);color:#fff}.step-detail{min-height:190px;border:1px solid var(--border);border-radius:16px;padding:16px;background:#08101c}.step-detail h4{margin-top:0}.mini-wire{display:flex;align-items:center;gap:6px;margin:14px 0;overflow:auto}.mini{min-width:54px;border:1px solid var(--border);border-radius:10px;padding:8px;text-align:center;font-family:var(--mono);font-size:12px;background:rgba(255,255,255,.05)}.mini.badx{background:rgba(251,113,133,.16);border-color:rgba(251,113,133,.55)}.mini.okx{background:rgba(54,211,153,.14);border-color:rgba(54,211,153,.45)}
+.acronyms{columns:2;column-gap:20px}.acro{break-inside:avoid;border:1px solid var(--border);border-radius:14px;padding:10px;margin:0 0 10px;background:rgba(255,255,255,.035)}.acro b{font-family:var(--mono);color:#fff}.note{font-size:13px;color:var(--muted)}
+.print-note{display:none}
+@media (max-width:1100px){.hero{grid-template-columns:1fr}.layout{grid-template-columns:1fr}.toc{position:relative;top:auto;max-height:none}.grid2,.grid3,.grid4,.scenario-steps,.split{grid-template-columns:1fr}.vs{margin:auto}.ctx{grid-template-columns:1fr}.ctx-tools{justify-content:flex-start}.hero-grid{grid-template-columns:1fr}.acronyms{columns:1}}
+@media print{body{background:#fff;color:#000}.topbar,.toc,.btn,.mode-switch{display:none}.layout,.hero{display:block;max-width:none}.section{box-shadow:none;border:1px solid #ccc;break-inside:avoid}.print-note{display:block}.card,.frame,.callout{background:#fff;color:#000}.section-body p,.muted,.dim{color:#111}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="progress"><span id="progressBar"></span></div>
+  <div class="ctx">
+    <div class="logo"><div class="logo-mark">db</div><div>Databricks dark training artifact</div></div>
+    <div class="context-title"><small>Current context</small><strong id="currentContext">MACsec integrity-only vs encryption modes</strong></div>
+    <div class="ctx-tools">
+      <span class="pill hot" id="modePill">Mode focus: Integrity-only</span>
+      <span class="pill">IEEE 802.1AE</span>
+      <span class="pill">AUTOSAR MACsec/MKA</span>
+      <button class="btn" onclick="window.print()">Print / Save PDF</button>
+    </div>
+  </div>
+</div>
+
+<header class="hero">
+  <div>
+    <div class="eyebrow">MACsec SecY operation • PDU level • automotive Ethernet</div>
+    <h1>Integrity-only <span>vs</span> encryption modes</h1>
+    <p class="lead">A standards-oriented explanation of how MACsec uses the same SecTAG, packet number, secure association key, and integrity check value for two very different operational goals: <b>visible but tamper-evident traffic</b> and <b>confidential authenticated traffic</b>.</p>
+    <div class="hero-grid">
+      <div class="metric"><b>0x88E5</b><span>MACsec EtherType used to identify the SecTAG</span></div>
+      <div class="metric"><b>8 / 16 B</b><span>SecTAG without / with explicitly encoded SCI</span></div>
+      <div class="metric"><b>16 B</b><span>ICV for the standard GCM-AES cipher suites</span></div>
+    </div>
+  </div>
+  <div class="hero-card">
+    <h3 style="margin-top:0">Interactive mode lens</h3>
+    <p class="muted">Select a mode. The packet diagram, TCI bits, GCM inputs, and attacker view update together.</p>
+    <div class="mode-switch" role="tablist">
+      <button class="mode-chip active" data-mode="integrity">Integrity-only</button>
+      <button class="mode-chip" data-mode="encrypt0">Encrypt all user data</button>
+      <button class="mode-chip" data-mode="offset30">Encrypt after 30 B</button>
+      <button class="mode-chip" data-mode="offset50">Encrypt after 50 B</button>
+    </div>
+    <div class="mode-panel" id="modePanel"></div>
+  </div>
+</header>
+
+<div class="layout">
+  <nav class="toc" id="toc">
+    <h3>Context tracker</h3>
+    <a href="#s1">1. Mental model</a>
+    <a href="#s2">2. PDU and header format</a>
+    <a href="#s3">3. TCI bits and mode signalling</a>
+    <a href="#s4">4. Cryptographic processing</a>
+    <a href="#s5">5. Receive validation and replay</a>
+    <a href="#s6">6. AUTOSAR configuration view</a>
+    <a href="#s7">7. Elucidative scenarios</a>
+    <a href="#s8">8. VLAN, TSN, and observability issues</a>
+    <a href="#s9">9. Mistakes and engineering checks</a>
+    <a href="#s10">10. Acronyms and references</a>
+  </nav>
+
+  <main>
+    <section class="section observe" id="s1" data-title="1. Mental model: what integrity-only and encryption mean">
+      <div class="section-header"><h2>1. Mental model</h2><p>Both modes are MACsec protection. The difference is whether the user data remains readable on the wire.</p></div>
+      <div class="section-body">
+        <div class="callout info"><b>Assumption used in this artifact:</b> “integrity-only vs encryption modes” is explained in the MACsec sense, because the distinction is explicit in IEEE 802.1AE SecY operation and in AUTOSAR MACsec/MKA configuration. The same ideas also help when discussing link-layer security offload in automotive Ethernet switches and PHYs.</div>
+        <div class="split">
+          <div class="card">
+            <h3>Integrity-only mode</h3>
+            <p>The transmitted <b>Secure Data is the original User Data</b>. A sniffer can read the Ethernet payload after the SecTAG, but a receiver can detect modification because the Integrity Check Value (ICV) no longer verifies.</p>
+            <div class="flow"><div class="step">Original user data</div><div class="arrow">→</div><div class="step">Plain Secure Data</div><div class="arrow">+</div><div class="step">ICV</div></div>
+            <p><b>Use when:</b> observability, troubleshooting, or early deployment needs cleartext, while tamper detection, origin validation, and replay protection are still required.</p>
+          </div>
+          <div class="vs">vs</div>
+          <div class="card">
+            <h3>Encryption / confidentiality mode</h3>
+            <p>The transmitted Secure Data contains <b>ciphertext</b>, except when a configured confidentiality offset deliberately leaves an initial prefix in clear. Modification and replay are still detected.</p>
+            <div class="flow"><div class="step">Original user data</div><div class="arrow">→</div><div class="step">Ciphertext Secure Data</div><div class="arrow">+</div><div class="step">ICV</div></div>
+            <p><b>Use when:</b> payload privacy matters, for example camera/radar data, diagnostics containing sensitive identifiers, software update metadata, or vehicle state signals.</p>
+          </div>
+        </div>
+
+        <h3>The key insight</h3>
+        <div class="grid3">
+          <div class="card ok"><h4>Integrity is always the first gate</h4><p>Even when confidentiality is enabled, the receiver must validate authenticity and integrity before releasing plaintext to the controlled port.</p></div>
+          <div class="card warn"><h4>Encryption is not “MACsec plus something else”</h4><p>Encryption is a MACsec cipher-suite usage mode. The SecTAG and ICV are still there; the user data is simply transformed into ciphertext.</p></div>
+          <div class="card info"><h4>Visible headers remain visible</h4><p>Destination MAC, source MAC, SecTAG, packet number, and ICV remain observable. MACsec is not traffic-flow privacy.</p></div>
+        </div>
+
+        <h3>Fast comparison</h3>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>Aspect</th><th>Integrity-only</th><th>Encryption / confidentiality</th><th>Engineering consequence</th></tr></thead>
+            <tbody>
+              <tr><td class="nowrap">User data on wire</td><td>Readable cleartext</td><td>Ciphertext, except configured clear prefix for offset modes</td><td>Choose based on confidentiality requirement and diagnostic visibility needs.</td></tr>
+              <tr><td class="nowrap">Tamper detection</td><td>Yes, via ICV</td><td>Yes, via ICV</td><td>Both modes stop silent frame modification.</td></tr>
+              <tr><td class="nowrap">Replay defense</td><td>Yes, when replay protection is enabled</td><td>Yes, when replay protection is enabled</td><td>Packet Number (PN) monotonicity matters in both modes.</td></tr>
+              <tr><td class="nowrap">TCI E/C bits in common GCM-AES case</td><td>E=0, C=0</td><td>E=1, C=1 for confidentiality</td><td>Receivers and protocol analyzers can distinguish protected-cleartext from encrypted MACsec frames.</td></tr>
+              <tr><td class="nowrap">Intermediate inspection</td><td>Payload is inspectable but not safely mutable</td><td>Payload is not inspectable after encryption boundary</td><td>Classification must be done before encryption or using clear outer headers/offsets.</td></tr>
+              <tr><td class="nowrap">Failure mode under bit flip</td><td>ICV failure; strict receivers discard</td><td>ICV failure; strict receivers discard and cannot recover plaintext</td><td>Integrity-only can still expose invalid cleartext to a checked-mode diagnostic path, but strict mode is normally the safety target.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="section observe" id="s2" data-title="2. PDU and header format: exact fields that change and do not change">
+      <div class="section-header"><h2>2. PDU and header format</h2><p>The frame format looks almost the same in both modes. The key visible difference is the TCI E/C bits. The key cryptographic difference is what is fed as authenticated data and what is encrypted.</p></div>
+      <div class="section-body">
+        <h3>Baseline MACsec protected Ethernet frame</h3>
+        <p>The MACsec Protocol Data Unit (MPDU) consists of <b>SecTAG + Secure Data + ICV</b>. On an Ethernet wire you also see destination/source addresses before it and the Frame Check Sequence (FCS) after it.</p>
+        <div class="frame">
+          <div class="bytes">
+            <div class="field da w6" data-tip="Destination MAC address. Visible in both modes and covered by the ICV."><b>DA</b><small>6 B</small></div>
+            <div class="field sa w6" data-tip="Source MAC address. Visible in both modes and covered by the ICV."><b>SA</b><small>6 B</small></div>
+            <div class="field sectag w16" data-tip="MAC Security TAG. Contains EtherType 0x88E5, TCI/AN, SL, PN, and optional SCI."><b>SecTAG</b><small>8 or 16 B</small></div>
+            <div class="field secure wdata" data-tip="Secure Data. Cleartext in integrity-only mode. Ciphertext in confidentiality mode. May contain a clear prefix if a confidentiality offset is used."><b>Secure Data</b><small>User Data or protected form of User Data</small></div>
+            <div class="field icv w8" data-tip="Integrity Check Value. Cryptographic authentication tag, commonly 16 B for GCM-AES MACsec cipher suites."><b>ICV</b><small>8–16 B</small></div>
+            <div class="field fcs w4" data-tip="Ethernet FCS. Detects physical/link corruption but is not the MACsec cryptographic integrity mechanism."><b>FCS</b><small>4 B</small></div>
+          </div>
+        </div>
+        <div class="legend"><span><i class="dot blue"></i>Visible MAC addresses</span><span><i class="dot red"></i>MACsec header</span><span><i class="dot green"></i>Clear protected data</span><span><i class="dot violet"></i>Ciphertext data</span><span><i class="dot amber"></i>ICV</span></div>
+
+        <h3>SecTAG internal format</h3>
+        <div class="frame">
+          <div class="bytes">
+            <div class="field sectag w8" data-tip="Allocated MACsec EtherType. Hex value 88-E5."><b>MACsec EtherType</b><small>2 B • 0x88E5</small></div>
+            <div class="field sectag w8" data-tip="TCI bits plus Association Number. TCI says whether SCI is present, whether confidentiality is provided, and whether secure data changed."><b>TCI / AN</b><small>1 B</small></div>
+            <div class="field sectag w4" data-tip="Short Length. If Secure Data is less than 48 bytes, SL carries that length. Otherwise zero."><b>SL</b><small>1 B</small></div>
+            <div class="field sectag w8" data-tip="Packet Number. Non-zero and monotonic within an SA. In XPN, this field carries the least significant 32 bits."><b>PN</b><small>4 B</small></div>
+            <div class="field sectag w16" data-tip="Secure Channel Identifier. Optional on point-to-point links, useful or required when source context is otherwise ambiguous."><b>SCI</b><small>optional 8 B</small></div>
+          </div>
+        </div>
+
+        <div class="grid2">
+          <div class="card">
+            <h3>Without explicitly encoded SCI</h3>
+            <div class="frame"><div class="bytes"><div class="field da w6"><b>DA</b><small>6</small></div><div class="field sa w6"><b>SA</b><small>6</small></div><div class="field sectag w16"><b>SecTAG</b><small>8 B</small></div><div class="field secure wdata"><b>Secure Data</b><small>n B</small></div><div class="field icv w8"><b>ICV</b><small>16</small></div></div></div>
+            <p class="note">Common on a simple point-to-point secure connectivity association where receiver context already identifies the transmit secure channel.</p>
+          </div>
+          <div class="card">
+            <h3>With explicitly encoded SCI</h3>
+            <div class="frame"><div class="bytes"><div class="field da w6"><b>DA</b><small>6</small></div><div class="field sa w6"><b>SA</b><small>6</small></div><div class="field sectag w16"><b>SecTAG</b><small>16 B</small></div><div class="field secure wdata"><b>Secure Data</b><small>n B</small></div><div class="field icv w8"><b>ICV</b><small>16</small></div></div></div>
+            <p class="note">Useful when multiple transmit secure channels can be present or when explicit transmitter identification aids demultiplexing and diagnostics.</p>
+          </div>
+        </div>
+
+        <h3>Where VLAN tags sit</h3>
+        <div class="callout warn"><b>Important for automotive switch training:</b> If a VLAN tag is part of the user data presented to the SecY, it is inside Secure Data and therefore authenticated in integrity-only mode and encrypted in confidentiality mode. Some deployments use clear outer tags or bypass rules for service multiplexing or management. That is an implementation/configuration choice and must match the switch pipeline design.</div>
+        <div class="grid2">
+          <div class="card">
+            <h4>VLAN inside the protected user data</h4>
+            <div class="frame"><div class="bytes"><div class="field da w6"><b>DA</b><small>6</small></div><div class="field sa w6"><b>SA</b><small>6</small></div><div class="field sectag w16"><b>SecTAG</b><small>8/16</small></div><div class="field secure wlong"><b>Secure Data</b><small>Original VLAN + EtherType + payload</small></div><div class="field icv w8"><b>ICV</b><small>16</small></div></div></div>
+          </div>
+          <div class="card">
+            <h4>Clear outer classification tag</h4>
+            <div class="frame"><div class="bytes"><div class="field da w6"><b>DA</b><small>6</small></div><div class="field sa w6"><b>SA</b><small>6</small></div><div class="field vlan w8"><b>Outer VLAN</b><small>clear</small></div><div class="field sectag w16"><b>SecTAG</b><small>8/16</small></div><div class="field secure wdata"><b>Secure Data</b><small>protected</small></div><div class="field icv w8"><b>ICV</b><small>16</small></div></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section observe" id="s3" data-title="3. TCI bits and mode signalling: how the receiver knows the mode">
+      <div class="section-header"><h2>3. TCI bits and mode signalling</h2><p>The TCI/AN octet is the visible hint that tells a receiver whether confidentiality is in use and whether the Secure Data is unchanged.</p></div>
+      <div class="section-body">
+        <h3>TCI/AN bit layout used for training</h3>
+        <p>Bits are shown from bit 8 to bit 1 of the TCI/AN octet. The two least significant bits form the Association Number (AN). The common corrected interpretation is bit 4 as <b>E</b> and bit 3 as <b>C</b>.</p>
+        <div class="bitrow">
+          <div class="bit"><b>8</b><span>V</span><small>Version, normally 0</small></div>
+          <div class="bit"><b>7</b><span>ES</span><small>End station SCI inference</small></div>
+          <div class="bit"><b>6</b><span>SC</span><small>Explicit SCI present</small></div>
+          <div class="bit"><b>5</b><span>SCB</span><small>Single Copy Broadcast</small></div>
+          <div class="bit on"><b>4</b><span>E</span><small>Encryption / confidentiality</small></div>
+          <div class="bit on"><b>3</b><span>C</span><small>Changed text</small></div>
+          <div class="bit warnbit"><b>2</b><span>AN</span><small>SA selector bit</small></div>
+          <div class="bit warnbit"><b>1</b><span>AN</span><small>SA selector bit</small></div>
+        </div>
+
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>TCI/AN item</th><th>Meaning</th><th>Why it matters for integrity-only vs encryption</th></tr></thead>
+            <tbody>
+              <tr><td><span class="tag">V</span></td><td>MACsec protocol version. Current version uses zero.</td><td>A receiver rejects incompatible version encodings.</td></tr>
+              <tr><td><span class="tag">ES</span></td><td>Source MAC address can be used to infer part of the SCI in end-station use.</td><td>Can avoid carrying the 8-byte SCI explicitly on simple links.</td></tr>
+              <tr><td><span class="tag">SC</span></td><td>Explicit SCI is present in the SecTAG.</td><td>Expands SecTAG from 8 to 16 bytes and identifies the transmitting Secure Channel.</td></tr>
+              <tr><td><span class="tag">SCB</span></td><td>Single Copy Broadcast capability for EPON-related use.</td><td>Usually not the central field for automotive switched Ethernet training.</td></tr>
+              <tr><td><span class="tag">E</span></td><td>Confidentiality is being provided.</td><td>E=0 in integrity-only; E=1 when the user data is encrypted for confidentiality.</td></tr>
+              <tr><td><span class="tag">C</span></td><td>Secure Data is not exactly the unmodified User Data, or the ICV form differs from the simple unchanged-data case.</td><td>For standard GCM-AES integrity-only, C=0. With encryption, C=1.</td></tr>
+              <tr><td><span class="tag">AN</span></td><td>Two-bit Association Number, selecting one of up to four Secure Associations within the Secure Channel.</td><td>Allows key rollover without stopping traffic. Receivers can track old/new SAs during transition.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Common mode encodings</h3>
+        <div class="grid3">
+          <div class="card ok"><h4>Integrity-only using standard GCM-AES behavior</h4><p><span class="tag">E=0</span> <span class="tag">C=0</span></p><p>Secure Data is exactly the User Data. A 16-byte ICV authenticates the frame.</p></div>
+          <div class="card info"><h4>Encryption without offset</h4><p><span class="tag">E=1</span> <span class="tag">C=1</span></p><p>All user data supplied to the cipher suite is transformed into ciphertext.</p></div>
+          <div class="card warn"><h4>Encryption with offset</h4><p><span class="tag">E=1</span> <span class="tag">C=1</span> <span class="tag">offset=30/50</span></p><p>An initial prefix is clear but authenticated; the remainder is encrypted. Standard XPN cipher suites do not support offsets.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section observe" id="s4" data-title="4. Cryptographic processing: AAD, plaintext, ciphertext, ICV">
+      <div class="section-header"><h2>4. Cryptographic processing</h2><p>The same AES-GCM family is used, but the split between authenticated data and plaintext changes.</p></div>
+      <div class="section-body">
+        <h3>GCM-AES inputs in MACsec terms</h3>
+        <div class="grid4">
+          <div class="card"><h4>K</h4><p>Secure Association Key (SAK), 128 or 256 bits depending on cipher suite.</p></div>
+          <div class="card"><h4>IV</h4><p>Constructed from SCI and PN for non-XPN, or SSCI and extended PN plus salt for XPN.</p></div>
+          <div class="card"><h4>A</h4><p>Additional authenticated data. It is checked by the ICV but not encrypted.</p></div>
+          <div class="card"><h4>P → C</h4><p>Plaintext P is encrypted into ciphertext C. If P is null, no payload encryption occurs.</p></div>
+        </div>
+
+        <h3>Mode-by-mode cryptographic map</h3>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>Mode</th><th>Additional authenticated data A</th><th>Plaintext P</th><th>Secure Data transmitted</th><th>Meaning</th></tr></thead>
+            <tbody>
+              <tr><td><b>Integrity-only</b></td><td>DA + SA + SecTAG + User Data</td><td>null</td><td>User Data unchanged</td><td>Everything visible, but unauthorized changes are detected.</td></tr>
+              <tr><td><b>Confidentiality, no offset</b></td><td>DA + SA + SecTAG</td><td>User Data</td><td>Ciphertext C</td><td>Payload content is hidden and authenticated.</td></tr>
+              <tr><td><b>Confidentiality offset</b></td><td>DA + SA + SecTAG + first offset bytes of User Data</td><td>Remaining User Data after offset</td><td>Clear prefix + ciphertext C</td><td>Early header bytes can be inspected before decryption, but are still integrity-protected.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout ok"><b>Why integrity is not weaker just because data is readable:</b> Integrity-only does not promise secrecy. It promises that a receiver that enforces validation will notice unauthorized changes, wrong keys, wrong SCI/AN context, invalid ICV, and replay outside the accepted PN window.</div>
+
+        <h3>Visual transformation</h3>
+        <div class="grid3">
+          <div class="card">
+            <h4>Integrity-only</h4>
+            <div class="frame"><div class="bytes"><div class="field plain wlong"><b>Original User Data</b><small>visible</small></div><div class="field icv w8"><b>ICV</b><small>auth tag</small></div></div></div>
+            <p class="note">The payload is clear, but the ICV binds it to the SecTAG, source/destination addresses, key, SCI, AN, and PN context.</p>
+          </div>
+          <div class="card">
+            <h4>Encrypt all</h4>
+            <div class="frame"><div class="bytes"><div class="field cipher wlong"><b>Ciphertext C</b><small>not readable</small></div><div class="field icv w8"><b>ICV</b><small>auth tag</small></div></div></div>
+            <p class="note">The payload cannot be read without the SAK. Bit flips are detected before plaintext release.</p>
+          </div>
+          <div class="card">
+            <h4>Offset mode</h4>
+            <div class="frame"><div class="bytes"><div class="field clearprefix w8"><b>Clear prefix</b><small>30/50 B</small></div><div class="field cipher wdata"><b>Ciphertext remainder</b><small>encrypted</small></div><div class="field icv w8"><b>ICV</b><small>auth tag</small></div></div></div>
+            <p class="note">The prefix is readable for classification but cannot be changed without invalidating the ICV.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section observe" id="s5" data-title="5. Receive validation and replay: what the receiver does with bad frames">
+      <div class="section-header"><h2>5. Receive validation and replay</h2><p>Most practical confusion comes from receive policy. A mode is not only a transmit setting; it is also a validation and discard decision.</p></div>
+      <div class="section-body">
+        <h3>Receive pipeline</h3>
+        <div class="flow">
+          <div class="step">1. Parse DA/SA and SecTAG</div><div class="arrow">→</div>
+          <div class="step">2. Identify SC and SA using SCI/AN/context</div><div class="arrow">→</div>
+          <div class="step">3. Check PN and replay window</div><div class="arrow">→</div>
+          <div class="step">4. Verify ICV</div><div class="arrow">→</div>
+          <div class="step">5. Deliver plaintext or discard</div>
+        </div>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>Validation policy</th><th>Behavior</th><th>Why it matters</th></tr></thead>
+            <tbody>
+              <tr><td><span class="tag">disabled</span></td><td>Validation is not enforced and SecTAG/ICV can be stripped if present.</td><td>Useful only for special transition/testing paths. Not a secure receive policy.</td></tr>
+              <tr><td><span class="tag">checked</span></td><td>Validation is performed, but invalid frames are not necessarily discarded.</td><td>Can be useful for diagnostics in integrity-only mode because original data may still be recoverable.</td></tr>
+              <tr><td><span class="tag">strict</span></td><td>Invalid frames are discarded.</td><td>Normal target for production secure communication, especially for encrypted traffic.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Replay protection is independent of confidentiality</h3>
+        <p>A replayed frame can be readable in integrity-only mode and unreadable in encryption mode, but both are stale. The Packet Number (PN) and replay window stop old valid frames from being accepted again.</p>
+        <div class="grid3">
+          <div class="card"><h4>PN increments per SA</h4><p>Each protected frame uses a fresh non-zero PN. Reuse of the same PN under the same key is forbidden for GCM security.</p></div>
+          <div class="card"><h4>Window tolerates reordering</h4><p>A finite replay window can allow small reordering while still rejecting very old frames.</p></div>
+          <div class="card"><h4>XPN extends lifetime</h4><p>Extended Packet Number cipher suites use a 64-bit PN to avoid rapid SA exhaustion on high-rate links.</p></div>
+        </div>
+
+        <div class="callout bad"><b>Important:</b> encryption never makes replay acceptable. A replayed ciphertext may still decrypt perfectly if the key is valid, so replay protection must be evaluated separately from confidentiality.</div>
+      </div>
+    </section>
+
+    <section class="section observe" id="s6" data-title="6. AUTOSAR configuration view: how an automotive stack exposes the modes">
+      <div class="section-header"><h2>6. AUTOSAR configuration view</h2><p>In an automotive ECU or switch environment, these modes appear as SecY configuration and MKA-managed secure channel setup.</p></div>
+      <div class="section-body">
+        <h3>Configuration knobs to recognize</h3>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>Configuration concept</th><th>Typical meaning</th><th>Impact on integrity-only vs encryption</th></tr></thead>
+            <tbody>
+              <tr><td><span class="tag">ProtectFrames</span></td><td>Whether MACsec protection is active for transmitted frames.</td><td>If false, frames go without SecTAG and ICV. This is not integrity-only; it is unprotected.</td></tr>
+              <tr><td><span class="tag">ValidateFrames</span></td><td>Disabled, checked, or strict validation behavior for received frames.</td><td>Controls whether bad frames are merely counted/indicated or actually discarded.</td></tr>
+              <tr><td><span class="tag">ReplayProtect</span> + <span class="tag">ReplayWindow</span></td><td>Enable PN-based replay defense and define tolerance window.</td><td>Required for both integrity-only and encryption if stale-frame attacks matter.</td></tr>
+              <tr><td><span class="tag">CurrentCipherSuite</span></td><td>GCM-AES-128, GCM-AES-256, GCM-AES-XPN-128, or GCM-AES-XPN-256 in common profiles.</td><td>Defines key size, PN behavior, and whether offset confidentiality is available.</td></tr>
+              <tr><td><span class="tag">ConfidentialityOffset</span></td><td>None, 0, 30, or 50 clear initial bytes depending on profile/cipher support.</td><td>None gives integrity-only. Offset 0 means full confidentiality. Offset 30/50 leaves a clear authenticated prefix.</td></tr>
+              <tr><td><span class="tag">ControlledPortEnabled</span></td><td>Whether protected data can pass to/from upper layers.</td><td>Upper-layer protocols should wait until the secure channel is established if the port is MACsec protected.</td></tr>
+              <tr><td><span class="tag">Bypassed VLAN/EtherType</span></td><td>Configured traffic classes that pass without MACsec protection.</td><td>Bypass is different from integrity-only. Bypassed traffic has no SecTAG and no ICV.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>MKA/SecY division of responsibility</h3>
+        <div class="grid2">
+          <div class="card">
+            <h4>MACsec Key Agreement Entity (KaY / MKA)</h4>
+            <p>Discovers and authenticates peers, selects/announces cipher-suite capability, distributes or installs SAKs, handles key rollover, and updates the SecY with operational parameters.</p>
+          </div>
+          <div class="card">
+            <h4>MAC Security Entity (SecY)</h4>
+            <p>Actually protects transmitted frames, validates received frames, applies PN/replay checks, encrypts/decrypts as configured, and exposes counters for protected, encrypted, invalid, late, and not-valid packets.</p>
+          </div>
+        </div>
+
+        <div class="callout warn"><b>Training distinction:</b> “bypassed” traffic is not integrity-only traffic. Integrity-only traffic still carries SecTAG, PN, and ICV. Bypassed traffic is deliberately outside MACsec protection and must be justified in the security concept.</div>
+      </div>
+    </section>
+
+    <section class="section observe" id="s7" data-title="7. Elucidative scenarios: what happens inside a real network">
+      <div class="section-header"><h2>7. Elucidative scenarios</h2><p>Step through the interesting cases where the two modes behave differently.</p></div>
+      <div class="section-body">
+        <div class="scenario" data-scenario="tamper">
+          <div class="scenario-head"><h4>Scenario A: Integrity-only diagnostic stream is readable but not modifiable</h4><span class="pill hot">Best for observability</span></div>
+          <div class="scenario-body scenario-steps">
+            <div class="steps-list">
+              <button class="sbtn active" data-step="0">1. ECU transmits clear diagnostic payload</button>
+              <button class="sbtn" data-step="1">2. Attacker edits a byte</button>
+              <button class="sbtn" data-step="2">3. Receiver validates ICV</button>
+              <button class="sbtn" data-step="3">4. Strict policy discards</button>
+            </div>
+            <div class="step-detail"></div>
+          </div>
+        </div>
+
+        <div class="scenario" data-scenario="encrypt">
+          <div class="scenario-head"><h4>Scenario B: Encrypted sensor stream hides payload and authenticates it</h4><span class="pill">Best for confidentiality</span></div>
+          <div class="scenario-body scenario-steps">
+            <div class="steps-list">
+              <button class="sbtn active" data-step="0">1. Camera frame enters SecY</button>
+              <button class="sbtn" data-step="1">2. SecY encrypts user data</button>
+              <button class="sbtn" data-step="2">3. Wire observer sees metadata only</button>
+              <button class="sbtn" data-step="3">4. Receiver validates and decrypts</button>
+            </div>
+            <div class="step-detail"></div>
+          </div>
+        </div>
+
+        <div class="scenario" data-scenario="offset">
+          <div class="scenario-head"><h4>Scenario C: Confidentiality offset leaves early bytes clear for classification</h4><span class="pill">Useful but easy to misuse</span></div>
+          <div class="scenario-body scenario-steps">
+            <div class="steps-list">
+              <button class="sbtn active" data-step="0">1. Need early receive classification</button>
+              <button class="sbtn" data-step="1">2. Configure offset 30 or 50</button>
+              <button class="sbtn" data-step="2">3. Prefix remains clear</button>
+              <button class="sbtn" data-step="3">4. Prefix still authenticated</button>
+            </div>
+            <div class="step-detail"></div>
+          </div>
+        </div>
+
+        <div class="scenario" data-scenario="rollover">
+          <div class="scenario-head"><h4>Scenario D: Key rollover uses AN even in integrity-only mode</h4><span class="pill">Do not ignore PN exhaustion</span></div>
+          <div class="scenario-body scenario-steps">
+            <div class="steps-list">
+              <button class="sbtn active" data-step="0">1. Old SA is active</button>
+              <button class="sbtn" data-step="1">2. MKA installs new SA</button>
+              <button class="sbtn" data-step="2">3. Transmitter changes AN</button>
+              <button class="sbtn" data-step="3">4. Receiver accepts new SA</button>
+            </div>
+            <div class="step-detail"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section observe" id="s8" data-title="8. VLAN, TSN, and observability issues: why mode selection affects switch design">
+      <div class="section-header"><h2>8. VLAN, TSN, and observability issues</h2><p>Integrity-only and encryption modes influence what a switch can classify, shape, mirror, or diagnose.</p></div>
+      <div class="section-body">
+        <div class="grid2">
+          <div class="card">
+            <h3>Case 1: TSN classification after encryption boundary</h3>
+            <p>If the classifier needs inner VLAN Priority Code Point (PCP), stream ID, Internet Protocol (IP) header, User Datagram Protocol (UDP) port, or SOME/IP field, full confidentiality can hide those fields. Classification must happen before the SecY, use an outer clear tag, or use a carefully justified confidentiality offset.</p>
+          </div>
+          <div class="card">
+            <h3>Case 2: SPAN/RSPAN mirroring for diagnostics</h3>
+            <p>Integrity-only gives excellent observability: mirrored traffic can be decoded while still being tamper-evident at the receiver. Encryption gives stronger privacy but packet captures show only metadata unless the analyzer is trusted with keys.</p>
+          </div>
+          <div class="card">
+            <h3>Case 3: Bypass rules and startup traffic</h3>
+            <p>MKA, EAPOL, and selected management traffic may need to pass before the protected controlled port is enabled. Treat this as a narrow exception. Do not call it integrity-only.</p>
+          </div>
+          <div class="card">
+            <h3>Case 4: Hop-by-hop protection through switches</h3>
+            <p>MACsec commonly protects each link. A MACsec-capable switch may validate/decrypt on ingress and protect/encrypt again on egress using a different secure association key. That means the switch becomes part of the trusted boundary.</p>
+          </div>
+        </div>
+
+        <h3>Switch-pipeline-oriented view</h3>
+        <div class="frame">
+          <div class="flow">
+            <div class="step">Ingress MAC receives frame</div><div class="arrow">→</div>
+            <div class="step">SecY validates ICV / PN</div><div class="arrow">→</div>
+            <div class="step">Decrypt if confidentiality enabled</div><div class="arrow">→</div>
+            <div class="step">Bridge parser sees released data</div><div class="arrow">→</div>
+            <div class="step">VLAN/FDB/TSN decisions</div><div class="arrow">→</div>
+            <div class="step">Egress SecY protects again</div>
+          </div>
+        </div>
+        <div class="callout info"><b>Design rule:</b> decide whether classification occurs before or after the SecY. A diagram that simply says “switch parses packet” without showing the SecY boundary is incomplete for MACsec training.</div>
+      </div>
+    </section>
+
+    <section class="section observe" id="s9" data-title="9. Mistakes and engineering checks: how to avoid wrong assumptions">
+      <div class="section-header"><h2>9. Mistakes and engineering checks</h2><p>Use this section as a validation checklist during training or design reviews.</p></div>
+      <div class="section-body">
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>Mistake</th><th>Correction</th><th>Check in packet capture or counters</th></tr></thead>
+            <tbody>
+              <tr><td>Calling bypassed VLAN traffic “integrity-only”</td><td>Integrity-only still has SecTAG, PN, and ICV. Bypassed traffic has no MACsec protection.</td><td>Look for EtherType 0x88E5 and ICV growth.</td></tr>
+              <tr><td>Assuming encryption hides all metadata</td><td>DA, SA, SecTAG, PN, ICV, frame size, timing, and maybe outer tags remain visible.</td><td>Check what remains before SecTAG and whether outer tags are present.</td></tr>
+              <tr><td>Ignoring replay in integrity-only mode</td><td>Readable stale data can be just as dangerous as readable modified data.</td><td>Check InPkts_Late / delayed counters and replay window configuration.</td></tr>
+              <tr><td>Using confidentiality offset without a data-minimization review</td><td>Clear prefix bytes are authenticated but not secret.</td><td>Decode exactly which fields remain clear at offset 30 or 50.</td></tr>
+              <tr><td>Assuming XPN supports confidentiality offsets</td><td>Standard XPN cipher suites do not support offset confidentiality.</td><td>Verify selected cipher suite and offset combination before deployment.</td></tr>
+              <tr><td>Forgetting key rollover under high frame rates</td><td>PN values must not repeat under the same SAK. XPN or timely rollover is needed.</td><td>Monitor PN headroom, AN changes, and MKA rekey events.</td></tr>
+              <tr><td>Allowing upper-layer services before MACsec is ready</td><td>Protected traffic should wait until MKA/SecY setup is complete and controlled port is enabled.</td><td>Confirm EthSM/TcpIp startup waits for MACsec protected link readiness in the integration stack.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3>Minimal packet-capture checklist</h3>
+        <div class="grid3">
+          <div class="card"><h4>Header</h4><p>Do you see <span class="tag">0x88E5</span>? Is the SecTAG 8 or 16 bytes? Is SCI present?</p></div>
+          <div class="card"><h4>Mode bits</h4><p>Are <span class="tag">E</span> and <span class="tag">C</span> consistent with the intended mode?</p></div>
+          <div class="card"><h4>Data region</h4><p>Can you decode the Secure Data? If yes, is that intended integrity-only or an unintended bypass?</p></div>
+          <div class="card"><h4>PN</h4><p>Does PN increase monotonically for the SA? Is replay protection enabled?</p></div>
+          <div class="card"><h4>ICV</h4><p>Is the 16-byte GCM tag present at the end of protected data?</p></div>
+          <div class="card"><h4>Counters</h4><p>Are invalid, late, not-valid, no-SA, or bad-tag counters incrementing unexpectedly?</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section observe" id="s10" data-title="10. Acronyms and references">
+      <div class="section-header"><h2>10. Acronyms and references</h2><p>Expanded acronym card plus standards anchors for the content.</p></div>
+      <div class="section-body">
+        <h3>Acronym expansion card</h3>
+        <div class="acronyms">
+          <div class="acro"><b>AAD</b> — Additional Authenticated Data</div>
+          <div class="acro"><b>AEAD</b> — Authenticated Encryption with Associated Data</div>
+          <div class="acro"><b>AN</b> — Association Number</div>
+          <div class="acro"><b>CA</b> — Connectivity Association</div>
+          <div class="acro"><b>C</b> — Changed Text bit in the TCI field</div>
+          <div class="acro"><b>E</b> — Encryption / confidentiality bit in the TCI field</div>
+          <div class="acro"><b>EAPOL</b> — Extensible Authentication Protocol over LAN</div>
+          <div class="acro"><b>FCS</b> — Frame Check Sequence</div>
+          <div class="acro"><b>FDB</b> — Filtering Database</div>
+          <div class="acro"><b>GCM</b> — Galois/Counter Mode</div>
+          <div class="acro"><b>ICV</b> — Integrity Check Value</div>
+          <div class="acro"><b>IEEE</b> — Institute of Electrical and Electronics Engineers</div>
+          <div class="acro"><b>ISS</b> — Internal Sublayer Service</div>
+          <div class="acro"><b>IV</b> — Initialization Vector</div>
+          <div class="acro"><b>KaY</b> — MACsec Key Agreement Entity</div>
+          <div class="acro"><b>MACsec</b> — Media Access Control Security</div>
+          <div class="acro"><b>MKA</b> — MACsec Key Agreement</div>
+          <div class="acro"><b>MPDU</b> — MACsec Protocol Data Unit</div>
+          <div class="acro"><b>PCP</b> — Priority Code Point</div>
+          <div class="acro"><b>PN</b> — Packet Number</div>
+          <div class="acro"><b>SA</b> — Secure Association</div>
+          <div class="acro"><b>SAK</b> — Secure Association Key</div>
+          <div class="acro"><b>SC</b> — Secure Channel, also the TCI bit indicating explicit SCI presence</div>
+          <div class="acro"><b>SCI</b> — Secure Channel Identifier</div>
+          <div class="acro"><b>SCB</b> — Single Copy Broadcast</div>
+          <div class="acro"><b>SecTAG</b> — MAC Security TAG</div>
+          <div class="acro"><b>SecY</b> — MAC Security Entity</div>
+          <div class="acro"><b>SL</b> — Short Length</div>
+          <div class="acro"><b>SSCI</b> — Short Secure Channel Identifier</div>
+          <div class="acro"><b>TCI</b> — TAG Control Information</div>
+          <div class="acro"><b>TSN</b> — Time-Sensitive Networking</div>
+          <div class="acro"><b>XPN</b> — Extended Packet Numbering</div>
+        </div>
+
+        <h3>Standards anchors used</h3>
+        <div class="card">
+          <p><b>IEEE Std 802.1AE-2018</b>: MACsec services, SecTAG, TCI/AN bits, Packet Number, Secure Channel Identifier, Secure Data, Integrity Check Value, SecY behavior, GCM-AES cipher suites, integrity-only behavior, confidentiality behavior, and confidentiality offset behavior.</p>
+          <p><b>IEEE Std 802.1X-2020</b>: MKA / KaY role in peer authentication, cipher-suite agreement, secure association key handling, and secure channel establishment.</p>
+          <p><b>AUTOSAR CP R24-11 Specification of MACsec Key Agreement</b>: automotive integration view, MKA-to-EthIf/SecY configuration, ProtectFrames, ValidateFrames, ReplayProtect, ReplayWindow, CurrentCipherSuite, ConfidentialityOffset, controlled-port behavior, and bypass by VLAN or EtherType.</p>
+          <p class="note">This artifact is a training explanation. For conformance, use the official standards and vendor implementation guides.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+const modeData = {
+  integrity:{
+    title:'Integrity-only', pill:'Mode focus: Integrity-only',
+    packet:'<div class="frame"><div class="bytes"><div class="field da w6"><b>DA</b><small>clear</small></div><div class="field sa w6"><b>SA</b><small>clear</small></div><div class="field sectag w16"><b>SecTAG</b><small>E=0 C=0</small></div><div class="field plain wdata"><b>User Data</b><small>clear + authenticated</small></div><div class="field icv w8"><b>ICV</b><small>16 B</small></div></div></div>',
+    tci:'<span class="tag">E=0</span> <span class="tag">C=0</span> <span class="tag">Secure Data = User Data</span>',
+    gcm:'A = DA || SA || SecTAG || User Data; P = null; Secure Data = User Data; ICV = GCM tag.',
+    attacker:'Observer can read the payload, but cannot change it without ICV failure at a validating receiver.'
+  },
+  encrypt0:{
+    title:'Encryption without offset', pill:'Mode focus: Encrypt all user data',
+    packet:'<div class="frame"><div class="bytes"><div class="field da w6"><b>DA</b><small>clear</small></div><div class="field sa w6"><b>SA</b><small>clear</small></div><div class="field sectag w16"><b>SecTAG</b><small>E=1 C=1</small></div><div class="field cipher wdata"><b>Ciphertext</b><small>all user data encrypted</small></div><div class="field icv w8"><b>ICV</b><small>16 B</small></div></div></div>',
+    tci:'<span class="tag">E=1</span> <span class="tag">C=1</span> <span class="tag">Secure Data = C</span>',
+    gcm:'A = DA || SA || SecTAG; P = User Data; Secure Data = Ciphertext C; ICV = GCM tag.',
+    attacker:'Observer sees MACsec metadata, packet number, length and timing, but not payload contents.'
+  },
+  offset30:{
+    title:'Encryption with 30-byte confidentiality offset', pill:'Mode focus: Offset 30',
+    packet:'<div class="frame"><div class="bytes"><div class="field da w6"><b>DA</b><small>clear</small></div><div class="field sa w6"><b>SA</b><small>clear</small></div><div class="field sectag w16"><b>SecTAG</b><small>E=1 C=1</small></div><div class="field clearprefix w8"><b>First 30 B</b><small>clear + auth</small></div><div class="field cipher wdata"><b>Remainder</b><small>encrypted</small></div><div class="field icv w8"><b>ICV</b><small>16 B</small></div></div></div>',
+    tci:'<span class="tag">E=1</span> <span class="tag">C=1</span> <span class="tag">Offset=30</span>',
+    gcm:'A = DA || SA || SecTAG || first 30 user bytes; P = remaining user bytes; Secure Data = clear 30-byte prefix || C.',
+    attacker:'Observer can inspect the first 30 user bytes but cannot modify them without invalidating the ICV.'
+  },
+  offset50:{
+    title:'Encryption with 50-byte confidentiality offset', pill:'Mode focus: Offset 50',
+    packet:'<div class="frame"><div class="bytes"><div class="field da w6"><b>DA</b><small>clear</small></div><div class="field sa w6"><b>SA</b><small>clear</small></div><div class="field sectag w16"><b>SecTAG</b><small>E=1 C=1</small></div><div class="field clearprefix w16"><b>First 50 B</b><small>clear + auth</small></div><div class="field cipher wdata"><b>Remainder</b><small>encrypted</small></div><div class="field icv w8"><b>ICV</b><small>16 B</small></div></div></div>',
+    tci:'<span class="tag">E=1</span> <span class="tag">C=1</span> <span class="tag">Offset=50</span>',
+    gcm:'A = DA || SA || SecTAG || first 50 user bytes; P = remaining user bytes; Secure Data = clear 50-byte prefix || C.',
+    attacker:'Observer can inspect a larger initial header region. This is useful for classification but leaks more information.'
+  }
+};
+function renderMode(m){
+  const d=modeData[m];
+  document.getElementById('modePanel').innerHTML = `<h4>${d.title}</h4>${d.packet}<p><b>TCI:</b> ${d.tci}</p><p><b>GCM map:</b> <span class="mono">${d.gcm}</span></p><p><b>Attacker view:</b> ${d.attacker}</p>`;
+  document.getElementById('modePill').textContent=d.pill;
+}
+document.querySelectorAll('.mode-chip').forEach(btn=>btn.addEventListener('click',()=>{
+  document.querySelectorAll('.mode-chip').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); renderMode(btn.dataset.mode);
+}));
+renderMode('integrity');
+
+const scenarioText = {
+  tamper:[
+    {h:'ECU transmits clear diagnostic payload',p:'The SecY inserts a SecTAG, sets E=0 and C=0 for the common integrity-only GCM-AES case, increments PN, and computes an ICV over the protected fields and clear user data.',wire:['DA','SA','SecTAG','UDS clear','ICV']},
+    {h:'Attacker edits a byte',p:'A wire attacker changes a clear diagnostic byte, for example a DID value or a control field. The frame still looks syntactically valid, but the cryptographic tag no longer matches.',wire:['DA','SA','SecTAG','UDS edited','ICV old']},
+    {h:'Receiver validates ICV',p:'The receiving SecY identifies the SA, checks PN/replay state, recomputes authentication, and detects that the ICV is wrong.',wire:['Parse','SA ok','PN ok','ICV fail']},
+    {h:'Strict policy discards',p:'With strict validation, no indication is delivered to the controlled port. In checked mode, the invalid event may be counted or observed for diagnostics, but production designs normally avoid accepting invalid frames.',wire:['BadTag','Invalid','Drop']}
+  ],
+  encrypt:[
+    {h:'Camera frame enters SecY',p:'The original Ethernet service data is handed to the SecY as User Data. The key and secure association context are already established by MKA.',wire:['User data','SAK','PN']},
+    {h:'SecY encrypts user data',p:'The SecY uses GCM-AES. DA, SA, and SecTAG are authenticated as additional data. The user payload becomes ciphertext and an ICV is appended.',wire:['DA','SA','SecTAG','Ciphertext','ICV']},
+    {h:'Wire observer sees metadata only',p:'An external observer still sees source/destination MAC addresses, SecTAG, PN, frame size, and timing. The sensor payload is not readable.',wire:['Visible','Visible','Visible','Hidden','Visible']},
+    {h:'Receiver validates and decrypts',p:'The receiving SecY validates first. Only after successful validation and replay acceptance does it release the recovered user data to the controlled port.',wire:['ICV ok','PN ok','Decrypt','Deliver']}
+  ],
+  offset:[
+    {h:'Need early receive classification',p:'A legacy receive path or hardware queue classifier may need the beginning of the Layer-3/Layer-4 header before decryption is complete.',wire:['Classifier','needs','early bytes']},
+    {h:'Configure offset 30 or 50',p:'With offset confidentiality, the first 30 or 50 octets of User Data are kept in clear and included in authenticated data. The remainder is encrypted.',wire:['SecTAG','Clear prefix','Cipher remainder','ICV']},
+    {h:'Prefix remains clear',p:'The classifier can inspect the prefix. This can include useful header fields, but it also leaks information and must be part of the security design.',wire:['Clear bytes','Readable','Remainder hidden']},
+    {h:'Prefix still authenticated',p:'Although the prefix is visible, it is not mutable. Changing any prefix bit invalidates the ICV.',wire:['Modify prefix','ICV fail','Drop']}
+  ],
+  rollover:[
+    {h:'Old SA is active',p:'Traffic is using one Secure Association identified by the AN bits. PN is monotonically increasing under the current SAK.',wire:['AN=0','PN=n','SAK old']},
+    {h:'MKA installs new SA',p:'Before PN space is exhausted or according to rekey policy, MKA provisions a new SAK and receiving SA.',wire:['AN=1','SAK new','Ready']},
+    {h:'Transmitter changes AN',p:'The SecY starts transmitting frames with the new AN and new key while receivers still understand both old and new SAs during transition.',wire:['AN=1','PN=1','ICV new']},
+    {h:'Receiver accepts new SA',p:'Receiver selects the new SA from AN/context and validates with the new SAK. This matters in both integrity-only and encrypted modes.',wire:['Select SA','Validate','Deliver']}
+  ]
+};
+function renderScenario(sc){
+  const name=sc.dataset.scenario; const idx=Number(sc.querySelector('.sbtn.active').dataset.step||0);
+  const item=scenarioText[name][idx];
+  const wire=item.wire.map((w,i)=>`<div class="mini ${/fail|Drop|Hidden|edited|old|Bad|Invalid/i.test(w)?'badx':(/ok|Deliver|Ready|new|Visible|Clear|Readable/i.test(w)?'okx':'')}">${w}</div>`).join('<span class="arrow">→</span>');
+  sc.querySelector('.step-detail').innerHTML=`<h4>${item.h}</h4><p>${item.p}</p><div class="mini-wire">${wire}</div>`;
+}
+document.querySelectorAll('.scenario').forEach(sc=>{
+  sc.querySelectorAll('.sbtn').forEach(b=>b.addEventListener('click',()=>{
+    sc.querySelectorAll('.sbtn').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active'); renderScenario(sc);
+  }));
+  renderScenario(sc);
+});
+
+const sections=[...document.querySelectorAll('.observe')];
+const tocLinks=[...document.querySelectorAll('#toc a')];
+const ctxTitle=document.getElementById('currentContext');
+const obs=new IntersectionObserver(entries=>{
+  entries.forEach(entry=>{
+    if(entry.isIntersecting){
+      const id=entry.target.id;
+      ctxTitle.textContent=entry.target.dataset.title;
+      tocLinks.forEach(a=>a.classList.toggle('active',a.getAttribute('href')==='#'+id));
+    }
+  })
+},{rootMargin:'-18% 0px -72% 0px',threshold:0});
+sections.forEach(s=>obs.observe(s));
+window.addEventListener('scroll',()=>{
+  const h=document.documentElement;
+  const p=(h.scrollTop)/(h.scrollHeight-h.clientHeight)*100;
+  document.getElementById('progressBar').style.width=p+'%';
+});
+</script>
+</body>
+</html>

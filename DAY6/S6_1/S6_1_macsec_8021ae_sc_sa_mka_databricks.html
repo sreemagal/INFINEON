@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MACsec IEEE 802.1AE Architecture - SC, SA, MKA</title>
+<style>
+:root{--bg:#0b0f14;--panel:#151b23;--panel2:#1b2430;--line:#334155;--text:#e6edf3;--muted:#9fb0c3;--accent:#ff5f46;--accent2:#ffb86b;--good:#44d07b;--warn:#ffd166;--bad:#ff6b6b;--blue:#6ca8ff;--cyan:#67e8f9;--purple:#c084fc}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(circle at top left,rgba(255,95,70,.12),transparent 34rem),radial-gradient(circle at 85% 5%,rgba(103,232,249,.09),transparent 30rem),var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;line-height:1.55}
+a{color:var(--cyan);text-decoration:none}.top{position:sticky;top:0;z-index:20;background:rgba(11,15,20,.86);backdrop-filter:blur(16px);border-bottom:1px solid rgba(255,255,255,.08)}
+.ctx{max-width:1380px;margin:auto;padding:10px 20px;display:grid;grid-template-columns:1.2fr .9fr 1fr;gap:12px;align-items:center}.brand{display:flex;gap:12px;align-items:center}.logo{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:linear-gradient(135deg,var(--accent),#fd8d3c);font-weight:900}.brand b{display:block}.brand span,.small{font-size:12px;color:var(--muted)}.pill{border:1px solid rgba(255,95,70,.35);background:rgba(255,95,70,.10);border-radius:999px;padding:8px 12px;text-align:center;color:#ffd7cf}.pill b{color:white}.prog{display:flex;gap:10px;align-items:center}.track{flex:1;height:8px;border-radius:999px;background:#17202b;border:1px solid #263445;overflow:hidden}.bar{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+nav{max-width:1380px;margin:auto;padding:0 20px 10px;display:flex;gap:8px;overflow-x:auto}nav a{flex:0 0 auto;color:var(--muted);font-size:12px;border:1px solid rgba(255,255,255,.09);background:rgba(255,255,255,.035);padding:7px 10px;border-radius:999px}nav a.active,nav a:hover{color:white;border-color:rgba(255,95,70,.55);background:rgba(255,95,70,.12)}
+main{max-width:1380px;margin:auto;padding:28px 20px 80px}.hero{border:1px solid rgba(255,255,255,.09);background:linear-gradient(135deg,rgba(255,95,70,.15),rgba(17,24,39,.3),rgba(103,232,249,.07));border-radius:28px;padding:36px;box-shadow:0 20px 55px rgba(0,0,0,.35)}
+.eye{display:inline-flex;border:1px solid rgba(255,95,70,.3);background:rgba(255,95,70,.1);padding:7px 11px;border-radius:999px;color:#ffd7cf;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.08em}h1{font-size:clamp(34px,5vw,62px);line-height:1.03;margin:18px 0;letter-spacing:-.045em}h2{font-size:clamp(24px,3vw,38px);line-height:1.1;margin:0 0 6px;letter-spacing:-.03em}h3{margin:0 0 10px;font-size:20px}.lead{font-size:clamp(16px,2vw,21px);color:#cbd5e1;max-width:980px}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:24px}.metric,.card{background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.025));border:1px solid rgba(255,255,255,.09);border-radius:18px;padding:18px}.metric .k{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}.metric .v{font-size:20px;font-weight:850;color:white}
+section{scroll-margin-top:120px;margin-top:28px}.st{display:flex;justify-content:space-between;gap:18px;align-items:end;margin-bottom:14px}.st p{margin:0;color:var(--muted);max-width:670px}.grid{display:grid;gap:16px}.two{grid-template-columns:repeat(2,1fr)}.three{grid-template-columns:repeat(3,1fr)}.four{grid-template-columns:repeat(4,1fr)}
+.hot{border-color:rgba(255,95,70,.28);background:linear-gradient(180deg,rgba(255,95,70,.1),rgba(255,255,255,.025))}.good{border-color:rgba(68,208,123,.28);background:linear-gradient(180deg,rgba(68,208,123,.08),rgba(255,255,255,.025))}.warn{border-color:rgba(255,209,102,.30);background:linear-gradient(180deg,rgba(255,209,102,.08),rgba(255,255,255,.025))}.bad{border-color:rgba(255,107,107,.30);background:linear-gradient(180deg,rgba(255,107,107,.08),rgba(255,255,255,.025))}.tag{display:inline-flex;margin:2px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.04);border-radius:999px;padding:4px 8px;font-size:12px;color:#cbd5e1}.orange{color:#ffd7cf;border-color:rgba(255,95,70,.35);background:rgba(255,95,70,.10)}.green{color:#c6f6d5;border-color:rgba(68,208,123,.35);background:rgba(68,208,123,.10)}.blue{color:#dbeafe;border-color:rgba(108,168,255,.35);background:rgba(108,168,255,.10)}
+.call{border-left:4px solid var(--accent);background:rgba(255,95,70,.09);padding:12px 14px;border-radius:12px;color:#f4d7d2}.call.warn{border-left-color:var(--warn);color:#fff1c7}.call.green{border-left-color:var(--good);color:#d3f9df}.call.blue{border-left-color:var(--blue);color:#dbeafe}
+.stack{display:flex;flex-direction:column;gap:10px}.layer{border:1px solid var(--line);background:var(--panel2);border-radius:14px;padding:12px 14px;display:flex;justify-content:space-between;gap:12px}.layer.sec{border-color:rgba(255,95,70,.4);background:rgba(255,95,70,.08)}.layer.ctrl{border-color:rgba(103,232,249,.35);background:rgba(103,232,249,.07)}
+.pipeline{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}.pipe{position:relative;background:var(--panel2);border:1px solid var(--line);border-radius:16px;padding:14px;min-height:115px}.pipe:after{content:"→";position:absolute;right:-14px;top:42%;color:var(--accent2);font-size:22px;font-weight:900}.pipe:last-child:after{content:""}.num{font-size:11px;color:var(--accent2);font-weight:850;text-transform:uppercase;letter-spacing:.08em}
+.diagram{background:linear-gradient(180deg,rgba(10,15,22,.8),rgba(13,18,26,.75));border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:16px;overflow-x:auto}.frame{display:flex;min-width:860px;border-radius:14px;overflow:hidden;border:1px solid var(--line)}.field{min-height:78px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:8px 10px;border-right:1px solid rgba(255,255,255,.16);background:#1a2430}.field:last-child{border-right:none}.name{font-weight:850;font-size:13px}.bytes{font-size:11px;color:var(--muted);margin-top:4px}.clear{background:linear-gradient(180deg,#243043,#1b2533)}.secf{background:linear-gradient(180deg,rgba(255,95,70,.24),rgba(255,95,70,.10))}.enc{background:linear-gradient(180deg,rgba(103,232,249,.18),rgba(103,232,249,.07))}.icv{background:linear-gradient(180deg,rgba(68,208,123,.20),rgba(68,208,123,.08))}.ctrl{background:linear-gradient(180deg,rgba(192,132,252,.18),rgba(192,132,252,.07))}
+.w1{width:120px}.w2{width:92px}.w3{width:112px}.w4{width:132px}.w5{width:280px}.bits{display:grid;grid-template-columns:repeat(8,1fr);gap:4px;margin-top:10px}.bit{background:#17202b;border:1px solid var(--line);border-radius:9px;padding:8px 6px;text-align:center}.bit b{display:block;font-size:12px}.bit span{display:block;font-size:11px;color:var(--muted)}
+table{width:100%;border-collapse:separate;border-spacing:0;border:1px solid rgba(255,255,255,.09);border-radius:16px;overflow:hidden}th,td{padding:11px 12px;border-bottom:1px solid rgba(255,255,255,.08);vertical-align:top}th{background:#17202b;text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.08em}td{background:rgba(255,255,255,.025)}tr:last-child td{border-bottom:none}code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}code{background:#0a0f16;border:1px solid rgba(255,255,255,.08);border-radius:7px;padding:2px 5px;color:#dbeafe}pre{background:#090e14;border:1px solid rgba(255,255,255,.09);border-radius:16px;padding:15px;overflow:auto;color:#cde7ff;font-size:13px}
+.scenario{display:grid;grid-template-columns:310px 1fr;gap:16px;margin-top:16px}.timeline{position:relative;padding-left:26px}.timeline:before{content:"";position:absolute;left:10px;top:4px;bottom:4px;width:2px;background:linear-gradient(var(--accent),var(--cyan))}.step{position:relative;margin:0 0 14px;padding:12px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);border-radius:14px}.step:before{content:"";position:absolute;left:-22px;top:16px;width:12px;height:12px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px rgba(255,95,70,.15)}
+details{background:rgba(255,255,255,.028);border:1px solid rgba(255,255,255,.08);border-radius:16px;overflow:hidden}summary{cursor:pointer;padding:14px 16px;font-weight:850;background:rgba(255,255,255,.035)}details .body{padding:14px 16px}.footer{margin-top:34px;color:var(--muted);font-size:13px;border-top:1px solid rgba(255,255,255,.09);padding-top:18px}
+svg{width:100%;min-width:780px}.svgl{font:700 13px Inter,sans-serif;fill:#e6edf3}.svgs{font:11px Inter,sans-serif;fill:#9fb0c3}
+@media(max-width:1000px){.ctx{grid-template-columns:1fr}.metrics,.four{grid-template-columns:repeat(2,1fr)}.two,.three{grid-template-columns:1fr}.pipeline{grid-template-columns:1fr}.pipe:after{content:"↓";right:50%;top:auto;bottom:-22px}.scenario{grid-template-columns:1fr}}@media(max-width:620px){main{padding:20px 12px 70px}.hero{padding:24px}.metrics{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="ctx">
+    <div class="brand"><div class="logo">DB</div><div><b>MACsec 802.1AE Architecture</b><span>SC · SA · SecY · MKA · SecTAG · observability</span></div></div>
+    <div class="pill">Current context: <b id="ctxText">Overview</b></div>
+    <div class="prog"><span class="small" id="pct">0%</span><div class="track"><div class="bar" id="bar"></div></div></div>
+  </div>
+  <nav id="nav">
+    <a href="#overview">Overview</a><a href="#standards">Standards map</a><a href="#architecture">Architecture</a><a href="#objects">SC/SA model</a><a href="#sectag">SecTAG</a><a href="#mka">MKA</a><a href="#scenarios">Scenarios</a><a href="#observability">Observability</a><a href="#drills">Drills</a><a href="#references">References</a>
+  </nav>
+</header>
+<main>
+<section class="hero" id="overview" data-title="Overview">
+  <span class="eye">IEEE 802.1AE MACsec learning artifact</span>
+  <h1>MACsec architecture through Secure Channels, Secure Associations, and MKA</h1>
+  <p class="lead">MACsec protects Ethernet frames at Layer 2. The clean mental model is to separate the <b>data plane</b>, where a MAC Security Entity inserts a SecTAG and validates an Integrity Check Value, from the <b>control plane</b>, where MKA discovers authenticated peers and distributes Secure Association Keys.</p>
+  <div class="metrics">
+    <div class="metric"><div class="k">Data-plane standard</div><div class="v">IEEE 802.1AE</div></div>
+    <div class="metric"><div class="k">Key agreement</div><div class="v">IEEE 802.1X MKA</div></div>
+    <div class="metric"><div class="k">Protected frame marker</div><div class="v">0x88E5</div></div>
+    <div class="metric"><div class="k">MKA transport</div><div class="v">EAPOL / MKPDU</div></div>
+  </div>
+</section>
+
+<section id="standards" data-title="Standards map">
+  <div class="st"><div><h2>1. Standards map</h2></div><p>802.1AE and MKA cooperate, but they solve different problems.</p></div>
+  <div class="grid three">
+    <div class="card hot"><h3>IEEE 802.1AE</h3><p>Defines MAC Security, the SecY, secured frame format, Secure Channels, Secure Associations, replay protection, cipher suites, validation, and management objects.</p><span class="tag orange">SecY</span><span class="tag orange">SC</span><span class="tag orange">SA</span><span class="tag orange">SecTAG</span></div>
+    <div class="card"><h3>IEEE 802.1X MKA</h3><p>Defines MACsec Key Agreement. MKA discovers mutually authenticated peers, elects a Key Server, distributes SAKs, advertises cipher capability, and maintains live peer state.</p><span class="tag blue">EAPOL</span><span class="tag blue">MKPDU</span><span class="tag blue">CAK</span><span class="tag blue">CKN</span><span class="tag blue">SAK</span></div>
+    <div class="card good"><h3>IEEE 802.1AEdk</h3><p>Adds MAC privacy protection concepts that complement MACsec by reducing correlation from visible MAC addresses, frame sizes, and timing. It is adjacent context, not required for basic SC/SA/MKA learning.</p><span class="tag green">privacy</span><span class="tag green">YANG/MIB</span></div>
+  </div>
+  <div class="call warn" style="margin-top:16px"><b>Standards-aware teaching rule:</b> MACsec is not an end-to-end IP security protocol. It protects the Ethernet segment or Layer-2 service where the MACsec peers and their SecYs are established.</div>
+</section>
+
+<section id="architecture" data-title="Architecture">
+  <div class="st"><h2>2. Where MACsec sits</h2><p>The MAC Security Entity is between the MAC client and the real MAC/PHY service.</p></div>
+  <div class="grid two">
+    <div class="card"><h3>Transmit path</h3><div class="stack"><div class="layer"><b>MAC Client</b><span class="small">Bridge relay, ECU stack, IP stack, TSN app</span></div><div class="layer sec"><b>SecY transmit</b><span class="small">select SA, add SecTAG, encrypt/authenticate, increment PN</span></div><div class="layer"><b>MAC + PHY</b><span class="small">serialize frame onto link</span></div></div></div>
+    <div class="card"><h3>Receive path</h3><div class="stack"><div class="layer"><b>MAC + PHY</b><span class="small">receive protected frame</span></div><div class="layer sec"><b>SecY receive</b><span class="small">lookup SC, select SA by AN, validate ICV, check replay</span></div><div class="layer"><b>MAC Client</b><span class="small">only validated frames are delivered</span></div></div></div>
+  </div>
+  <div class="card" style="margin-top:16px"><h3>Two logical paths on a MACsec-capable port</h3>
+    <div class="pipeline">
+      <div class="pipe"><div class="num">1 uncontrolled</div><b>EAPOL/MKA</b><p class="small">Used before data protection is established.</p></div>
+      <div class="pipe"><div class="num">2 MKA</div><b>Peer and key control</b><p class="small">Discovers peers and distributes SAKs.</p></div>
+      <div class="pipe"><div class="num">3 SecY config</div><b>Install SAs</b><p class="small">Programs transmit and receive SAs.</p></div>
+      <div class="pipe"><div class="num">4 controlled</div><b>Protected data</b><p class="small">Frames must pass MACsec validation.</p></div>
+      <div class="pipe"><div class="num">5 rekey</div><b>SA rollover</b><p class="small">New SA enters before old SA retires.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="objects" data-title="SC/SA model">
+  <div class="st"><h2>3. Object model: CA, SC, SA, SCI, AN, PN</h2><p>These objects describe how a receiver interprets each protected frame.</p></div>
+  <div class="grid four">
+    <div class="card hot"><h3>SecY</h3><p>The MAC Security Entity that applies and validates MACsec protection.</p></div>
+    <div class="card"><h3>CA</h3><p>Connectivity Association. The set of systems authorized to communicate securely, maintained by MKA using CAK and CKN.</p></div>
+    <div class="card"><h3>SC</h3><p>Secure Channel. A unidirectional protected stream from one transmitting SecY, normally identified by SCI.</p></div>
+    <div class="card"><h3>SA</h3><p>Secure Association. A keying instance within an SC. The two-bit AN selects the SA.</p></div>
+  </div>
+  <div class="diagram" style="margin-top:16px">
+    <svg viewBox="0 0 1120 300" role="img" aria-label="MACsec object model">
+      <defs><marker id="arr" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#ffb86b"/></marker><linearGradient id="gg" x1="0" x2="1"><stop offset="0" stop-color="#ff5f46" stop-opacity=".32"/><stop offset="1" stop-color="#67e8f9" stop-opacity=".18"/></linearGradient></defs>
+      <rect x="25" y="35" width="310" height="220" rx="20" fill="#151b23" stroke="#334155"/><text x="50" y="70" class="svgl">Node A SecY</text><rect x="55" y="98" width="240" height="46" rx="12" fill="#1b2430" stroke="#ff5f46"/><text x="72" y="126" class="svgl">Transmit SC of A</text><rect x="55" y="166" width="70" height="44" rx="10" fill="#0f1720" stroke="#6ca8ff"/><text x="76" y="193" class="svgl">SA0</text><rect x="140" y="166" width="70" height="44" rx="10" fill="#0f1720" stroke="#44d07b"/><text x="161" y="193" class="svgl">SA1</text><rect x="225" y="166" width="70" height="44" rx="10" fill="#0f1720" stroke="#ffd166"/><text x="246" y="193" class="svgl">SA2</text><text x="62" y="235" class="svgs">one active transmit SA selected by AN</text>
+      <rect x="790" y="35" width="310" height="220" rx="20" fill="#151b23" stroke="#334155"/><text x="815" y="70" class="svgl">Node B SecY</text><rect x="820" y="98" width="240" height="46" rx="12" fill="#1b2430" stroke="#ff5f46"/><text x="837" y="126" class="svgl">Receive SC for A</text><rect x="820" y="166" width="70" height="44" rx="10" fill="#0f1720" stroke="#6ca8ff"/><text x="841" y="193" class="svgl">SA0</text><rect x="905" y="166" width="70" height="44" rx="10" fill="#0f1720" stroke="#44d07b"/><text x="926" y="193" class="svgl">SA1</text><rect x="990" y="166" width="70" height="44" rx="10" fill="#0f1720" stroke="#ffd166"/><text x="1011" y="193" class="svgl">SA2</text><text x="825" y="235" class="svgs">receive SAs can overlap during rekey</text>
+      <rect x="395" y="92" width="335" height="116" rx="18" fill="url(#gg)" stroke="#334155"/><text x="425" y="125" class="svgl">Protected MACsec frame</text><text x="425" y="151" class="svgs">SCI identifies A's Secure Channel</text><text x="425" y="173" class="svgs">AN selects the Secure Association</text><text x="425" y="195" class="svgs">PN is checked for replay and uniqueness</text><line x1="335" y1="150" x2="395" y2="150" stroke="#ffb86b" stroke-width="3" marker-end="url(#arr)"/><line x1="730" y1="150" x2="790" y2="150" stroke="#ffb86b" stroke-width="3" marker-end="url(#arr)"/>
+    </svg>
+  </div>
+  <div class="grid two" style="margin-top:16px">
+    <div class="card"><h3>SCI</h3><p>Secure Channel Identifier. It identifies the transmitting SC, commonly understood as a 48-bit MAC address plus a 16-bit port identifier. If carried in the SecTAG, the receiver can explicitly select the receive SC.</p></div>
+    <div class="card"><h3>AN and PN</h3><p>The Association Number selects the SA inside the SC. The Packet Number is monotonically advanced and used to reject replays, old frames, and frames outside the replay window.</p></div>
+  </div>
+</section>
+
+<section id="sectag" data-title="SecTAG">
+  <div class="st"><h2>4. MACsec frame and SecTAG</h2><p>The visible marker is EtherType <code>0x88E5</code>. The SecTAG gives the receiver the security context.</p></div>
+  <div class="card"><h3>Canonical protected Ethernet frame</h3>
+    <div class="diagram"><div class="frame">
+      <div class="field clear w1"><div class="name">Destination MAC</div><div class="bytes">6 bytes<br>clear</div></div>
+      <div class="field clear w1"><div class="name">Source MAC</div><div class="bytes">6 bytes<br>clear</div></div>
+      <div class="field secf w2"><div class="name">MACsec EtherType</div><div class="bytes">0x88E5<br>2 bytes</div></div>
+      <div class="field secf w3"><div class="name">TCI/AN</div><div class="bytes">1 byte</div></div>
+      <div class="field secf w3"><div class="name">Short Length</div><div class="bytes">1 byte</div></div>
+      <div class="field secf w3"><div class="name">Packet Number</div><div class="bytes">4 bytes</div></div>
+      <div class="field secf w4"><div class="name">SCI</div><div class="bytes">optional<br>8 bytes</div></div>
+      <div class="field enc w5"><div class="name">Secure Data</div><div class="bytes">original EtherType + payload<br>encrypted if confidentiality enabled</div></div>
+      <div class="field icv w3"><div class="name">ICV</div><div class="bytes">typically 16 bytes</div></div>
+    </div></div>
+  </div>
+  <div class="grid two" style="margin-top:16px">
+    <div class="card"><h3>TCI/AN octet</h3><div class="bits"><div class="bit"><b>VER</b><span>version</span></div><div class="bit"><b>ES</b><span>end station</span></div><div class="bit"><b>SC</b><span>SCI present</span></div><div class="bit"><b>SCB</b><span>single-copy broadcast</span></div><div class="bit"><b>E</b><span>encrypted</span></div><div class="bit"><b>C</b><span>changed text</span></div><div class="bit"><b>AN1</b><span>SA select</span></div><div class="bit"><b>AN0</b><span>SA select</span></div></div><p class="small">Practical reading: <code>SC=1</code> means SCI is present. <code>E/C</code> indicate protected-data transformation. <code>AN</code> selects the SA.</p></div>
+    <div class="card"><h3>VLAN placement caution</h3><p>In a simple port-based deployment, outer DA/SA and the MACsec EtherType remain visible, while the original client EtherType and payload are protected. If service tags must remain visible to intermediate devices, the SecY placement must be designed accordingly.</p><div class="call blue"><b>Diagnostic hint:</b> A switch cannot forward based on an encrypted customer VLAN unless it decrypts first or that tag was deliberately outside the protected client data.</div></div>
+  </div>
+</section>
+
+<section id="mka" data-title="MKA">
+  <div class="st"><h2>5. MKA: key agreement for MACsec</h2><p>MKA tells the SecY who is authorized and which SAK, AN, cipher suite, and replay settings to use.</p></div>
+  <div class="grid two">
+    <div class="card"><h3>EAPOL-MKA envelope</h3><div class="diagram"><div class="frame" style="min-width:760px"><div class="field clear w1"><div class="name">EAPOL multicast DA</div><div class="bytes">01-80-C2-00-00-03<br>typical default</div></div><div class="field clear w1"><div class="name">Source MAC</div><div class="bytes">6 bytes</div></div><div class="field ctrl w2"><div class="name">EAPOL EtherType</div><div class="bytes">0x888E</div></div><div class="field ctrl w3"><div class="name">Version</div><div class="bytes">1 byte</div></div><div class="field ctrl w3"><div class="name">Packet type</div><div class="bytes">MKA</div></div><div class="field ctrl w3"><div class="name">Length</div><div class="bytes">2 bytes</div></div><div class="field ctrl w5"><div class="name">MKPDU body</div><div class="bytes">peer lists, SAK use, distributed SAK, announcements</div></div></div></div><p class="small">In WAN MACsec, alternate EAPOL destination MAC or EtherType may be configured so provider bridges do not consume link-local EAPOL frames.</p></div>
+    <div class="card"><h3>MKA state story</h3><div class="timeline"><div class="step"><b>1. CAK and CKN exist.</b><br>Peers share or derive a Connectivity Association Key and identify it by Connectivity Association Key Name.</div><div class="step"><b>2. MKPDUs prove membership.</b><br>Participants exchange protected MKA state and advertise capabilities.</div><div class="step"><b>3. Key Server is elected.</b><br>One peer selects cipher suite and distributes SAKs.</div><div class="step"><b>4. SecY installs SAs.</b><br>Transmit and receive SAs become usable, so the controlled port can pass protected data.</div><div class="step"><b>5. Rekey.</b><br>New SAK is mapped to a new AN, while old receive SA remains briefly to avoid drops.</div></div></div>
+  </div>
+  <div class="card" style="margin-top:16px"><h3>MKA parameter-set ideas</h3><table><thead><tr><th>Concept</th><th>Meaning</th><th>Operational use</th></tr></thead><tbody><tr><td>Live peer list</td><td>Peers currently considered alive and authenticated.</td><td>Loss from this list can cause secure link failure.</td></tr><tr><td>Potential peer list</td><td>Peers detected but not live.</td><td>Useful for CAK/CKN or policy mismatch diagnostics.</td></tr><tr><td>SAK use</td><td>Which SAK and AN are being used.</td><td>Critical during rekey transitions.</td></tr><tr><td>Distributed SAK</td><td>Data-plane key material distributed by the Key Server.</td><td>Needed before a data-plane SA can protect frames.</td></tr><tr><td>Announcement</td><td>Capability advertisement such as cipher suites.</td><td>Prevents incompatible cipher selection.</td></tr><tr><td>XPN</td><td>Extended Packet Number support.</td><td>Important for high-speed links to avoid PN exhaustion.</td></tr></tbody></table></div>
+</section>
+
+<section id="scenarios" data-title="Scenarios">
+  <div class="st"><h2>6. Interesting scenarios</h2><p>Each example follows what the transmitter sends and what the receiver accepts or rejects.</p></div>
+  <div class="scenario"><div class="card hot"><h3>A. Two ECUs establish MACsec</h3><p class="small">Normal bring-up using a pre-shared CAK.</p><span class="tag blue">MKA</span><span class="tag orange">SecY</span><span class="tag green">SAK installed</span></div><div class="card"><div class="timeline"><div class="step"><b>Initial condition:</b> ECU-A and ECU-B know the same CKN and CAK. Controlled data is not yet passing.</div><div class="step"><b>MKPDU exchange:</b> Both send EAPOL-MKA frames and prove membership in the same CA.</div><div class="step"><b>Key Server:</b> ECU-A wins and distributes SAK0.</div><div class="step"><b>SA install:</b> A transmits with AN=0. B installs receive SA for A's SCI and AN=0.</div><div class="step"><b>Data starts:</b> B validates SCI, AN, ICV, and PN before releasing plaintext to the MAC client.</div></div><div class="call green"><b>Key insight:</b> MKA does not encrypt user data itself. It creates the SA state that lets the SecY protect user data.</div></div></div>
+  <div class="scenario"><div class="card warn"><h3>B. Rekey without frame loss</h3><p class="small">Why old and new SAs overlap.</p></div><div class="card"><table><thead><tr><th>Time</th><th>Transmitter</th><th>Receiver</th><th>Observation</th></tr></thead><tbody><tr><td>T0</td><td>Uses SAK-old, AN=0.</td><td>Accepts AN=0.</td><td>PN rises under old SA.</td></tr><tr><td>T1</td><td>MKA distributes SAK-new for AN=1.</td><td>Installs AN=1 but keeps AN=0.</td><td>Two ANs may be valid.</td></tr><tr><td>T2</td><td>Switches transmit to AN=1.</td><td>Accepts new frames.</td><td>New PN context starts.</td></tr><tr><td>T3</td><td>Stops using AN=0.</td><td>Retires old receive SA.</td><td>Late AN=0 frames now drop.</td></tr></tbody></table><div class="call warn" style="margin-top:12px"><b>Not a bug:</b> Two valid ANs during rollover can be correct and intentional.</div></div></div>
+  <div class="scenario"><div class="card bad"><h3>C. Replay of captured frame</h3><p class="small">PN and replay-window behavior.</p></div><div class="card"><div class="timeline"><div class="step"><b>History:</b> Receiver accepted SCI=A, AN=0 up to PN=10200.</div><div class="step"><b>Attack:</b> Old frame with PN=9980 is injected.</div><div class="step"><b>Lookup may succeed:</b> SCI and AN identify a valid SA.</div><div class="step"><b>Replay check fails:</b> PN is stale or already seen, so the frame is discarded.</div></div><pre>Ethernet FCS can be valid
+MACsec ICV can even verify
+Replay protection can still drop the frame because PN is too old</pre></div></div>
+  <div class="scenario"><div class="card"><h3>D. SCI absent</h3><p class="small">Why SCI presence matters.</p></div><div class="card"><p>If SCI is present, the receiver explicitly maps the frame to the transmitting Secure Channel. If SCI is absent, the receiver must infer the SC from local context such as the port and expected peer.</p><div class="grid two"><div class="call blue"><b>Safe:</b> point-to-point link with only one expected peer.</div><div class="call warn"><b>Risky:</b> multi-access or provider-style service with ambiguous transmitters.</div></div></div></div>
+  <div class="scenario"><div class="card bad"><h3>E. MKA live but data drops</h3><p class="small">Separate control-plane success from data-plane failure.</p></div><div class="card"><table><thead><tr><th>Observation</th><th>Interpretation</th><th>Area</th></tr></thead><tbody><tr><td>MKA live peer exists</td><td>CAK/CKN and EAPOL transport probably work.</td><td>MKA</td></tr><tr><td>SAK use advertised</td><td>Key Server distributed a SAK.</td><td>MKA/SecY boundary</td></tr><tr><td>0x88E5 frames arrive</td><td>Transmitter is applying MACsec.</td><td>Transmit SecY</td></tr><tr><td>Invalid ICV counter rises</td><td>Wrong key, cipher, SCI/AN mapping, tamper, or corrupted secure data.</td><td>Receive SecY</td></tr></tbody></table></div></div>
+  <div class="scenario"><div class="card warn"><h3>F. WAN MACsec EAPOL trap</h3><p class="small">MKA never reaches the peer.</p></div><div class="card"><p>Standard EAPOL uses a link-local multicast destination. An intermediate provider bridge may consume or filter it instead of forwarding it through the Layer-2 service.</p><pre>Site A sends DA=01-80-C2-00-00-03, EtherType=0x888E, MKPDU
+Provider bridge consumes or filters it
+Site B never receives MKA
+Result: ordinary Ethernet service may work, but MACsec never comes up</pre></div></div>
+  <div class="scenario"><div class="card"><h3>G. 32-bit PN exhaustion</h3><p class="small">Why XPN exists.</p></div><div class="card"><p>A transmit SA must not reuse the same key and packet-number combination. On high-speed links with small frames, a 32-bit PN space can be consumed quickly. Rekey before exhaustion or use XPN-capable cipher suites.</p><pre>32-bit PN space ≈ 4.29 billion packet numbers
+High packet rate + long-lived SA = unsafe reuse risk
+Safe response = rekey or use extended packet numbering</pre></div></div>
+</section>
+
+<section id="observability" data-title="Observability">
+  <div class="st"><h2>7. Failure observability</h2><p>MACsec failures often look like disappearing packets because validation occurs below IP and transport layers.</p></div>
+  <div class="grid two">
+    <div class="card"><h3>Data-plane matrix</h3><table><thead><tr><th>Failure</th><th>Receiver sees</th><th>Likely root cause</th></tr></thead><tbody><tr><td>Unknown SCI</td><td>0x88E5 frame but no receive SC.</td><td>Wrong peer, SCI absent when needed, wrong port context.</td></tr><tr><td>Unknown AN</td><td>Known SC but inactive SA.</td><td>Rekey mismatch or retired SA.</td></tr><tr><td>Invalid ICV</td><td>Cryptographic validation failure.</td><td>Wrong SAK/cipher, tampering, corrupted secure data.</td></tr><tr><td>Replay/late PN</td><td>PN check failure.</td><td>Replay, duplication, reordering beyond window.</td></tr></tbody></table></div>
+    <div class="card"><h3>MKA matrix</h3><table><thead><tr><th>Failure</th><th>What changes</th><th>Likely root cause</th></tr></thead><tbody><tr><td>No MKPDU received</td><td>No peer appears.</td><td>EAPOL blocked or wrong destination/EtherType.</td></tr><tr><td>Potential only</td><td>Detected but not live.</td><td>CAK/CKN or policy mismatch.</td></tr><tr><td>No SAK</td><td>MKA up but no data SA.</td><td>Key Server, cipher, or authorization issue.</td></tr><tr><td>Rekey drops</td><td>Traffic loss at AN change.</td><td>One side installed new SA before the other accepted it.</td></tr></tbody></table></div>
+  </div>
+  <div class="card" style="margin-top:16px"><h3>Debugging order</h3><div class="pipeline"><div class="pipe"><div class="num">1</div><b>Physical link</b><p class="small">Link up, no FCS storm.</p></div><div class="pipe"><div class="num">2</div><b>EAPOL visibility</b><p class="small">0x888E MKPDUs sent and received.</p></div><div class="pipe"><div class="num">3</div><b>MKA live peer</b><p class="small">Live peer, not just potential peer.</p></div><div class="pipe"><div class="num">4</div><b>SAK/AN</b><p class="small">SAK use and rollover state.</p></div><div class="pipe"><div class="num">5</div><b>SecY counters</b><p class="small">Unknown SCI, invalid ICV, replay drops.</p></div></div></div>
+</section>
+
+<section id="drills" data-title="Header drills">
+  <div class="st"><h2>8. Header-reading drills</h2><p>Use these as lab or classroom exercises.</p></div>
+  <div class="grid two">
+    <details open><summary>Drill 1: Is this MACsec-protected?</summary><div class="body"><pre>DA      = 02-00-00-00-00-B2
+SA      = 02-00-00-00-00-A1
+Type    = 88-E5
+TCI/AN  = 2C
+SL      = 00
+PN      = 00-00-10-5A
+SCI     = 02-00-00-00-00-A1-00-01</pre><p><b>Answer:</b> Yes. EtherType <code>0x88E5</code> identifies MACsec. The receiver uses SCI to find the SC, AN to choose the SA, PN for replay checks, and ICV for validation.</p></div></details>
+    <details open><summary>Drill 2: Why does IP never see this frame?</summary><div class="body"><pre>Ethernet FCS valid
+EtherType 0x88E5 present
+SCI matches known peer
+AN = 1
+SecY counter: invalid ICV +1</pre><p><b>Answer:</b> MACsec validation failed before delivery to the controlled MAC service. Ethernet FCS success is not MACsec success.</p></div></details>
+    <details><summary>Drill 3: Why does one direction fail after rekey?</summary><div class="body"><pre>A → B: A transmits AN=2, B still accepts only AN=1
+B → A: B transmits AN=1, A accepts AN=1</pre><p><b>Answer:</b> SCs are unidirectional. A-to-B SA state can fail independently from B-to-A.</p></div></details>
+    <details><summary>Drill 4: Why does WAN MACsec not come up?</summary><div class="body"><pre>Site A sends:
+  DA = 01-80-C2-00-00-03
+  Type = 88-8E
+  Payload = EAPOL-MKA
+Site B receives: nothing</pre><p><b>Answer:</b> A provider bridge may consume or filter link-local EAPOL frames. MKA cannot establish the CA.</p></div></details>
+  </div>
+</section>
+
+<section id="references" data-title="References">
+  <div class="st"><h2>9. Reference anchors</h2><p>Use official standard text for exact conformance language.</p></div>
+  <div class="card"><table><thead><tr><th>Reference</th><th>Used for</th></tr></thead><tbody>
+    <tr><td><a href="https://1.ieee802.org/security/802-1ae/" target="_blank">IEEE 802.1AE MAC Security page</a></td><td>MACsec scope, service guarantees, and MKA relationship.</td></tr>
+    <tr><td><a href="https://standards.ieee.org/ieee/802.1AE/7154/" target="_blank">IEEE Std 802.1AE-2018 page</a></td><td>Published MAC Security standard anchor.</td></tr>
+    <tr><td><a href="https://1.ieee802.org/security/802-1x/" target="_blank">IEEE 802.1X page</a></td><td>MKA and EAPOL context.</td></tr>
+    <tr><td><a href="https://1.ieee802.org/security/802-1aedk/" target="_blank">IEEE 802.1AEdk page</a></td><td>MAC Privacy protection context.</td></tr>
+  </tbody></table><p class="small" style="margin-top:12px">This artifact is a training aid, not a replacement for the normative IEEE standard text.</p></div>
+</section>
+<div class="footer">Self-contained Databricks-dark HTML artifact with sticky context tracking and scroll progress.</div>
+</main>
+<script>
+(function(){
+const sections=[...document.querySelectorAll('section[id]')];
+const links=[...document.querySelectorAll('nav a')];
+const ctx=document.getElementById('ctxText'),bar=document.getElementById('bar'),pct=document.getElementById('pct');
+const io=new IntersectionObserver(entries=>{const v=entries.filter(e=>e.isIntersecting).sort((a,b)=>b.intersectionRatio-a.intersectionRatio)[0];if(!v)return;const id=v.target.id;ctx.textContent=v.target.dataset.title||id;links.forEach(a=>a.classList.toggle('active',a.getAttribute('href')==='#'+id));},{rootMargin:'-18% 0px -70% 0px',threshold:[.01,.15,.35,.65]});
+sections.forEach(s=>io.observe(s));
+function upd(){const d=document.documentElement;const m=d.scrollHeight-d.clientHeight;const p=m?Math.min(100,Math.max(0,d.scrollTop/m*100)):0;bar.style.width=p.toFixed(1)+'%';pct.textContent=Math.round(p)+'%'}
+addEventListener('scroll',upd,{passive:true});upd();
+})();
+</script>
+</body>
+</html>

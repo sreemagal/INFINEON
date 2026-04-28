@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Automotive Ethernet Security and MACsec — Databricks Dark Training Note</title>
+<style>
+:root{
+  --bg:#0b0f19;
+  --bg2:#111827;
+  --panel:#141b2d;
+  --panel2:#182235;
+  --muted:#9aa4b2;
+  --text:#eef2ff;
+  --sub:#cbd5e1;
+  --line:#28354f;
+  --orange:#ff5f46;
+  --orange2:#ff8a65;
+  --blue:#60a5fa;
+  --cyan:#22d3ee;
+  --green:#34d399;
+  --yellow:#fbbf24;
+  --purple:#a78bfa;
+  --red:#fb7185;
+  --shadow:0 18px 50px rgba(0,0,0,.42);
+  --radius:18px;
+  --mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;
+  background:
+    radial-gradient(circle at 12% -10%, rgba(255,95,70,.24), transparent 34%),
+    radial-gradient(circle at 92% 4%, rgba(96,165,250,.18), transparent 31%),
+    linear-gradient(180deg,#0b0f19 0%,#0e1320 48%,#080b12 100%);
+  color:var(--text);
+  font-family:var(--sans);
+  line-height:1.6;
+}
+a{color:#93c5fd;text-decoration:none} a:hover{text-decoration:underline}
+.top-context{
+  position:sticky;top:0;z-index:50;
+  backdrop-filter:blur(18px);
+  background:rgba(11,15,25,.86);
+  border-bottom:1px solid rgba(255,255,255,.08);
+  box-shadow:0 10px 30px rgba(0,0,0,.22);
+}
+.context-inner{max-width:1440px;margin:0 auto;padding:10px 22px 8px;}
+.context-row{display:flex;gap:14px;align-items:center;justify-content:space-between;}
+.brand{display:flex;gap:12px;align-items:center;min-width:300px;}
+.logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--orange),#ffb86b);box-shadow:0 0 0 5px rgba(255,95,70,.11);display:grid;place-items:center;font-weight:900;color:#140804;}
+.brand small{display:block;color:var(--muted);font-size:12px;letter-spacing:.08em;text-transform:uppercase;line-height:1.1}
+.brand b{font-size:14px;line-height:1.1}
+.current{flex:1;min-width:0;border:1px solid rgba(255,255,255,.08);background:rgba(20,27,45,.72);border-radius:14px;padding:9px 12px;}
+.current .label{font-size:11px;color:var(--orange2);text-transform:uppercase;letter-spacing:.12em;font-weight:800}
+.current .title{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#f8fafc}
+.actions{display:flex;gap:8px;align-items:center;}
+.btn{border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.04);color:var(--text);border-radius:12px;padding:9px 12px;font-size:13px;font-weight:700;cursor:pointer;}
+.btn:hover{border-color:rgba(255,95,70,.55);background:rgba(255,95,70,.13)}
+.progress{height:3px;background:rgba(255,255,255,.08);margin-top:8px;border-radius:999px;overflow:hidden}
+.progress span{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--orange),var(--yellow),var(--cyan));border-radius:999px}
+.navchips{display:flex;gap:8px;overflow:auto;padding:8px 0 2px;scrollbar-color:rgba(255,255,255,.22) transparent;}
+.navchips a{white-space:nowrap;color:#cbd5e1;border:1px solid rgba(255,255,255,.09);border-radius:999px;padding:5px 10px;font-size:12px;background:rgba(255,255,255,.035)}
+.navchips a.active{color:#fff;background:rgba(255,95,70,.22);border-color:rgba(255,95,70,.65)}
+.shell{display:grid;grid-template-columns:280px minmax(0,1fr);gap:22px;max-width:1440px;margin:0 auto;padding:26px 22px 80px;}
+aside{position:sticky;top:112px;align-self:start;max-height:calc(100vh - 130px);overflow:auto;border:1px solid rgba(255,255,255,.08);background:rgba(20,27,45,.64);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;}
+aside h3{margin:0 0 10px;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--orange2)}
+aside a{display:block;color:#cbd5e1;padding:8px 10px;border-left:3px solid transparent;border-radius:8px;font-size:13px;line-height:1.25}
+aside a:hover{background:rgba(255,255,255,.05);text-decoration:none}
+aside a.active{background:rgba(255,95,70,.14);border-left-color:var(--orange);color:#fff}
+main{min-width:0}
+.hero{border:1px solid rgba(255,255,255,.10);background:linear-gradient(135deg,rgba(24,34,53,.96),rgba(13,18,30,.96));border-radius:28px;box-shadow:var(--shadow);padding:34px;overflow:hidden;position:relative;}
+.hero:after{content:"";position:absolute;right:-90px;top:-100px;width:320px;height:320px;border-radius:50%;background:radial-gradient(circle,rgba(255,95,70,.25),transparent 67%)}
+.eyebrow{display:inline-flex;gap:8px;align-items:center;border:1px solid rgba(255,95,70,.35);background:rgba(255,95,70,.10);color:#ffd1c8;border-radius:999px;padding:6px 10px;font-weight:800;font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+h1{font-size:clamp(34px,5vw,64px);line-height:1.03;margin:18px 0 14px;letter-spacing:-.045em}
+.hero p{max-width:980px;color:var(--sub);font-size:18px;margin:0 0 18px}
+.kpi{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:24px}
+.kpi .tile{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:14px}
+.kpi b{font-size:22px;color:#fff}.kpi span{display:block;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.08em}
+section{scroll-margin-top:150px;margin-top:24px;border:1px solid rgba(255,255,255,.09);background:rgba(20,27,45,.78);border-radius:24px;padding:26px;box-shadow:0 12px 32px rgba(0,0,0,.24)}
+section h2{font-size:29px;letter-spacing:-.025em;margin:0 0 10px;display:flex;align-items:center;gap:12px}
+section h2 .num{display:inline-grid;place-items:center;min-width:36px;height:36px;border-radius:12px;background:rgba(255,95,70,.17);color:#ffb4a6;border:1px solid rgba(255,95,70,.35);font-family:var(--mono);font-size:14px}
+h3{font-size:21px;margin:24px 0 8px;color:#f8fafc} h4{margin:18px 0 7px;color:#e2e8f0}
+p,li{color:#cbd5e1}.lead{font-size:17px;color:#dbeafe}.muted{color:var(--muted)}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.grid4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.card{background:rgba(10,15,27,.58);border:1px solid rgba(255,255,255,.09);border-radius:18px;padding:16px;}
+.card h3,.card h4{margin-top:0}.accent{border-color:rgba(255,95,70,.4);background:linear-gradient(180deg,rgba(255,95,70,.10),rgba(10,15,27,.58))}.blue{border-color:rgba(96,165,250,.38);background:linear-gradient(180deg,rgba(96,165,250,.10),rgba(10,15,27,.58))}.green{border-color:rgba(52,211,153,.36);background:linear-gradient(180deg,rgba(52,211,153,.10),rgba(10,15,27,.58))}.purple{border-color:rgba(167,139,250,.36);background:linear-gradient(180deg,rgba(167,139,250,.10),rgba(10,15,27,.58))}.red{border-color:rgba(251,113,133,.36);background:linear-gradient(180deg,rgba(251,113,133,.10),rgba(10,15,27,.58))}
+.callout{border-left:4px solid var(--orange);background:rgba(255,95,70,.10);border-radius:14px;padding:14px 16px;margin:16px 0;color:#fee2e2}.callout b{color:#fff}
+.good{border-left-color:var(--green);background:rgba(52,211,153,.10)}.warn{border-left-color:var(--yellow);background:rgba(251,191,36,.10)}.danger{border-left-color:var(--red);background:rgba(251,113,133,.10)}
+table{width:100%;border-collapse:separate;border-spacing:0;margin:14px 0;border:1px solid rgba(255,255,255,.09);border-radius:16px;overflow:hidden;background:rgba(5,9,18,.55)}
+th,td{text-align:left;vertical-align:top;padding:11px 12px;border-bottom:1px solid rgba(255,255,255,.07);color:#cbd5e1;font-size:14px}th{background:rgba(255,255,255,.06);color:#f8fafc;font-weight:800}tr:last-child td{border-bottom:none}.mono{font-family:var(--mono);font-size:.95em;color:#e2e8f0}.tag{display:inline-flex;align-items:center;gap:5px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.055);border-radius:999px;padding:3px 8px;font-size:12px;font-weight:800;color:#e2e8f0}.tag.orange{border-color:rgba(255,95,70,.5);color:#ffc4b8}.tag.blue{border-color:rgba(96,165,250,.5);color:#bfdbfe}.tag.green{border-color:rgba(52,211,153,.5);color:#bbf7d0}.tag.yellow{border-color:rgba(251,191,36,.5);color:#fde68a}.tag.red{border-color:rgba(251,113,133,.5);color:#fecdd3}
+.diagram{background:linear-gradient(180deg,rgba(5,9,18,.75),rgba(10,15,27,.92));border:1px solid rgba(255,255,255,.10);border-radius:20px;padding:18px;margin:16px 0;overflow:auto}.diagram-title{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}.diagram-title b{font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:#ffd1c8}.diagram-title span{font-size:12px;color:var(--muted)}
+.flow{display:flex;align-items:stretch;gap:10px;min-width:760px}.node{flex:1;min-width:120px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.055);border-radius:16px;padding:12px;text-align:center;position:relative}.node b{display:block;color:#fff}.node span{display:block;color:var(--muted);font-size:12px;line-height:1.3}.node.orange{border-color:rgba(255,95,70,.55);background:rgba(255,95,70,.12)}.node.blue{border-color:rgba(96,165,250,.55);background:rgba(96,165,250,.12)}.node.green{border-color:rgba(52,211,153,.55);background:rgba(52,211,153,.12)}.node.purple{border-color:rgba(167,139,250,.55);background:rgba(167,139,250,.12)}.arrow{display:grid;place-items:center;color:var(--orange2);font-size:26px;font-weight:900;min-width:25px}.lane{display:flex;gap:8px;align-items:stretch;min-width:880px;margin:8px 0}.field{border:1px solid rgba(255,255,255,.13);background:rgba(255,255,255,.055);border-radius:13px;padding:10px 8px;text-align:center;min-width:82px;display:flex;flex-direction:column;justify-content:center}.field b{font-size:13px;color:#fff}.field small{font-size:11px;color:var(--muted);line-height:1.2}.field.clear{background:rgba(96,165,250,.12);border-color:rgba(96,165,250,.42)}.field.auth{background:rgba(52,211,153,.11);border-color:rgba(52,211,153,.42)}.field.enc{background:rgba(167,139,250,.13);border-color:rgba(167,139,250,.42)}.field.sec{background:rgba(255,95,70,.13);border-color:rgba(255,95,70,.55)}.field.icv{background:rgba(251,191,36,.12);border-color:rgba(251,191,36,.45)}.w2{flex:2}.w3{flex:3}.w4{flex:4}.w5{flex:5}.w6{flex:6}.w8{flex:8}.legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.legend span{font-size:12px;border:1px solid rgba(255,255,255,.10);border-radius:999px;padding:4px 8px;color:#cbd5e1;background:rgba(255,255,255,.04)}
+.bits{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;min-width:720px;margin-top:10px}.bit{border:1px solid rgba(255,255,255,.13);background:rgba(255,255,255,.06);border-radius:12px;padding:10px;text-align:center}.bit .idx{font-family:var(--mono);font-size:11px;color:var(--muted)}.bit b{display:block;color:#fff;font-family:var(--mono);font-size:16px}.bit small{display:block;color:#cbd5e1;font-size:11px;line-height:1.25}
+.seq{display:grid;grid-template-columns:1fr 54px 1fr;gap:12px;align-items:stretch;min-width:760px}.lifeline{border:1px solid rgba(255,255,255,.12);border-radius:16px;background:rgba(255,255,255,.05);padding:12px;text-align:center}.lifeline b{display:block}.mid{display:grid;place-items:center;color:var(--orange2);font-weight:900}.step{grid-column:1/4;display:grid;grid-template-columns:1fr 54px 1fr;gap:12px;align-items:center}.msg{border:1px solid rgba(255,255,255,.12);background:rgba(10,15,27,.7);border-radius:14px;padding:10px;color:#cbd5e1}.msg.left{text-align:right}.msg.right{text-align:left}.msg b{color:#fff}.msg small{display:block;color:var(--muted)}
+.pipeline{display:grid;grid-template-columns:repeat(5,minmax(140px,1fr));gap:10px;min-width:900px}.pipe{border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:12px;background:rgba(255,255,255,.055)}.pipe b{display:block;color:#fff}.pipe small{color:var(--muted);display:block;line-height:1.25}.pipe .chip{display:inline-block;margin-top:8px;border-radius:999px;background:rgba(255,95,70,.14);border:1px solid rgba(255,95,70,.35);color:#ffd1c8;padding:3px 7px;font-size:11px;font-weight:800}
+.pillrow{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}.decision{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}.decision .card{min-height:180px}
+.code{font-family:var(--mono);white-space:pre-wrap;background:#050914;border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:14px;color:#c4f1ff;overflow:auto}
+.print-note{display:none}
+@media (max-width:1100px){.shell{grid-template-columns:1fr}aside{position:relative;top:0;max-height:none}.kpi,.grid4{grid-template-columns:repeat(2,minmax(0,1fr))}.grid3{grid-template-columns:1fr}.grid2{grid-template-columns:1fr}.context-row{align-items:stretch}.brand{min-width:0}.actions{display:none}.decision{grid-template-columns:1fr}}
+@media (max-width:720px){.hero{padding:24px}.kpi{grid-template-columns:1fr}.current{display:none}.shell{padding:16px}.context-inner{padding:8px 14px}.flow,.lane,.seq,.pipeline,.bits{min-width:720px}section{padding:18px}}
+@media print{body{background:#fff;color:#111}.top-context,aside,.actions,.navchips{display:none}.shell{display:block;max-width:none}.hero,section,.card,.diagram{box-shadow:none;background:#fff;color:#111;border-color:#ddd}p,li,td,th,.muted{color:#222}.print-note{display:block;color:#444}}
+</style>
+</head>
+<body>
+<div class="top-context">
+  <div class="context-inner">
+    <div class="context-row">
+      <div class="brand"><div class="logo">db</div><div><small>Databricks dark theme</small><b>Automotive Ethernet security and MACsec</b></div></div>
+      <div class="current"><div class="label">Current context</div><div id="currentTitle" class="title">Overview</div></div>
+      <div class="actions"><button class="btn" onclick="window.print()">Print / PDF</button><button class="btn" onclick="document.body.classList.toggle('compact')">Toggle density</button></div>
+    </div>
+    <div class="progress"><span id="progressBar"></span></div>
+    <nav class="navchips" id="topChips">
+      <a href="#overview">Overview</a><a href="#threat-model">Threat model</a><a href="#architecture">CA / SC / SA / SecY</a><a href="#pdu">MACsec PDU</a><a href="#mka">MKA / 802.1X</a><a href="#cipher">Cipher modes</a><a href="#automotive">Automotive policy</a><a href="#gptp">gPTP and bypass</a><a href="#scenarios">Scenarios</a><a href="#summary">Recap</a>
+    </nav>
+  </div>
+</div>
+<div class="shell">
+  <aside id="sideNav">
+    <h3>Context map</h3>
+    <a href="#overview">0. Overview</a>
+    <a href="#threat-model">1. Threat model</a>
+    <a href="#architecture">2. MACsec architecture</a>
+    <a href="#pdu">3. Complete MACsec PDU format</a>
+    <a href="#mka">4. MKA and EAPOL-MKA PDU</a>
+    <a href="#cipher">5. Cipher suites and modes</a>
+    <a href="#automotive">6. Automotive deployment choices</a>
+    <a href="#gptp">7. gPTP inline versus bypass</a>
+    <a href="#scenarios">8. Elucidative scenarios</a>
+    <a href="#summary">9. Short recap</a>
+  </aside>
+  <main>
+    <div class="hero" id="overview" data-title="Overview — why MACsec matters in automotive Ethernet">
+      <span class="eyebrow">Training artifact · offline HTML · field-level diagrams</span>
+      <h1>Automotive Ethernet security and MACsec</h1>
+      <p>MACsec is best understood as a link-layer security engine for Ethernet. It is not merely encryption. It provides data-origin authenticity, integrity, replay protection, and optional confidentiality for frames on a protected Layer 2 link.</p>
+      <p>This note converts the source training material into a protocol-oriented explanation with PDU layouts, header field breakdowns, automotive deployment choices, and realistic examples involving zonal controllers, gateways, cameras, gPTP, and diagnostic bypass traffic.</p>
+      <div class="kpi">
+        <div class="tile"><span>Protection layer</span><b>L2</b></div>
+        <div class="tile"><span>Data EtherType</span><b>0x88E5</b></div>
+        <div class="tile"><span>MKA control</span><b>0x888E</b></div>
+        <div class="tile"><span>Typical ICV</span><b>16 B</b></div>
+      </div>
+    </div>
+
+    <section id="threat-model" data-title="Threat model — what automotive Ethernet security must resist">
+      <h2><span class="num">1</span>Data-communications context first</h2>
+      <p class="lead">The correct starting point is not “should we encrypt?” The correct starting point is “what can an attacker do on or near this Ethernet link?”</p>
+      <div class="grid3">
+        <div class="card red"><h3>Passive attack</h3><p>An attacker taps a camera link or gateway uplink and reads unprotected traffic. Confidentiality mode prevents useful disclosure of the protected payload.</p></div>
+        <div class="card accent"><h3>Active attack</h3><p>An attacker injects a spoofed control or state frame. MACsec validation detects frames that are not protected with the active Secure Association.</p></div>
+        <div class="card purple"><h3>Replay attack</h3><p>An attacker records a valid old protected frame and resends it later. Packet Number based replay checks reject stale frames outside the replay window.</p></div>
+      </div>
+      <div class="diagram">
+        <div class="diagram-title"><b>Vehicle attack surface view</b><span>External entry can become internal Layer 2 abuse</span></div>
+        <div class="flow">
+          <div class="node orange"><b>Wireless / service interface</b><span>Telematics, Wi‑Fi, diagnostics, update path</span></div><div class="arrow">→</div>
+          <div class="node red"><b>Compromised ECU</b><span>Foothold inside the vehicle network</span></div><div class="arrow">→</div>
+          <div class="node blue"><b>Ethernet switch fabric</b><span>VLANs, forwarding, TSN queues, gateways</span></div><div class="arrow">→</div>
+          <div class="node green"><b>Safety-relevant ECU</b><span>Sensor fusion, braking, drive control, zonal I/O</span></div>
+        </div>
+      </div>
+      <div class="callout danger"><b>Important framing:</b> automotive Ethernet security is about confidentiality, integrity, authenticity, replay resistance, segmentation, and survivability after partial compromise. Secrecy alone is not enough.</div>
+    </section>
+
+    <section id="architecture" data-title="MACsec architecture — CA, SC, SA and SecY">
+      <h2><span class="num">2</span>The MACsec architecture</h2>
+      <p class="lead">MACsec separates the long-lived security relationship from the short-lived cryptographic keying context. That separation is the reason it can rekey without tearing down the protected link.</p>
+      <div class="grid4">
+        <div class="card accent"><h3>CA</h3><p><b>Connectivity Association.</b> The overall security relationship among participants that are allowed to communicate securely.</p></div>
+        <div class="card blue"><h3>SC</h3><p><b>Secure Channel.</b> A directional secure traffic relationship inside a Connectivity Association.</p></div>
+        <div class="card green"><h3>SA</h3><p><b>Secure Association.</b> A concrete cryptographic context using one Secure Association Key.</p></div>
+        <div class="card purple"><h3>SecY</h3><p><b>MAC Security Entity.</b> The port-side entity that protects transmitted frames and validates received frames.</p></div>
+      </div>
+      <div class="diagram">
+        <div class="diagram-title"><b>Relationship hierarchy</b><span>Long-lived SC, rolling SAs</span></div>
+        <div class="flow">
+          <div class="node orange"><b>Connectivity Association</b><span>Who belongs to this secure relationship?</span></div><div class="arrow">→</div>
+          <div class="node blue"><b>Secure Channel</b><span>Directional secure flow from one transmitter</span></div><div class="arrow">→</div>
+          <div class="node green"><b>SA 0</b><span>SAK-A, AN=0</span></div><div class="arrow">↻</div>
+          <div class="node green"><b>SA 1 / 2 / 3</b><span>fresh SAKs selected by AN</span></div>
+        </div>
+      </div>
+      <div class="diagram">
+        <div class="diagram-title"><b>SecY port model</b><span>Controlled versus Uncontrolled Port</span></div>
+        <div class="pipeline">
+          <div class="pipe"><b>Common Port</b><small>Physical MAC service toward the Ethernet medium</small><span class="chip">line side</span></div>
+          <div class="pipe"><b>SecY Protect</b><small>Transmit path inserts SecTAG, encrypts if required, appends ICV</small><span class="chip">TX</span></div>
+          <div class="pipe"><b>Controlled Port</b><small>Secure service presented to clients after MACsec is operational</small><span class="chip">protected</span></div>
+          <div class="pipe"><b>Uncontrolled Port</b><small>Selected frames bypass protection, commonly MKA/EAPOL</small><span class="chip">bypass</span></div>
+          <div class="pipe"><b>SecY Validate</b><small>Receive path checks SCI/AN/PN/ICV and replay state</small><span class="chip">RX</span></div>
+        </div>
+      </div>
+      <table>
+        <thead><tr><th>Identifier</th><th>Purpose</th><th>How to remember it</th></tr></thead>
+        <tbody>
+          <tr><td><span class="mono">SCI</span></td><td>Secure Channel Identifier. Usually a 48-bit MAC address plus a 16-bit port identifier.</td><td>Which secure channel?</td></tr>
+          <tr><td><span class="mono">AN</span></td><td>Association Number. A 2-bit selector for the active SA inside the SC.</td><td>Which key context inside that channel?</td></tr>
+          <tr><td><span class="mono">SAI</span></td><td>Secure Association Identifier. Concatenation of SCI and AN.</td><td>Which exact SA?</td></tr>
+          <tr><td><span class="mono">PN</span></td><td>Packet Number. Monotonic frame counter used for replay protection and cryptographic nonce construction.</td><td>Which frame number inside the SA?</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="pdu" data-title="MACsec PDU format — SecTAG, Secure Data and ICV">
+      <h2><span class="num">3</span>Complete MACsec PDU format structure</h2>
+      <p class="lead">A MACsec-protected frame remains an Ethernet frame, but the MACsec SecTAG is inserted after the source MAC address and the frame ends with an Integrity Check Value.</p>
+      <div class="callout warn"><b>VLAN placement note:</b> the standards-pure teaching model places SecTAG immediately after source MAC, so the original user-data region after the SecTAG is protected. Some deployments expose an outer service tag or operate a “VLAN in clear” mode for provider or WAN switching. Automotive designs must state the chosen SecY placement explicitly because it determines whether VLAN/PCP is visible to intermediate forwarding logic.</div>
+      <div class="diagram">
+        <div class="diagram-title"><b>MACsec frame with explicit SCI</b><span>SecTAG = 16 bytes when SCI is present</span></div>
+        <div class="lane">
+          <div class="field clear w2"><b>Destination MAC</b><small>6 B · clear · authenticated</small></div>
+          <div class="field clear w2"><b>Source MAC</b><small>6 B · clear · authenticated</small></div>
+          <div class="field sec"><b>MACsec EtherType</b><small>2 B · 0x88E5</small></div>
+          <div class="field sec"><b>TCI / AN</b><small>1 B</small></div>
+          <div class="field sec"><b>SL</b><small>1 B</small></div>
+          <div class="field sec w2"><b>PN</b><small>4 B</small></div>
+          <div class="field sec w3"><b>SCI</b><small>8 B</small></div>
+          <div class="field enc w6"><b>Secure Data</b><small>original Type/Length + client data · encrypted if confidentiality enabled</small></div>
+          <div class="field icv w3"><b>ICV</b><small>typically 16 B</small></div>
+        </div>
+        <div class="legend"><span>Blue = clear but authenticated</span><span>Orange = SecTAG control fields</span><span>Purple = encrypted when confidentiality is enabled</span><span>Yellow = integrity result</span></div>
+      </div>
+      <div class="diagram">
+        <div class="diagram-title"><b>MACsec frame without explicit SCI</b><span>SecTAG = 8 bytes when SCI is omitted</span></div>
+        <div class="lane">
+          <div class="field clear w2"><b>Destination MAC</b><small>6 B</small></div>
+          <div class="field clear w2"><b>Source MAC</b><small>6 B</small></div>
+          <div class="field sec"><b>0x88E5</b><small>2 B</small></div>
+          <div class="field sec"><b>TCI/AN</b><small>1 B · SC=0</small></div>
+          <div class="field sec"><b>SL</b><small>1 B</small></div>
+          <div class="field sec w2"><b>PN</b><small>4 B</small></div>
+          <div class="field enc w8"><b>Secure Data</b><small>protected client frame content</small></div>
+          <div class="field icv w3"><b>ICV</b><small>16 B</small></div>
+        </div>
+      </div>
+      <h3>SecTAG fields</h3>
+      <table>
+        <thead><tr><th>Field</th><th>Size</th><th>Meaning</th><th>Receiver use</th></tr></thead>
+        <tbody>
+          <tr><td>MACsec EtherType</td><td>16 bits</td><td><span class="mono">0x88E5</span>, identifies that the following octets are MACsec SecTAG fields.</td><td>Parser enters MACsec validation path.</td></tr>
+          <tr><td>TCI / AN</td><td>8 bits</td><td>Six Tag Control Information bits plus two Association Number bits.</td><td>Determines SCI presence, encryption flags, special channel behavior, and active SA.</td></tr>
+          <tr><td>Short Length</td><td>8 bits</td><td>Non-zero only for short protected data where padding would otherwise make the ICV boundary ambiguous. Zero means normal length handling.</td><td>Locates protected data and ICV for short frames.</td></tr>
+          <tr><td>Packet Number</td><td>32 bits in normal PN mode</td><td>Monotonically increasing number per SA. XPN suites extend packet numbering to 64 bits using extended state.</td><td>Replay check, nonce/IV construction, PN exhaustion monitoring.</td></tr>
+          <tr><td>SCI</td><td>Optional 64 bits</td><td>Secure Channel Identifier, normally 48-bit system identifier plus 16-bit port identifier.</td><td>Identifies the receive SC when not inferred from source MAC and port context.</td></tr>
+          <tr><td>Secure Data</td><td>Variable</td><td>The protected client data, including the original EtherType/Length and payload. VLAN tags may be inside or outside protection depending on SecY placement.</td><td>Authenticated always; encrypted when confidentiality mode is active.</td></tr>
+          <tr><td>ICV</td><td>Usually 128 bits</td><td>Integrity Check Value produced by the selected GCM-AES cipher suite.</td><td>Receiver recomputes and compares. Mismatch means discard and count as validation failure.</td></tr>
+        </tbody>
+      </table>
+      <h3>TCI / AN byte</h3>
+      <div class="diagram">
+        <div class="diagram-title"><b>Bit-level view of the TCI/AN octet</b><span>bits 7..0</span></div>
+        <div class="bits">
+          <div class="bit"><span class="idx">bit 7</span><b>V</b><small>Version</small></div>
+          <div class="bit"><span class="idx">bit 6</span><b>ES</b><small>End station</small></div>
+          <div class="bit"><span class="idx">bit 5</span><b>SC</b><small>SCI present</small></div>
+          <div class="bit"><span class="idx">bit 4</span><b>SCB</b><small>Single-copy broadcast</small></div>
+          <div class="bit"><span class="idx">bit 3</span><b>E</b><small>Encrypted</small></div>
+          <div class="bit"><span class="idx">bit 2</span><b>C</b><small>Changed text</small></div>
+          <div class="bit"><span class="idx">bit 1</span><b>AN1</b><small>SA selector</small></div>
+          <div class="bit"><span class="idx">bit 0</span><b>AN0</b><small>SA selector</small></div>
+        </div>
+      </div>
+      <div class="grid2">
+        <div class="card green"><h3>Integrity-only coverage</h3><p>Destination MAC, Source MAC, SecTAG, and Secure Data are authenticated. Secure Data stays readable, so protocol analyzers can still decode it, but any modification breaks ICV validation.</p></div>
+        <div class="card purple"><h3>Confidentiality coverage</h3><p>The protected data region is encrypted and authenticated. Destination MAC, Source MAC, and SecTAG remain in clear so the frame can still be delivered and validated by the peer MACsec entity.</p></div>
+      </div>
+      <h3>Receiver validation pipeline</h3>
+      <div class="diagram">
+        <div class="diagram-title"><b>MACsec receive path</b><span>why stale and forged frames are rejected</span></div>
+        <div class="pipeline">
+          <div class="pipe"><b>Parse 0x88E5</b><small>Recognize SecTAG and extract TCI, AN, PN, optional SCI.</small></div>
+          <div class="pipe"><b>Select SC</b><small>Use SCI if present, else infer from source MAC and port configuration.</small></div>
+          <div class="pipe"><b>Select SA</b><small>Use AN to pick the receive SA and therefore the SAK.</small></div>
+          <div class="pipe"><b>Replay check</b><small>Compare PN against expected PN or replay window state.</small></div>
+          <div class="pipe"><b>ICV check</b><small>Recompute GCM authentication. Decrypt if confidentiality is active.</small></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="mka" data-title="MKA and EAPOL-MKA — control-plane PDU and key hierarchy">
+      <h2><span class="num">4</span>MKA / 802.1X key agreement and PDU structure</h2>
+      <p class="lead">MKA is the control plane. It discovers authenticated peers, elects a key server, distributes the SAK, and keeps the MACsec Secure Associations fresh.</p>
+      <div class="grid3">
+        <div class="card accent"><h3>CAK</h3><p><b>Connectivity Association Key.</b> A long-term secret or EAP-derived key used as the root for MKA operations.</p></div>
+        <div class="card blue"><h3>ICK / KEK</h3><p><b>Integrity Check Key</b> authenticates MKPDUs. <b>Key Encryption Key</b> protects distributed SAK material.</p></div>
+        <div class="card green"><h3>SAK</h3><p><b>Secure Association Key.</b> The actual MACsec data-plane key installed in the SecY for one SA.</p></div>
+      </div>
+      <div class="diagram">
+        <div class="diagram-title"><b>Key hierarchy</b><span>PSK-oriented automotive model</span></div>
+        <div class="flow">
+          <div class="node orange"><b>CAK + CKN</b><span>pre-installed association material</span></div><div class="arrow">→</div>
+          <div class="node blue"><b>KDF</b><span>derive MKA control keys</span></div><div class="arrow">→</div>
+          <div class="node purple"><b>ICK</b><span>MKPDU authentication</span></div><div class="arrow">+</div>
+          <div class="node purple"><b>KEK</b><span>wrap SAK distribution</span></div><div class="arrow">→</div>
+          <div class="node green"><b>SAK</b><span>installed in SecY SA</span></div>
+        </div>
+      </div>
+      <h3>EAPOL-MKA PDU stack</h3>
+      <div class="diagram">
+        <div class="diagram-title"><b>MKA control frame format</b><span>Usually allowed on the Uncontrolled Port</span></div>
+        <div class="lane">
+          <div class="field clear w2"><b>Destination MAC</b><small>6 B · PAE group address</small></div>
+          <div class="field clear w2"><b>Source MAC</b><small>6 B</small></div>
+          <div class="field clear"><b>EtherType</b><small>2 B · 0x888E</small></div>
+          <div class="field auth"><b>EAPOL version</b><small>1 B</small></div>
+          <div class="field auth"><b>Packet type</b><small>1 B · EAPOL-MKA</small></div>
+          <div class="field auth"><b>Body length</b><small>2 B</small></div>
+          <div class="field sec w6"><b>MKPDU body</b><small>Basic Parameter Set + optional parameter sets + MKA ICV coverage</small></div>
+        </div>
+      </div>
+      <table>
+        <thead><tr><th>MKPDU component</th><th>Role in the exchange</th><th>Typical contents / effect</th></tr></thead>
+        <tbody>
+          <tr><td>Basic Parameter Set</td><td>Always present. Identifies the MKA participant and announces core capability/state.</td><td>MKA version, key-server priority, MACsec capability/desire, Member Identifier, Message Number, algorithm agility, CAK name/CKN.</td></tr>
+          <tr><td>Live Peer List, type 1</td><td>Shows authenticated peers that are considered live.</td><td>Peer Member Identifiers and Message Numbers.</td></tr>
+          <tr><td>Potential Peer List, type 2</td><td>Shows peers seen but not yet fully live/validated.</td><td>Candidate peer liveness information.</td></tr>
+          <tr><td>MACsec SAK Use, type 3</td><td>Communicates which SAKs/ANs are being used for transmit and receive.</td><td>Current and latest key identifiers, AN selection, transmit/receive use state.</td></tr>
+          <tr><td>Distributed SAK, type 4</td><td>Key server distributes a fresh SAK to the peer.</td><td>Encrypted/wrapped SAK material, key number, association information.</td></tr>
+          <tr><td>Announcement, type 7</td><td>Advertises capabilities such as supported MACsec cipher suites.</td><td>Announcement TLVs, including MACsec cipher-suite support.</td></tr>
+          <tr><td>XPN, type 8</td><td>Supports extended packet number suites.</td><td>Extended PN-related information used with GCM-AES-XPN suites.</td></tr>
+          <tr><td>MKA ICV</td><td>Authenticates the MKPDU control message.</td><td>Computed using the ICK derived from the CAK.</td></tr>
+        </tbody>
+      </table>
+      <h3>PSK startup sequence</h3>
+      <div class="diagram">
+        <div class="diagram-title"><b>MKA sequence with pre-shared CAK</b><span>simplified but protocol-faithful</span></div>
+        <div class="seq">
+          <div class="lifeline"><b>ECU A / Key Server candidate</b><span class="muted">PAE + KaY + SecY</span></div><div></div><div class="lifeline"><b>ECU B / Peer candidate</b><span class="muted">PAE + KaY + SecY</span></div>
+          <div class="step"><div class="msg left"><b>Link up</b><small>PAE starts MKA for configured CKN</small></div><div class="mid">↔</div><div class="msg right"><b>Link up</b><small>CAK/CKN available</small></div></div>
+          <div class="step"><div class="msg left"><b>Basic Parameter Set</b><small>MI, MN, priority, MACsec desired/capability</small></div><div class="mid">→</div><div class="msg right"><b>Authenticate MKPDU</b><small>ICK validates control message</small></div></div>
+          <div class="step"><div class="msg left"><b>Peer lists converge</b><small>live peer established</small></div><div class="mid">↔</div><div class="msg right"><b>Peer lists converge</b><small>same CA confirmed</small></div></div>
+          <div class="step"><div class="msg left"><b>Key server elected</b><small>priority and role decide</small></div><div class="mid">→</div><div class="msg right"><b>Distributed SAK</b><small>SAK delivered protected by KEK</small></div></div>
+          <div class="step"><div class="msg left"><b>Install Tx/Rx SAs</b><small>SecY receives SAK, AN, SCI state</small></div><div class="mid">↔</div><div class="msg right"><b>Install Tx/Rx SAs</b><small>controlled port becomes operational</small></div></div>
+        </div>
+      </div>
+      <div class="callout good"><b>Automotive startup interpretation:</b> PSK-based CAK/CKN provisioning is attractive because the link can establish MACsec quickly and deterministically after link-up. SAKs should still be fresh data-plane keys and must not be treated as static long-term keys.</div>
+    </section>
+
+    <section id="cipher" data-title="Cipher suites, integrity-only mode and confidentiality mode">
+      <h2><span class="num">5</span>Cipher suites and protection modes</h2>
+      <p class="lead">The most common misunderstanding is to equate MACsec with encryption. MACsec always authenticates. Encryption is an additional mode choice.</p>
+      <table>
+        <thead><tr><th>Mode</th><th>TCI behavior</th><th>Payload visibility</th><th>Protection result</th><th>Good automotive use</th></tr></thead>
+        <tbody>
+          <tr><td>Integrity-only</td><td>E=0, C=0 in normal teaching model</td><td>Payload remains readable</td><td>Tampering and forgery are detected; no secrecy</td><td>Diagnostics or monitoring links where observability matters but modification must be blocked.</td></tr>
+          <tr><td>Integrity + confidentiality, offset 0</td><td>E/C indicate encrypted/changed text</td><td>Protected data is encrypted</td><td>Secrecy plus integrity and replay protection</td><td>Camera, sensor-fusion, gateway, zonal uplinks carrying sensitive or safety-relevant data.</td></tr>
+          <tr><td>Confidentiality offset</td><td>Partial-cleartext mode in suites that support it</td><td>Initial protected-data bytes may remain clear</td><td>Some header inspection remains possible, with remainder encrypted</td><td>Mostly legacy/deployment accommodation; automotive profiles commonly prefer offset 0.</td></tr>
+        </tbody>
+      </table>
+      <div class="grid2">
+        <div class="card accent"><h3>GCM-AES-128</h3><p>Mandatory baseline cipher-suite family for ordinary MACsec support. It uses AES with a 128-bit key in Galois/Counter Mode to combine confidentiality and authentication efficiently.</p></div>
+        <div class="card purple"><h3>GCM-AES-256 and XPN variants</h3><p>GCM-AES-256 increases key size. XPN variants extend packet numbering to reduce rekey pressure on very high-speed or long-lived links.</p></div>
+      </div>
+      <div class="diagram">
+        <div class="diagram-title"><b>Authentication versus encryption coverage</b><span>why clear fields can still be protected</span></div>
+        <div class="lane">
+          <div class="field auth w2"><b>DA</b><small>authenticated</small></div>
+          <div class="field auth w2"><b>SA</b><small>authenticated</small></div>
+          <div class="field auth w4"><b>SecTAG</b><small>authenticated</small></div>
+          <div class="field enc w6"><b>Secure Data</b><small>authenticated always · encrypted if confidentiality enabled</small></div>
+          <div class="field icv w3"><b>ICV</b><small>authentication tag</small></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="automotive" data-title="Automotive deployment choices — what to protect, what to bypass">
+      <h2><span class="num">6</span>Automotive deployment choices</h2>
+      <p class="lead">A vehicle network is not a lab Ethernet cable. Startup, timing, diagnostics, TSN scheduling, VLAN policy, gateway boundaries, and production service workflows all affect the MACsec policy.</p>
+      <div class="decision">
+        <div class="card green"><h3>Protect by default</h3><p>Use MACsec on exposed or mission-critical Ethernet links, especially camera-to-switch, zonal-controller uplinks, gateway-to-central-compute links, and high-value sensor paths.</p></div>
+        <div class="card blue"><h3>Mode per traffic class</h3><p>Choose integrity-only when visibility is needed but tamper detection is critical. Choose confidentiality plus integrity when information disclosure is also unacceptable.</p></div>
+        <div class="card red"><h3>Bypass as exception</h3><p>Keep MKA on the Uncontrolled Port. Treat diagnostics, update, and timing bypasses as explicit exceptions with compensating controls.</p></div>
+      </div>
+      <h3>Automotive MACsec policy table</h3>
+      <table>
+        <thead><tr><th>Traffic / link</th><th>Recommended MACsec posture</th><th>Why</th><th>Extra control</th></tr></thead>
+        <tbody>
+          <tr><td>Camera stream to zonal switch</td><td>Confidentiality + integrity</td><td>Video can reveal occupants/environment and is safety-relevant for perception.</td><td>Monitor replay and validation-failure counters.</td></tr>
+          <tr><td>Zonal controller to central compute</td><td>Confidentiality + integrity</td><td>Aggregates high-value sensor and control traffic.</td><td>Segment by VLAN/stream and enforce gateway rules.</td></tr>
+          <tr><td>MKA / EAPOL-MKA</td><td>Uncontrolled Port bypass</td><td>MKA must run before the protected controlled port is operational.</td><td>Restrict to PAE group address/EtherType and validate MKPDU ICV.</td></tr>
+          <tr><td>Diagnostic service traffic</td><td>Prefer protected; bypass only for deliberate service design</td><td>Diagnostics can be powerful and security-sensitive.</td><td>Authentication, authorization, firewall/gateway filtering, event logging.</td></tr>
+          <tr><td>gPTP timing</td><td>Inline if latency and two-step design permit; otherwise controlled bypass</td><td>Timing correctness may conflict with one-step timestamp modification after protection.</td><td>Hardware timestamping analysis, bounded latency, anomaly detection.</td></tr>
+        </tbody>
+      </table>
+      <div class="diagram">
+        <div class="diagram-title"><b>Switch/ECU port policy view</b><span>MACsec and bypass classification</span></div>
+        <div class="pipeline">
+          <div class="pipe"><b>Ingress parser</b><small>Read DA, SA, EtherType, optional VLAN/PCP.</small></div>
+          <div class="pipe"><b>Bypass classifier</b><small>Match MKA EtherType, selected VLAN IDs, diagnostic exceptions.</small></div>
+          <div class="pipe"><b>Uncontrolled Port</b><small>Pass unprotected selected control traffic.</small></div>
+          <div class="pipe"><b>Controlled Port</b><small>Only after MACsec operational, secure data traffic passes.</small></div>
+          <div class="pipe"><b>Statistics/logging</b><small>Replay, invalid ICV, unknown SCI, not-valid, not-using-SA.</small></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="gptp" data-title="gPTP and MACsec — inline protection versus bypass trade-off">
+      <h2><span class="num">7</span>gPTP and MACsec: inline protection versus bypass</h2>
+      <p class="lead">The standards model can include MACsec in the time-aware system port model. The real engineering question is whether the implementation can preserve timing accuracy while protecting the frames.</p>
+      <div class="grid2">
+        <div class="card green"><h3>Inline gPTP with MACsec</h3><p>Works best with two-step timing and bounded MACsec latency variation. Sync and Follow_Up semantics avoid the need to rewrite a protected one-step timestamp inside the protected frame.</p></div>
+        <div class="card red"><h3>gPTP bypass</h3><p>May be used when one-step assumptions, startup constraints, or hardware limitations make inline protection unacceptable. It must be treated as a real security exception.</p></div>
+      </div>
+      <div class="diagram">
+        <div class="diagram-title"><b>Inline timing protection</b><span>protected timing path</span></div>
+        <div class="flow">
+          <div class="node blue"><b>gPTP client</b><span>time-aware application/stack</span></div><div class="arrow">→</div>
+          <div class="node green"><b>SecY controlled port</b><span>MACsec protects frame</span></div><div class="arrow">→</div>
+          <div class="node orange"><b>802.3 MAC / PHY</b><span>hardware timestamping location must be understood</span></div><div class="arrow">→</div>
+          <div class="node purple"><b>Peer SecY</b><span>validate, replay check, deliver</span></div>
+        </div>
+      </div>
+      <div class="diagram">
+        <div class="diagram-title"><b>Bypass timing path</b><span>unprotected timing exception</span></div>
+        <div class="flow">
+          <div class="node blue"><b>gPTP frame</b><span>selected by EtherType / VLAN rule</span></div><div class="arrow">→</div>
+          <div class="node red"><b>Uncontrolled Port</b><span>not protected by MACsec</span></div><div class="arrow">→</div>
+          <div class="node orange"><b>Ethernet link</b><span>accurate timing, weaker security</span></div><div class="arrow">→</div>
+          <div class="node red"><b>Compensating controls</b><span>segmentation, trusted topology, monitoring</span></div>
+        </div>
+      </div>
+      <div class="callout warn"><b>Practical rule:</b> bypass is a design trade-off, not a free optimization. It may preserve timing or startup behavior, but it creates an exposed path that must be justified, filtered, monitored, and documented.</div>
+    </section>
+
+    <section id="scenarios" data-title="Examples — how MACsec behaves in realistic automotive situations">
+      <h2><span class="num">8</span>Elucidative automotive scenarios</h2>
+      <h3>Scenario A: frame injection on a zonal uplink</h3>
+      <div class="grid2">
+        <div class="card red"><h4>Attack</h4><p>A compromised diagnostic dongle or service device injects a spoofed Ethernet frame toward a zonal controller. The frame has a believable source MAC and VLAN ID, but no valid SecTAG/ICV for the active SA.</p></div>
+        <div class="card green"><h4>MACsec behavior</h4><p>The receiving SecY cannot map the frame to a valid SA or cannot validate the ICV. The frame is discarded before it reaches the Controlled Port. Counters show invalid, not-valid, or unknown-SCI behavior depending on implementation.</p></div>
+      </div>
+      <h3>Scenario B: replay of a valid old camera frame</h3>
+      <div class="grid2">
+        <div class="card red"><h4>Attack</h4><p>An attacker records a valid encrypted camera frame and sends it again later to confuse perception or diagnostics.</p></div>
+        <div class="card green"><h4>MACsec behavior</h4><p>The ICV may still be mathematically valid for the recorded frame, but the PN is stale. Replay protection rejects it if it is lower than the accepted PN window.</p></div>
+      </div>
+      <h3>Scenario C: SAK rollover without link outage</h3>
+      <div class="diagram">
+        <div class="diagram-title"><b>SA rollover inside one Secure Channel</b><span>AN selects active SA</span></div>
+        <div class="flow">
+          <div class="node green"><b>SA0 active</b><span>AN=0, PN increasing</span></div><div class="arrow">→</div>
+          <div class="node blue"><b>MKA distributes new SAK</b><span>Distributed SAK parameter set</span></div><div class="arrow">→</div>
+          <div class="node purple"><b>SA1 installed</b><span>receive ready before transmit switch</span></div><div class="arrow">→</div>
+          <div class="node orange"><b>Transmit switches</b><span>TCI/AN now selects AN=1</span></div>
+        </div>
+      </div>
+      <h3>Scenario D: VLAN visibility decision</h3>
+      <table>
+        <thead><tr><th>Design</th><th>What intermediate switches see</th><th>Security consequence</th><th>Network consequence</th></tr></thead>
+        <tbody>
+          <tr><td>VLAN inside MACsec protection</td><td>Only outer MACsec envelope; original VLAN/PCP may be hidden from non-endpoint switches.</td><td>Stronger confidentiality for service classification metadata.</td><td>Intermediate forwarding cannot depend on the encrypted inner VLAN/PCP unless endpoint/deployment exposes an outer tag.</td></tr>
+          <tr><td>VLAN in clear / outer service tag</td><td>VLAN/PCP available for forwarding, queueing, TSN class selection.</td><td>Metadata is visible, but payload can remain protected.</td><td>Useful for provider/WAN or engineered switch domains where intermediate devices must classify without decrypting.</td></tr>
+        </tbody>
+      </table>
+      <div class="callout"><b>Teaching point:</b> do not say simply “MACsec encrypts the VLAN tag” or “MACsec never encrypts the VLAN tag.” The correct answer depends on where the SecY sits relative to VLAN tagging and whether the system uses an outer clear tag.</div>
+    </section>
+
+    <section id="summary" data-title="Recap — security model and field-level takeaways">
+      <h2><span class="num">9</span>Short recap</h2>
+      <div class="grid2">
+        <div class="card accent"><h3>Protocol essentials</h3><ul><li>MACsec is Layer 2, hop-by-hop link protection.</li><li>SecY protects transmit frames and validates received frames.</li><li>CA defines the secure relationship, SC defines a directional channel, SA defines the active keyed cryptographic context.</li><li>SecTAG carries TCI/AN, Short Length, PN, and optional SCI.</li><li>ICV proves authenticity and integrity; confidentiality is optional.</li></ul></div>
+        <div class="card blue"><h3>Automotive essentials</h3><ul><li>Use MACsec on critical or exposed Ethernet links.</li><li>Use PSK-style MKA when deterministic startup matters.</li><li>Keep MKA on the Uncontrolled Port because it establishes MACsec.</li><li>Make gPTP bypass a documented exception, not a default assumption.</li><li>Track counters and logs because validation failures are security diagnostics.</li></ul></div>
+      </div>
+      <h3>Acronym expansion card</h3>
+      <div class="grid4">
+        <div class="card"><b>MACsec</b><p>Media Access Control Security</p></div>
+        <div class="card"><b>MKA</b><p>MACsec Key Agreement</p></div>
+        <div class="card"><b>SecY</b><p>MAC Security Entity</p></div>
+        <div class="card"><b>CA</b><p>Connectivity Association</p></div>
+        <div class="card"><b>SC</b><p>Secure Channel</p></div>
+        <div class="card"><b>SA</b><p>Secure Association</p></div>
+        <div class="card"><b>SCI</b><p>Secure Channel Identifier</p></div>
+        <div class="card"><b>SAK</b><p>Secure Association Key</p></div>
+        <div class="card"><b>CAK</b><p>Connectivity Association Key</p></div>
+        <div class="card"><b>CKN</b><p>Connectivity Association Key Name</p></div>
+        <div class="card"><b>ICK</b><p>Integrity Check Key</p></div>
+        <div class="card"><b>KEK</b><p>Key Encryption Key</p></div>
+      </div>
+      <p class="print-note">This offline HTML artifact was prepared from the supplied Markdown training note and expanded with protocol field diagrams and automotive interpretation.</p>
+    </section>
+  </main>
+</div>
+<script>
+const sections = Array.from(document.querySelectorAll('[data-title]'));
+const sideLinks = Array.from(document.querySelectorAll('#sideNav a'));
+const topLinks = Array.from(document.querySelectorAll('#topChips a'));
+const currentTitle = document.getElementById('currentTitle');
+const progressBar = document.getElementById('progressBar');
+function setActive(id){
+  const sec = sections.find(s=>s.id===id);
+  if(sec) currentTitle.textContent = sec.dataset.title;
+  [...sideLinks,...topLinks].forEach(a=>a.classList.toggle('active', a.getAttribute('href') === '#'+id));
+}
+const obs = new IntersectionObserver(entries=>{
+  const visible = entries.filter(e=>e.isIntersecting).sort((a,b)=>b.intersectionRatio-a.intersectionRatio)[0];
+  if(visible) setActive(visible.target.id);
+},{rootMargin:'-18% 0px -70% 0px', threshold:[0,0.1,0.25,0.5,0.75]});
+sections.forEach(s=>obs.observe(s));
+window.addEventListener('scroll',()=>{
+  const h = document.documentElement;
+  const pct = (h.scrollTop)/(h.scrollHeight-h.clientHeight)*100;
+  progressBar.style.width = Math.min(100,Math.max(0,pct))+'%';
+});
+setActive('overview');
+</script>
+</body>
+</html>

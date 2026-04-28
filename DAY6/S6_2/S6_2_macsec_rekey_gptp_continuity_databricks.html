@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MACsec Rekeying Impact on gPTP Continuity</title>
+<style>
+:root{
+  --bg:#0b1220;
+  --panel:#111827;
+  --panel2:#151f31;
+  --panel3:#0f172a;
+  --text:#e5e7eb;
+  --muted:#aab4c5;
+  --dim:#738095;
+  --line:#263247;
+  --accent:#ff6b2c;
+  --accent2:#ff9f43;
+  --blue:#38bdf8;
+  --green:#34d399;
+  --red:#fb7185;
+  --yellow:#fbbf24;
+  --purple:#a78bfa;
+  --shadow:0 18px 60px rgba(0,0,0,.45);
+  --radius:18px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background:
+    radial-gradient(circle at 15% 10%, rgba(255,107,44,.16), transparent 28%),
+    radial-gradient(circle at 80% 4%, rgba(56,189,248,.12), transparent 22%),
+    linear-gradient(180deg,#07101f 0%,#0b1220 45%,#080d18 100%);
+  color:var(--text);
+  line-height:1.58;
+}
+a{color:var(--blue); text-decoration:none}
+a:hover{text-decoration:underline}
+.context-bar{
+  position:sticky; top:0; z-index:1000;
+  display:flex; align-items:center; justify-content:space-between; gap:16px;
+  padding:10px 20px;
+  background:rgba(11,18,32,.92);
+  border-bottom:1px solid rgba(255,255,255,.08);
+  backdrop-filter: blur(14px);
+}
+.context-left{display:flex;align-items:center;gap:12px;min-width:0}
+.db-logo{display:flex;align-items:center;gap:8px;font-weight:800;letter-spacing:.2px;color:#fff;white-space:nowrap}
+.db-cube{width:24px;height:24px;border-radius:6px;background:linear-gradient(135deg,var(--accent),#e04415);display:grid;place-items:center;box-shadow:0 0 28px rgba(255,107,44,.45)}
+.db-cube:after{content:"◆";font-size:12px;color:white;transform:rotate(45deg)}
+.context-pill{
+  max-width:70vw; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;
+  padding:7px 12px; border:1px solid rgba(255,107,44,.35); border-radius:999px;
+  background:rgba(255,107,44,.10); color:#ffd7c6; font-size:13px;
+}
+.progress-wrap{height:5px; background:#111827; width:170px; border-radius:999px; overflow:hidden; border:1px solid rgba(255,255,255,.08)}
+.progress{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent2));}
+.layout{display:grid;grid-template-columns:285px minmax(0,1fr);gap:24px;max-width:1500px;margin:0 auto;padding:24px}
+.sidebar{position:sticky; top:62px; align-self:start; max-height:calc(100vh - 86px); overflow:auto; padding:18px; background:rgba(17,24,39,.72); border:1px solid rgba(255,255,255,.08); border-radius:var(--radius); box-shadow:var(--shadow)}
+.sidebar h3{margin:0 0 12px;font-size:14px;color:#fff;text-transform:uppercase;letter-spacing:.12em}
+.nav a{display:block;padding:9px 10px;border-radius:10px;color:var(--muted);font-size:14px}
+.nav a:hover,.nav a.active{background:rgba(255,107,44,.12);color:#fff;text-decoration:none}
+.main{min-width:0}
+.hero{padding:38px; border:1px solid rgba(255,255,255,.08); border-radius:26px; background:linear-gradient(135deg,rgba(17,24,39,.95),rgba(15,23,42,.72)); box-shadow:var(--shadow); position:relative; overflow:hidden}
+.hero:before{content:"";position:absolute;right:-90px;top:-120px;width:360px;height:360px;border-radius:50%;background:radial-gradient(circle,rgba(255,107,44,.18),transparent 64%)}
+.eyebrow{display:inline-flex;gap:8px;align-items:center;color:#ffd7c6;border:1px solid rgba(255,107,44,.33);background:rgba(255,107,44,.10);padding:7px 11px;border-radius:999px;font-size:13px;font-weight:700}
+h1{font-size:clamp(34px,5vw,62px);line-height:1.02;margin:20px 0 18px;letter-spacing:-.04em}
+.subtitle{font-size:20px;color:var(--muted);max-width:980px;margin:0 0 24px}
+.hero-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:26px}
+.metric{padding:16px;border-radius:16px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.08)}
+.metric b{display:block;color:#fff;font-size:20px}.metric span{font-size:13px;color:var(--muted)}
+section{margin:24px 0;padding:28px;border-radius:22px;background:rgba(17,24,39,.78);border:1px solid rgba(255,255,255,.08);box-shadow:0 10px 38px rgba(0,0,0,.25)}
+h2{margin:0 0 14px;font-size:30px;letter-spacing:-.02em;color:#fff} h3{margin:26px 0 10px;font-size:20px;color:#fff} h4{margin:18px 0 8px;font-size:16px;color:#ffd7c6}
+p{margin:10px 0;color:var(--muted)}
+ul,ol{color:var(--muted);padding-left:24px} li{margin:7px 0}
+.note,.warning,.good,.danger{border-radius:16px;padding:15px 16px;margin:16px 0;border:1px solid;background:rgba(255,255,255,.04)}
+.note{border-color:rgba(56,189,248,.32);background:rgba(56,189,248,.07)}
+.good{border-color:rgba(52,211,153,.34);background:rgba(52,211,153,.07)}
+.warning{border-color:rgba(251,191,36,.38);background:rgba(251,191,36,.08)}
+.danger{border-color:rgba(251,113,133,.38);background:rgba(251,113,133,.08)}
+.kbd{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:#0b1020;border:1px solid #303b50;border-radius:7px;padding:2px 6px;color:#e6edf3;font-size:.92em}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.card{border-radius:16px;padding:16px;background:rgba(15,23,42,.9);border:1px solid rgba(255,255,255,.08)}
+.card h3,.card h4{margin-top:0}.tag{display:inline-block;padding:3px 8px;border-radius:999px;font-size:12px;border:1px solid rgba(255,255,255,.12);color:#fff;background:rgba(255,255,255,.06);margin:3px 5px 3px 0}
+.tag.orange{border-color:rgba(255,107,44,.35);background:rgba(255,107,44,.12);color:#ffd7c6}.tag.blue{border-color:rgba(56,189,248,.35);background:rgba(56,189,248,.10);color:#c7efff}.tag.green{border-color:rgba(52,211,153,.35);background:rgba(52,211,153,.10);color:#c8ffe9}.tag.red{border-color:rgba(251,113,133,.38);background:rgba(251,113,133,.10);color:#ffd4dd}.tag.yellow{border-color:rgba(251,191,36,.38);background:rgba(251,191,36,.10);color:#ffefb2}.tag.purple{border-color:rgba(167,139,250,.38);background:rgba(167,139,250,.10);color:#ded5ff}
+.diagram{margin:16px 0;padding:18px;border-radius:18px;background:linear-gradient(180deg,rgba(15,23,42,.96),rgba(8,13,24,.96));border:1px solid rgba(255,255,255,.08);overflow:auto}
+.pipe{display:flex;align-items:stretch;gap:8px;min-width:max-content}.box{min-width:120px;padding:12px 14px;border-radius:14px;background:#182235;border:1px solid #334155;color:#fff;text-align:center;position:relative}.box.small{min-width:90px;font-size:13px}.box.orange{border-color:rgba(255,107,44,.5);background:rgba(255,107,44,.13)}.box.blue{border-color:rgba(56,189,248,.48);background:rgba(56,189,248,.10)}.box.green{border-color:rgba(52,211,153,.48);background:rgba(52,211,153,.10)}.box.red{border-color:rgba(251,113,133,.48);background:rgba(251,113,133,.10)}.box.yellow{border-color:rgba(251,191,36,.48);background:rgba(251,191,36,.10)}.box.purple{border-color:rgba(167,139,250,.48);background:rgba(167,139,250,.10)}.arrow{display:grid;place-items:center;color:var(--dim);font-size:22px;min-width:25px}.legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;color:var(--muted);font-size:13px}
+.frame{display:flex;min-width:max-content;margin:14px 0;border-radius:13px;overflow:hidden;border:1px solid rgba(255,255,255,.15)}.field{padding:10px 12px;border-right:1px solid rgba(255,255,255,.12);background:#182235;min-width:80px;text-align:center;font-size:13px;color:#fff}.field:last-child{border-right:none}.field .bits{display:block;color:#91a0b5;font-size:11px;margin-top:3px}.field.da{background:rgba(56,189,248,.13)}.field.sa{background:rgba(56,189,248,.09)}.field.vlan{background:rgba(167,139,250,.12)}.field.eth{background:rgba(255,107,44,.14)}.field.ptp{background:rgba(52,211,153,.12)}.field.macsec{background:rgba(251,191,36,.14)}.field.icv{background:rgba(251,113,133,.13)}.field.data{background:rgba(148,163,184,.10)}
+table{width:100%;border-collapse:collapse;margin:14px 0;color:var(--muted);font-size:14px}th,td{padding:11px 12px;border-bottom:1px solid rgba(255,255,255,.08);vertical-align:top}th{text-align:left;color:#fff;background:rgba(255,255,255,.045);font-weight:700}tr:hover td{background:rgba(255,255,255,.025)}
+.timeline{position:relative;margin:18px 0;padding-left:24px}.timeline:before{content:"";position:absolute;left:8px;top:0;bottom:0;width:2px;background:linear-gradient(var(--accent),var(--blue))}.event{position:relative;margin:0 0 14px;padding:14px;border-radius:14px;background:rgba(15,23,42,.86);border:1px solid rgba(255,255,255,.08)}.event:before{content:"";position:absolute;left:-22px;top:19px;width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px rgba(255,107,44,.13)}
+.scenario{border-left:4px solid var(--accent);padding:16px;margin:18px 0;border-radius:14px;background:rgba(255,255,255,.035);border-top:1px solid rgba(255,255,255,.07);border-right:1px solid rgba(255,255,255,.07);border-bottom:1px solid rgba(255,255,255,.07)}.scenario h3{margin-top:0}.mini-title{font-size:13px;text-transform:uppercase;letter-spacing:.12em;color:#ffd7c6;font-weight:800;margin-bottom:8px}
+.controls{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:15px 0}.controls label{display:block;color:#cbd5e1;font-size:13px;margin-bottom:6px}.controls select,.controls input{width:100%;background:#0b1220;color:#fff;border:1px solid #334155;border-radius:10px;padding:10px}.result{padding:15px;border-radius:14px;background:rgba(56,189,248,.07);border:1px solid rgba(56,189,248,.28);margin-top:12px}.result strong{color:#fff}.barviz{display:grid;grid-template-columns:repeat(16,1fr);gap:3px;margin-top:10px}.tick{height:22px;border-radius:5px;background:#1f2937;border:1px solid rgba(255,255,255,.08)}.tick.ok{background:rgba(52,211,153,.45)}.tick.warn{background:rgba(251,191,36,.55)}.tick.bad{background:rgba(251,113,133,.55)}.tick.mka{background:rgba(167,139,250,.55)}
+.printbar{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}.btn{border:none;border-radius:12px;padding:10px 14px;background:linear-gradient(135deg,var(--accent),#e04415);color:#fff;font-weight:800;cursor:pointer}.btn.secondary{background:#182235;border:1px solid #334155;color:#dbeafe}
+.footer{color:var(--dim);font-size:13px;margin:30px 0 10px;text-align:center}
+@media (max-width: 1050px){.layout{grid-template-columns:1fr}.sidebar{position:relative;top:0}.hero-grid,.grid4{grid-template-columns:1fr 1fr}.grid3,.controls{grid-template-columns:1fr 1fr}.grid2{grid-template-columns:1fr}.context-right{display:none}}
+@media (max-width: 640px){.layout{padding:12px}.hero{padding:24px}.hero-grid,.grid3,.grid4,.controls{grid-template-columns:1fr}.context-pill{max-width:45vw}.pipe{font-size:13px}.box{min-width:95px}}
+@media print{body{background:#fff;color:#111}.context-bar,.sidebar,.printbar{display:none}.layout{display:block;padding:0}.hero,section{box-shadow:none;border:1px solid #ddd;background:#fff;color:#111}.subtitle,p,li,td{color:#222}.card,.diagram,.event,.scenario{background:#fff;border:1px solid #ddd}.field,.box{color:#111;background:#f7f7f7}.tag{color:#111}}
+</style>
+</head>
+<body>
+  <div class="context-bar">
+    <div class="context-left">
+      <div class="db-logo"><span class="db-cube"></span><span>Databricks Dark</span></div>
+      <div class="context-pill" id="contextPill">Context: MACsec rekeying and gPTP continuity</div>
+    </div>
+    <div class="context-right"><div class="progress-wrap"><div class="progress" id="progress"></div></div></div>
+  </div>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <h3>Context tracker</h3>
+      <nav class="nav" id="nav">
+        <a href="#overview">1. Core insight</a>
+        <a href="#standards">2. Standards map</a>
+        <a href="#architecture">3. Architecture</a>
+        <a href="#pdu">4. PDU and header formats</a>
+        <a href="#rekey">5. Rekey sequence</a>
+        <a href="#timing">6. gPTP continuity model</a>
+        <a href="#deployment">7. Protected vs bypassed gPTP</a>
+        <a href="#timestamping">8. Timestamp placement</a>
+        <a href="#scenarios">9. Scenarios</a>
+        <a href="#simulator">10. Interactive scenario explorer</a>
+        <a href="#observability">11. Observability</a>
+        <a href="#bestpractice">12. Design rules</a>
+        <a href="#references">13. References</a>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <header class="hero" id="overview" data-context="Core insight: MACsec rekeying should be hitless for gPTP if SA rollover, replay validation, timestamping, and bypass policy are engineered correctly.">
+        <span class="eyebrow">IEEE 802.1AE MACsec • IEEE 802.1X MKA • IEEE 802.1AS gPTP</span>
+        <h1>Rekeying impact on gPTP continuity</h1>
+        <p class="subtitle">A standards-oriented, packet-level guide to what happens when MACsec rolls from one Secure Association Key to another while generalized Precision Time Protocol traffic is running on the same Ethernet link.</p>
+        <div class="hero-grid">
+          <div class="metric"><b>802.1AE</b><span>MACsec data-plane protection using SecY, Secure Channels, Secure Associations, SecTAG, Packet Number, and ICV.</span></div>
+          <div class="metric"><b>802.1X</b><span>MKA control plane that authenticates peers and distributes Secure Association Keys for MACsec.</span></div>
+          <div class="metric"><b>802.1AS</b><span>gPTP timing profile for time-sensitive Ethernet networks.</span></div>
+          <div class="metric"><b>0 loss goal</b><span>Rekey should not cause Sync, Follow_Up, Pdelay, or Announce discontinuity.</span></div>
+        </div>
+        <div class="printbar"><button class="btn" onclick="window.print()">Print / save as PDF</button><button class="btn secondary" onclick="document.location.hash='simulator'">Open scenario explorer</button></div>
+      </header>
+
+      <section data-context="Core answer: rekey is not automatically a timing outage. The risky moments are SA install mismatch, replay rejection, port blocking, and variable security latency.">
+        <h2>The short answer</h2>
+        <div class="good">
+          <b>Correctly implemented MACsec rekeying should be transparent to gPTP.</b> During a normal MKA-driven Secure Association Key rollover, both peers install a new receive Secure Association before one peer starts transmitting on the new Association Number. The receiver uses the Association Number in the SecTAG to select the correct receive Secure Association. If both old and new receive SAs overlap for a controlled time, gPTP packets keep flowing.
+        </div>
+        <p>The problem is not the mathematical act of changing keys. The problem is the <b>transition window</b>. A gPTP Sync or peer-delay message can be delayed or dropped if the new Secure Association is not installed in hardware, if the replay window rejects a packet, if the controlled port is briefly blocked, if EAPOL/MKA is filtered, or if MACsec processing moves timestamps away from the real wire time.</p>
+        <div class="warning">
+          <b>Engineering rule:</b> Treat MACsec rekey as a Layer 2 maintenance event that must be hitless for time traffic. Validate it with packet captures and counters, not only with “MACsec session up”.
+        </div>
+      </section>
+
+      <section id="standards" data-context="Standards map: MACsec protection is 802.1AE, MKA key agreement is 802.1X, and gPTP timing is 802.1AS.">
+        <h2>Standards map</h2>
+        <div class="grid3">
+          <div class="card">
+            <span class="tag orange">Data plane</span>
+            <h3>IEEE 802.1AE MACsec</h3>
+            <p>Defines MAC Security Entities, secure frame generation and validation, the MACsec frame format, Secure Channels, Secure Associations, Packet Numbers, replay protection, and Integrity Check Values.</p>
+          </div>
+          <div class="card">
+            <span class="tag purple">Control plane</span>
+            <h3>IEEE 802.1X MKA</h3>
+            <p>Defines the MACsec Key Agreement protocol that discovers authenticated peers, elects a Key Server, selects cipher suites, distributes SAKs, and coordinates rekey.</p>
+          </div>
+          <div class="card">
+            <span class="tag blue">Timing plane</span>
+            <h3>IEEE 802.1AS gPTP</h3>
+            <p>Defines the generalized Precision Time Protocol profile for time-sensitive applications over IEEE 802 networks. gPTP relies on precise event-message timestamping and continuous link-delay measurement.</p>
+          </div>
+        </div>
+        <h3>How these standards meet on one Ethernet port</h3>
+        <div class="diagram">
+          <div class="pipe">
+            <div class="box blue">gPTP instance<br><span class="dim">Sync, Follow_Up, Pdelay</span></div><div class="arrow">→</div>
+            <div class="box green">MAC client / bridge port</div><div class="arrow">→</div>
+            <div class="box orange">SecY<br><span class="dim">protect or bypass</span></div><div class="arrow">→</div>
+            <div class="box yellow">MAC / PHY<br><span class="dim">wire timestamp domain</span></div><div class="arrow">↔</div>
+            <div class="box purple">Peer SecY</div><div class="arrow">→</div>
+            <div class="box blue">Peer gPTP</div>
+          </div>
+          <div class="legend">
+            <span class="tag blue">gPTP needs stable timing path</span>
+            <span class="tag orange">MACsec may add protect/validate stages</span>
+            <span class="tag purple">MKA runs separately as EAPOL/MKPDUs</span>
+          </div>
+        </div>
+        <div class="note">
+          <b>Important distinction:</b> MACsec frame protection is not MKA. MACsec protects data frames after SAK installation. MKA is the key agreement protocol that keeps the secure connectivity association alive and refreshes SAKs.
+        </div>
+      </section>
+
+      <section id="architecture" data-context="Architecture: SecY protects frames on the controlled port, MKA normally uses the uncontrolled port, and SAK rollover changes which SA protects transmitted frames.">
+        <h2>Architecture: SC, SA, SAK, MKA and gPTP</h2>
+        <h3>MACsec objects that matter during rekey</h3>
+        <table>
+          <thead><tr><th>Object</th><th>Meaning</th><th>Why it matters for gPTP continuity</th></tr></thead>
+          <tbody>
+            <tr><td><b>SecY</b></td><td>MAC Security Entity attached to a port or virtual port.</td><td>It decides whether a gPTP frame is protected, validated, bypassed, or discarded.</td></tr>
+            <tr><td><b>CA</b></td><td>Connectivity Association: a set of MACsec peers allowed to communicate securely.</td><td>MKA maintains this association. If the CA fails, the controlled port may block protected gPTP.</td></tr>
+            <tr><td><b>SC</b></td><td>Secure Channel: unidirectional sequence of protected frames from one transmitting SecY.</td><td>gPTP frames protected in that direction belong to one transmit SC and one receive SC at the peer.</td></tr>
+            <tr><td><b>SA</b></td><td>Secure Association: one key instance inside an SC. It has an Association Number and Packet Number space.</td><td>Rekey means moving traffic from old SA to new SA. The receiver must accept both during overlap.</td></tr>
+            <tr><td><b>SAK</b></td><td>Secure Association Key used by the cipher suite for MACsec protection.</td><td>The new SAK must be installed before gPTP frames are sent with the new AN.</td></tr>
+            <tr><td><b>AN</b></td><td>Association Number carried in the SecTAG.</td><td>It tells the receiver which SA to use. A wrong or early AN switch causes validation failure.</td></tr>
+            <tr><td><b>PN</b></td><td>Packet Number carried in the SecTAG and used for replay protection.</td><td>Packet drops happen if PN is reused, wraps without XPN/rekey, or arrives outside the replay window.</td></tr>
+          </tbody>
+        </table>
+        <h3>Controlled and uncontrolled paths</h3>
+        <div class="diagram">
+          <div class="pipe">
+            <div class="box purple">MKA<br><span class="dim">EAPOL/MKPDU</span></div><div class="arrow">→</div>
+            <div class="box red">Uncontrolled port<br><span class="dim">not protected by MACsec</span></div><div class="arrow">→</div>
+            <div class="box yellow">Wire</div>
+          </div>
+          <br/>
+          <div class="pipe">
+            <div class="box blue">gPTP / AVB / control traffic</div><div class="arrow">→</div>
+            <div class="box green">Controlled port</div><div class="arrow">→</div>
+            <div class="box orange">SecY secure frame generation</div><div class="arrow">→</div>
+            <div class="box yellow">Wire</div>
+          </div>
+        </div>
+        <p>MKA has to be able to run before MACsec protection is established. Therefore the MKA/EAPOL path is conceptually separate from the controlled secure data path. gPTP can be configured as protected traffic on the controlled port or as bypass/clear traffic, depending on the implementation and profile requirements.</p>
+      </section>
+
+      <section id="pdu" data-context="PDU view: gPTP over Ethernet uses EtherType 0x88F7. MACsec wraps protected frames with SecTAG 0x88E5 and ICV. MKA uses EAPOL/MKPDU.">
+        <h2>PDU and header formats</h2>
+        <p>The following diagrams are intentionally packet-walk-through oriented. They show the fields you need when debugging continuity problems during rekey.</p>
+
+        <h3>1. gPTP over Ethernet, not MACsec protected</h3>
+        <div class="diagram">
+          <div class="frame">
+            <div class="field da">Destination MAC<span class="bits">6 B<br>PTP multicast</span></div>
+            <div class="field sa">Source MAC<span class="bits">6 B</span></div>
+            <div class="field vlan">Optional VLAN tag<span class="bits">4 B</span></div>
+            <div class="field eth">EtherType 0x88F7<span class="bits">2 B</span></div>
+            <div class="field ptp">PTP common header<span class="bits">34 B typical</span></div>
+            <div class="field data">Message body<span class="bits">Sync / Follow_Up / Pdelay / Announce</span></div>
+            <div class="field">FCS<span class="bits">4 B</span></div>
+          </div>
+        </div>
+        <p>gPTP uses the Precision Time Protocol Ethernet type <span class="kbd">0x88F7</span>. Typical L2 multicast addressing uses <span class="kbd">01-1B-19-00-00-00</span> for non-peer-delay PTP over Ethernet and <span class="kbd">01-80-C2-00-00-0E</span> for link-local peer-delay measurement in many gPTP deployments.</p>
+
+        <h3>2. PTP common header fields to inspect</h3>
+        <div class="diagram">
+          <div class="frame">
+            <div class="field ptp">transportSpecific / messageType<span class="bits">1 B</span></div>
+            <div class="field ptp">reserved / versionPTP<span class="bits">1 B</span></div>
+            <div class="field ptp">messageLength<span class="bits">2 B</span></div>
+            <div class="field ptp">domainNumber<span class="bits">1 B</span></div>
+            <div class="field ptp">flags<span class="bits">2 B</span></div>
+            <div class="field ptp">correctionField<span class="bits">8 B</span></div>
+            <div class="field ptp">sourcePortIdentity<span class="bits">10 B</span></div>
+            <div class="field ptp">sequenceId<span class="bits">2 B</span></div>
+            <div class="field ptp">control/logInterval<span class="bits">2 B</span></div>
+          </div>
+        </div>
+        <table>
+          <thead><tr><th>PTP/gPTP field</th><th>Debug use during MACsec rekey</th></tr></thead>
+          <tbody>
+            <tr><td><b>messageType</b></td><td>Shows whether the affected packet was Sync, Follow_Up, Pdelay_Req, Pdelay_Resp, Pdelay_Resp_Follow_Up, Announce, or Signaling.</td></tr>
+            <tr><td><b>domainNumber</b></td><td>Helps verify that all devices remain in the same timing domain after security configuration changes.</td></tr>
+            <tr><td><b>correctionField</b></td><td>Used for accumulated timing correction. A jump can indicate residence-time or timestamp-position problems.</td></tr>
+            <tr><td><b>sourcePortIdentity</b></td><td>Identifies which time-aware port sent the message. Useful when GM or bridge role changes during rekey.</td></tr>
+            <tr><td><b>sequenceId</b></td><td>Sequence gaps around the rekey instant indicate dropped or filtered gPTP packets.</td></tr>
+            <tr><td><b>logMessageInterval</b></td><td>Helps decide whether a packet was merely delayed or genuinely missed based on the configured message period.</td></tr>
+          </tbody>
+        </table>
+
+        <h3>3. MACsec-protected gPTP frame</h3>
+        <div class="diagram">
+          <div class="frame">
+            <div class="field da">DA<span class="bits">6 B</span></div>
+            <div class="field sa">SA<span class="bits">6 B</span></div>
+            <div class="field vlan">Optional VLAN in clear<span class="bits">4 B</span></div>
+            <div class="field macsec">MACsec EtherType 0x88E5<span class="bits">2 B</span></div>
+            <div class="field macsec">TCI / AN<span class="bits">1 B</span></div>
+            <div class="field macsec">SL<span class="bits">1 B</span></div>
+            <div class="field macsec">PN<span class="bits">4 B or XPN-related</span></div>
+            <div class="field macsec">SCI optional<span class="bits">8 B</span></div>
+            <div class="field ptp">Protected gPTP payload<span class="bits">0x88F7 + PTP PDU inside secure data</span></div>
+            <div class="field icv">ICV<span class="bits">integrity tag</span></div>
+            <div class="field">FCS<span class="bits">4 B</span></div>
+          </div>
+        </div>
+        <p>When gPTP is protected, the receiver does not see a usable PTP PDU until MACsec validation succeeds. Therefore a rekey mistake first appears as a MACsec validation/replay drop, and only secondarily as a gPTP sequence gap or time error.</p>
+
+        <h3>4. MKA/EAPOL frame used for key agreement</h3>
+        <div class="diagram">
+          <div class="frame">
+            <div class="field da">EAPOL destination MAC<span class="bits">link/control address</span></div>
+            <div class="field sa">Source MAC<span class="bits">6 B</span></div>
+            <div class="field vlan">Optional VLAN<span class="bits">deployment dependent</span></div>
+            <div class="field eth">EAPOL EtherType 0x888E<span class="bits">2 B default</span></div>
+            <div class="field purple">EAPOL header<span class="bits">version/type/length</span></div>
+            <div class="field purple">MKPDU body<span class="bits">MKA parameter sets</span></div>
+            <div class="field">FCS<span class="bits">4 B</span></div>
+          </div>
+        </div>
+        <p>Rekey coordination is carried by MKA as an EAPOL payload. If an intermediate bridge consumes, filters, rate-limits, or misclassifies EAPOL/MKPDUs, the MACsec data plane can age out even if physical link and gPTP packets look normal for a short time.</p>
+      </section>
+
+      <section id="rekey" data-context="Rekey sequence: MKA distributes a new SAK, peers install receive SA, transmitter switches AN, old SA is retired after overlap.">
+        <h2>What happens during a normal SAK rekey?</h2>
+        <div class="timeline">
+          <div class="event"><span class="tag purple">T0</span> <b>Existing secure traffic</b><br/>Peer A transmits protected frames on SA0 with AN=0. Peer B validates them using its receive SA0. gPTP messages, if protected, are just secure data frames.</div>
+          <div class="event"><span class="tag purple">T1</span> <b>MKA decides to rekey</b><br/>The Key Server prepares a fresh SAK. Rekey may be time-based, policy-based, administrative, triggered by PN exhaustion risk, or triggered by membership changes.</div>
+          <div class="event"><span class="tag purple">T2</span> <b>New receive SA is installed</b><br/>Peers install SA1 for receive before using it for transmit. This is the key condition for hitless rollover.</div>
+          <div class="event"><span class="tag purple">T3</span> <b>Transmit switches to new AN</b><br/>Peer A begins transmitting frames with AN=1 and fresh PN space. The SecTAG tells Peer B to validate with SA1.</div>
+          <div class="event"><span class="tag purple">T4</span> <b>Overlap window</b><br/>Peer B may still accept old AN=0 packets that were already in flight while accepting new AN=1 packets.</div>
+          <div class="event"><span class="tag purple">T5</span> <b>Old SA retires</b><br/>After the overlap, old SA0 is no longer used. gPTP should have seen no discontinuity.</div>
+        </div>
+        <div class="diagram">
+          <div class="pipe">
+            <div class="box green">Sync seq 101<br>AN=0 PN=901</div><div class="arrow">→</div>
+            <div class="box green">Follow_Up seq 101<br>AN=0 PN=902</div><div class="arrow">→</div>
+            <div class="box purple">MKA rekey</div><div class="arrow">→</div>
+            <div class="box blue">Sync seq 102<br>AN=1 PN=1</div><div class="arrow">→</div>
+            <div class="box blue">Follow_Up seq 102<br>AN=1 PN=2</div>
+          </div>
+        </div>
+        <p>The gPTP sequence number continues in the PTP header. The MACsec Packet Number resets or moves to a new sequence space for the new SA. These are different counters with different purposes.</p>
+      </section>
+
+      <section id="timing" data-context="gPTP continuity depends on timely event messages, accurate hardware timestamps, stable path delay, and no role churn around the rekey instant.">
+        <h2>gPTP continuity model</h2>
+        <p>gPTP continuity means more than “packets are not dropped”. It means the timing servo continues receiving consistent timestamped events so that offset, frequency ratio, and path-delay estimates remain bounded.</p>
+        <div class="grid2">
+          <div class="card">
+            <h3>What gPTP needs</h3>
+            <ul>
+              <li>Event messages delivered with predictable intervals.</li>
+              <li>Accurate egress and ingress timestamps close to the actual MAC/PHY transmit and receive instants.</li>
+              <li>Stable peer-delay measurement across each link.</li>
+              <li>No false loss of <span class="kbd">asCapable</span> state.</li>
+              <li>No unintended grandmaster or time-aware system role change.</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>What MACsec rekey can disturb</h3>
+            <ul>
+              <li>Frame validation if receive SA is not ready.</li>
+              <li>Replay checking if PN/window state is wrong.</li>
+              <li>Latency if encryption hardware stalls during table update.</li>
+              <li>Port state if MKA liveness fails.</li>
+              <li>Timestamp correctness if timestamps are taken at the wrong layer boundary.</li>
+            </ul>
+          </div>
+        </div>
+        <h3>Timing-chain view</h3>
+        <div class="diagram">
+          <div class="pipe">
+            <div class="box blue">gPTP event created</div><div class="arrow">→</div>
+            <div class="box green">Qdisc / bridge / scheduler</div><div class="arrow">→</div>
+            <div class="box orange">MACsec protect</div><div class="arrow">→</div>
+            <div class="box yellow">TX timestamp</div><div class="arrow">→</div>
+            <div class="box yellow">PHY and link</div><div class="arrow">→</div>
+            <div class="box yellow">RX timestamp</div><div class="arrow">→</div>
+            <div class="box orange">MACsec validate</div><div class="arrow">→</div>
+            <div class="box blue">gPTP servo</div>
+          </div>
+        </div>
+        <div class="warning">
+          <b>Key test:</b> During rekey, compare gPTP sequence gaps with MACsec validation/replay counters and MKA state transitions. If sequence gaps align exactly with AN change, the issue is probably SA rollover rather than generic network congestion.
+        </div>
+      </section>
+
+      <section id="deployment" data-context="Deployment choice: protecting gPTP improves link-layer authenticity, while bypassing gPTP can isolate timing continuity from SAK rollover but leaves timing traffic clear.">
+        <h2>Deployment choice: protected gPTP or bypassed gPTP?</h2>
+        <div class="grid2">
+          <div class="card">
+            <span class="tag green">Option A</span>
+            <h3>gPTP protected by MACsec</h3>
+            <p>gPTP packets pass through the controlled port and are protected like other data. After validation, the receiver hands the PTP PDU to the gPTP stack.</p>
+            <h4>Advantages</h4>
+            <ul><li>Link-layer integrity and origin authenticity for timing messages.</li><li>Consistent security policy for control traffic.</li><li>Protection against simple L2 injection on the secured link.</li></ul>
+            <h4>Rekey risk</h4>
+            <ul><li>SA rollover failure can drop gPTP packets.</li><li>Replay-window settings and PN transitions must be correct.</li><li>Timestamp placement must be carefully validated.</li></ul>
+          </div>
+          <div class="card">
+            <span class="tag yellow">Option B</span>
+            <h3>gPTP bypassed or left clear</h3>
+            <p>gPTP packets are not protected by MACsec, commonly by explicit bypass policy based on EtherType, destination address, VLAN, or local implementation rules.</p>
+            <h4>Advantages</h4>
+            <ul><li>SAK rekey does not directly block gPTP packet validation.</li><li>Timestamp path can be simpler on some hardware.</li><li>Useful for early bring-up and diagnosing security/timing separation.</li></ul>
+            <h4>Security risk</h4>
+            <ul><li>Timing messages are not protected by MACsec.</li><li>Misclassification can accidentally protect some PTP messages and bypass others.</li><li>Attack or fault injection on timing traffic remains a design concern.</li></ul>
+          </div>
+        </div>
+        <div class="danger">
+          <b>Do not mix policies accidentally.</b> A common failure is protecting Sync and Follow_Up but bypassing peer-delay messages, or protecting one VLAN/domain but bypassing another. That can keep the session “mostly alive” while corrupting the delay model.
+        </div>
+      </section>
+
+      <section id="timestamping" data-context="Timestamping: the safest design timestamps the real transmitted and received frame times, not a software time before variable MACsec processing.">
+        <h2>Timestamp placement is the hidden issue</h2>
+        <p>When MACsec is inserted into a TSN Ethernet port, you must ask: <b>what exact event is timestamped?</b> gPTP needs the timestamp of the frame as it actually leaves or enters the link. If the timestamp is taken before a variable MACsec queue or key-table stall, the timestamp can become optimistic or inconsistent.</p>
+        <div class="grid2">
+          <div class="card">
+            <span class="tag red">Risky</span>
+            <h3>Timestamp before variable MACsec processing</h3>
+            <div class="diagram">
+              <div class="pipe"><div class="box blue">gPTP</div><div class="arrow">→</div><div class="box yellow">Timestamp</div><div class="arrow">→</div><div class="box red">MACsec protect / rekey stall</div><div class="arrow">→</div><div class="box">Wire</div></div>
+            </div>
+            <p>If the MACsec block adds a variable delay during rekey, the timestamp no longer represents actual egress time. gPTP may calculate a false offset or delay change.</p>
+          </div>
+          <div class="card">
+            <span class="tag green">Preferred</span>
+            <h3>Timestamp at the real MAC/PHY boundary</h3>
+            <div class="diagram">
+              <div class="pipe"><div class="box blue">gPTP</div><div class="arrow">→</div><div class="box orange">MACsec protect</div><div class="arrow">→</div><div class="box yellow">Timestamp</div><div class="arrow">→</div><div class="box">Wire</div></div>
+            </div>
+            <p>The timestamp observes the protected frame as it is actually emitted or received. Fixed MACsec latency can be calibrated or naturally included. Variable rekey stalls become visible as delayed packet emission rather than hidden timestamp error.</p>
+          </div>
+        </div>
+        <h3>What about MACsec overhead?</h3>
+        <p>MACsec adds SecTAG and ICV bytes. That changes serialized frame length and can add a fixed processing delay. Fixed delay is usually manageable. Variable delay during rekey is dangerous because it can appear as Packet Delay Variation or timestamp error.</p>
+      </section>
+
+      <section id="scenarios" data-context="Scenarios: the interesting failures are hitless rollover, receive-SA-not-ready, replay rejection, MKA loss, bypass policy mismatch, PN exhaustion, and timestamp-position error.">
+        <h2>Elucidative scenarios</h2>
+
+        <div class="scenario">
+          <span class="tag green">Scenario 1</span>
+          <h3>Hitless rekey while gPTP is protected</h3>
+          <p><b>Setup:</b> gPTP is protected by MACsec. A Sync/Follow_Up pair is being sent every configured interval. MKA prepares a fresh SAK and installs the new receive SA at both peers before transmit switches.</p>
+          <div class="diagram"><div class="pipe"><div class="box green">AN=0 accepted</div><div class="arrow">→</div><div class="box purple">MKA installs SA1</div><div class="arrow">→</div><div class="box blue">AN=1 accepted</div><div class="arrow">→</div><div class="box green">gPTP no gap</div></div></div>
+          <p><b>Expected observation:</b> MACsec counters show normal protected/encrypted frames. gPTP sequenceId increments normally. There may be an MKA rekey log, but no asCapable loss and no grandmaster change.</p>
+        </div>
+
+        <div class="scenario">
+          <span class="tag red">Scenario 2</span>
+          <h3>New AN transmitted before peer receive SA is ready</h3>
+          <p><b>Setup:</b> Peer A starts using AN=1, but Peer B has not installed or activated the receive SA for AN=1 in the data plane. The next protected gPTP Sync arrives with a SecTAG that points to AN=1.</p>
+          <div class="diagram"><div class="pipe"><div class="box blue">Sync seq 210<br>AN=1</div><div class="arrow">→</div><div class="box red">No RX SA1</div><div class="arrow">→</div><div class="box red">MACsec drop</div><div class="arrow">→</div><div class="box yellow">gPTP sequence gap</div></div></div>
+          <p><b>Why it is subtle:</b> A packet capture after MACsec validation may show nothing. You need SecY counters or a capture below/at the MACsec boundary to see that the frame arrived but failed validation.</p>
+          <p><b>Design correction:</b> Ensure MKA/key server sequencing and hardware programming support make-before-break SA installation.</p>
+        </div>
+
+        <div class="scenario">
+          <span class="tag yellow">Scenario 3</span>
+          <h3>Replay window too strict during rollover</h3>
+          <p><b>Setup:</b> Old AN=0 frames and new AN=1 frames are both in flight. A receive pipeline or queue releases an older packet after a newer packet. Strict replay validation may reject the older packet as late.</p>
+          <div class="diagram"><div class="pipe"><div class="box green">Old packet<br>AN=0 PN=500</div><div class="arrow">↘</div><div class="box blue">New packet<br>AN=1 PN=1</div><div class="arrow">→</div><div class="box red">old packet emerges late</div></div></div>
+          <p><b>Impact:</b> A single missed Pdelay_Resp or Sync may cause a short timing disturbance. Repeated losses can make the port temporarily not asCapable or destabilize the servo.</p>
+          <p><b>Design correction:</b> Validate replay-window configuration, traffic class ordering, and whether multiple SCs are needed when different priorities can reorder.</p>
+        </div>
+
+        <div class="scenario">
+          <span class="tag purple">Scenario 4</span>
+          <h3>PN exhaustion forces urgent rekey</h3>
+          <p><b>Setup:</b> A high-rate link approaches Packet Number exhaustion for an SA. A fresh SAK must be activated before PN reuse. If the rekey process is late, implementations may block transmit rather than risk PN reuse.</p>
+          <div class="diagram"><div class="pipe"><div class="box yellow">PN near limit</div><div class="arrow">→</div><div class="box purple">urgent MKA rekey</div><div class="arrow">→</div><div class="box red">TX pause if not ready</div><div class="arrow">→</div><div class="box yellow">gPTP jitter or gap</div></div></div>
+          <p><b>Impact:</b> gPTP may see packet delay spikes even if no security error appears. The event aligns with key lifetime or PN threshold rather than with congestion.</p>
+          <p><b>Design correction:</b> Use sufficiently early rekey thresholds and extended packet numbering where appropriate for high-speed links.</p>
+        </div>
+
+        <div class="scenario">
+          <span class="tag red">Scenario 5</span>
+          <h3>MKA/EAPOL filtered by an intermediate device</h3>
+          <p><b>Setup:</b> MACsec is deployed over a provider or bridged segment. EAPOL frames with EtherType 0x888E are consumed or filtered by an intermediate bridge, or an alternate EAPOL EtherType/destination is configured inconsistently.</p>
+          <div class="diagram"><div class="pipe"><div class="box purple">MKPDU</div><div class="arrow">→</div><div class="box red">filtered</div><div class="arrow">→</div><div class="box red">MKA peer times out</div><div class="arrow">→</div><div class="box red">controlled port blocks</div><div class="arrow">→</div><div class="box yellow">gPTP loss</div></div></div>
+          <p><b>Impact:</b> gPTP continues briefly, then all protected traffic stops. This can look like a timing failure, but the root cause is MKA liveness.</p>
+          <p><b>Design correction:</b> Verify MKA packet visibility, VLAN handling, and any WAN MACsec EAPOL tunneling parameters.</p>
+        </div>
+
+        <div class="scenario">
+          <span class="tag green">Scenario 6</span>
+          <h3>gPTP bypassed while data traffic rekeys</h3>
+          <p><b>Setup:</b> gPTP EtherType 0x88F7 is explicitly bypassed and sent in clear. MACsec rekeys only the protected application data stream.</p>
+          <div class="diagram"><div class="pipe"><div class="box blue">gPTP clear path</div><div class="arrow">→</div><div class="box green">unaffected by SAK change</div><div class="arrow">｜</div><div class="box orange">data MACsec path rekeys</div></div></div>
+          <p><b>Impact:</b> gPTP continuity is usually strong, but the timing messages are not protected by MACsec. This may be unacceptable in systems where time integrity is part of the safety or security case.</p>
+          <p><b>Design correction:</b> Choose bypass only deliberately. Document the threat model and add other timing-integrity measures if needed.</p>
+        </div>
+
+        <div class="scenario">
+          <span class="tag yellow">Scenario 7</span>
+          <h3>Protected Sync but bypassed peer delay</h3>
+          <p><b>Setup:</b> Classification rules accidentally protect Sync/Follow_Up but bypass Pdelay_Req/Pdelay_Resp, or classify by VLAN for one message class and by EtherType for another.</p>
+          <div class="diagram"><div class="pipe"><div class="box orange">Sync protected</div><div class="arrow">+</div><div class="box blue">Pdelay clear</div><div class="arrow">→</div><div class="box yellow">mixed latency and security model</div></div></div>
+          <p><b>Impact:</b> gPTP can remain “up” while delay estimation and Sync timing are affected by different processing paths. During rekey, only part of the protocol is exposed to MACsec events.</p>
+          <p><b>Design correction:</b> Treat all gPTP message types for a given domain consistently unless there is a very specific and tested reason not to.</p>
+        </div>
+
+        <div class="scenario">
+          <span class="tag red">Scenario 8</span>
+          <h3>Timestamp taken before a variable MACsec stall</h3>
+          <p><b>Setup:</b> The gPTP stack receives a transmit timestamp before the frame passes through the MACsec block. During rekey, the hardware key table update creates a microburst stall.</p>
+          <div class="diagram"><div class="pipe"><div class="box yellow">timestamp says T</div><div class="arrow">→</div><div class="box red">rekey stall Δ</div><div class="arrow">→</div><div class="box">actual wire time T+Δ</div></div></div>
+          <p><b>Impact:</b> The packet is not dropped, but the timestamp is wrong. gPTP may report a sudden offset change even though packet continuity appears perfect.</p>
+          <p><b>Design correction:</b> Verify hardware timestamp position and any correction applied for MACsec pipeline latency.</p>
+        </div>
+      </section>
+
+      <section id="simulator" data-context="Interactive explorer: adjust protection policy, rekey quality, replay window, and timestamp position to see expected gPTP impact.">
+        <h2>Interactive scenario explorer</h2>
+        <p>Use this small model to reason about likely outcomes. It is not a standards simulator. It is a teaching aid that maps common engineering choices to observable effects.</p>
+        <div class="controls">
+          <div><label>gPTP security policy</label><select id="policy"><option value="protected">Protected by MACsec</option><option value="bypass">Bypassed / clear</option><option value="mixed">Mixed accidentally</option></select></div>
+          <div><label>SA rollover quality</label><select id="rollover"><option value="hitless">Make-before-break</option><option value="gap">New AN before RX SA ready</option><option value="pause">Transmit pause during key install</option></select></div>
+          <div><label>Replay behavior</label><select id="replay"><option value="normal">Normal window</option><option value="strict">Very strict / no disorder tolerance</option><option value="badpn">PN state problem</option></select></div>
+          <div><label>Timestamp placement</label><select id="stamp"><option value="macphy">At MAC/PHY boundary</option><option value="before">Before MACsec processing</option><option value="software">Software timestamp only</option></select></div>
+        </div>
+        <div class="result" id="simResult"></div>
+        <div class="barviz" id="barviz"></div>
+      </section>
+
+      <section id="observability" data-context="Observability: correlate MKA rekey logs, SecY validation/replay counters, gPTP sequence gaps, asCapable changes, and offset spikes.">
+        <h2>Observability and troubleshooting</h2>
+        <h3>What to capture at the rekey instant</h3>
+        <table>
+          <thead><tr><th>Layer</th><th>Signals to watch</th><th>What a problem looks like</th></tr></thead>
+          <tbody>
+            <tr><td><b>MKA / 802.1X</b></td><td>Live peers, key server, cipher suite, SAK generation, AN change, MKPDU receive interval, CA membership.</td><td>Peer timeout, new SAK not distributed, inconsistent EAPOL destination/EtherType, repeated reauthentication.</td></tr>
+            <tr><td><b>MACsec transmit</b></td><td>OutPktsProtected, OutPktsEncrypted, current AN, PN progression, controlled port state.</td><td>Transmit pause, sudden controlled-port disable, PN near exhaustion, AN switch not matched by receive readiness.</td></tr>
+            <tr><td><b>MACsec receive</b></td><td>InPktsOK, InPktsNotValid, InPktsInvalid, InPktsLate, InPktsDelayed, replay counters.</td><td>Drops exactly at AN switch, replay-late spikes, validation errors only during rekey.</td></tr>
+            <tr><td><b>gPTP</b></td><td>sequenceId gaps, offsetFromMaster, meanPathDelay, rate ratio, asCapable, GM identity, port state.</td><td>One or more missed Sync/Pdelay messages, delay spike, offset jump, GM re-selection, asCapable false.</td></tr>
+            <tr><td><b>Hardware timestamping</b></td><td>PHC timestamps, egress/ingress timestamp position, correctionField behavior, residence time.</td><td>No packet drops, but offset jump aligned with rekey. Indicates timestamp or latency variation issue.</td></tr>
+          </tbody>
+        </table>
+        <h3>Diagnosis patterns</h3>
+        <div class="grid2">
+          <div class="card">
+            <h3>Pattern A: gPTP sequence gap + MACsec NotValid</h3>
+            <p>Root cause is likely SA mismatch or validation failure. Look at AN and receive-SA installation timing.</p>
+          </div>
+          <div class="card">
+            <h3>Pattern B: no sequence gap + offset spike</h3>
+            <p>Root cause is likely timestamp placement or variable MACsec pipeline latency rather than frame loss.</p>
+          </div>
+          <div class="card">
+            <h3>Pattern C: all protected traffic stops</h3>
+            <p>Root cause is likely MKA liveness, controlled-port blocking, or EAPOL filtering rather than gPTP itself.</p>
+          </div>
+          <div class="card">
+            <h3>Pattern D: only Pdelay fails</h3>
+            <p>Root cause may be multicast address handling, peer-delay classification, bypass inconsistency, or link-local filtering.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="bestpractice" data-context="Design rules: make-before-break SAs, consistent gPTP classification, correct timestamping, EAPOL visibility, early PN rekey, and replay-window validation.">
+        <h2>Design rules for robust gPTP continuity under MACsec rekey</h2>
+        <ol>
+          <li><b>Use make-before-break SA rollover.</b> New receive SA must be active before transmit switches to the new Association Number.</li>
+          <li><b>Classify all gPTP messages consistently.</b> Sync, Follow_Up, Announce, Pdelay_Req, Pdelay_Resp, and Pdelay_Resp_Follow_Up should not accidentally follow different security paths.</li>
+          <li><b>Validate timestamp placement.</b> Hardware timestamps should represent actual protected-frame transmit and receive timing, or any fixed security latency must be correctly compensated.</li>
+          <li><b>Keep MKA visible and reliable.</b> EAPOL/MKPDUs must not be filtered, consumed, or VLAN-misclassified by intermediate devices.</li>
+          <li><b>Size replay windows for the real datapath.</b> Consider traffic class ordering, multiple queues, preemption, and any path that can reorder frames.</li>
+          <li><b>Rekey well before PN exhaustion.</b> At high link rates, do not wait until PN is nearly exhausted before initiating rollover.</li>
+          <li><b>Correlate counters, not symptoms.</b> A gPTP offset spike is a symptom. The cause might be MACsec validation, MKA liveness, timestamp location, or queueing.</li>
+          <li><b>Test rekey under load.</b> Validate with normal traffic, full-rate traffic, gate schedules, and priority mixes, not only with an idle link.</li>
+        </ol>
+        <div class="good">
+          <b>Practical acceptance criterion:</b> Force repeated MACsec rekeys while measuring gPTP offset, mean path delay, sequenceId continuity, SecY counters, and MKA logs. A production-grade TSN security design should show no packet validation gap and no unexplained timing jump at the rollover instant.
+        </div>
+      </section>
+
+      <section id="references" data-context="References: IEEE 802.1AS, IEEE 802.1AE, IEEE 802.1X, and public implementation documents for PDU field visibility.">
+        <h2>Standards and public reference anchors</h2>
+        <p>This artifact is written as a standards-aligned teaching guide. For exact conformance language, always consult the actual IEEE standards used in your program baseline.</p>
+        <ul>
+          <li>IEEE 802.1AS: Timing and Synchronization for Time-Sensitive Applications, generalized Precision Time Protocol.</li>
+          <li>IEEE 802.1AE: MAC Security, MACsec data-plane protection, SecY, SC, SA, SecTAG, ICV, and replay protection.</li>
+          <li>IEEE 802.1X: Port-Based Network Access Control and MACsec Key Agreement protocol.</li>
+          <li>IEEE 1588 concepts: PTP common header, Sync/Follow_Up, peer-delay messages, correction field, sequenceId, and timing domains.</li>
+        </ul>
+        <div class="note">
+          <b>Use in training:</b> The best classroom exercise is to take a packet capture around a forced MACsec rekey and annotate three things side by side: MKA MKPDU exchange, MACsec AN/PN transition, and gPTP sequenceId/offset behavior.
+        </div>
+      </section>
+      <div class="footer">Generated as a self-contained HTML training artifact. No external scripts or fonts are required.</div>
+    </main>
+  </div>
+
+<script>
+const sections=[...document.querySelectorAll('[data-context]')];
+const pill=document.getElementById('contextPill');
+const navLinks=[...document.querySelectorAll('.nav a')];
+const progress=document.getElementById('progress');
+const obs=new IntersectionObserver(entries=>{
+  entries.forEach(entry=>{
+    if(entry.isIntersecting){
+      const ctx=entry.target.getAttribute('data-context');
+      pill.textContent='Context: '+ctx;
+      navLinks.forEach(a=>a.classList.toggle('active', a.getAttribute('href')==='#'+entry.target.id));
+    }
+  })
+},{rootMargin:'-20% 0px -70% 0px',threshold:0});
+sections.forEach(s=>obs.observe(s));
+window.addEventListener('scroll',()=>{
+  const h=document.documentElement;
+  const pct=(h.scrollTop)/(h.scrollHeight-h.clientHeight)*100;
+  progress.style.width=Math.max(0,Math.min(100,pct))+'%';
+});
+function runSim(){
+  const policy=document.getElementById('policy').value;
+  const rollover=document.getElementById('rollover').value;
+  const replay=document.getElementById('replay').value;
+  const stamp=document.getElementById('stamp').value;
+  let score=0, verdict=[], ticks=[];
+  if(policy==='protected') {score+=1; verdict.push('gPTP is inside the MACsec validation path, so SAK rollover directly affects timing packets.');}
+  if(policy==='bypass') {score-=1; verdict.push('gPTP bypasses MACsec, so SAK rollover is unlikely to drop timing packets, but timing traffic is clear.');}
+  if(policy==='mixed') {score+=3; verdict.push('Mixed classification is high risk because different gPTP message types can see different latency/security behavior.');}
+  if(rollover==='hitless') {score-=1; verdict.push('Make-before-break rollover should keep old and new SAs valid during transition.');}
+  if(rollover==='gap') {score+=4; verdict.push('New AN before peer RX SA readiness is a classic cause of MACsec validation drops.');}
+  if(rollover==='pause') {score+=2; verdict.push('A transmit pause may not be a validation failure, but it creates jitter or missed gPTP intervals.');}
+  if(replay==='normal') {score+=0; verdict.push('Normal replay behavior is acceptable if the data path preserves expected ordering.');}
+  if(replay==='strict') {score+=2; verdict.push('A strict replay window can reject frames released late by queues or hardware pipelines.');}
+  if(replay==='badpn') {score+=4; verdict.push('PN state errors or PN reuse are severe and can force drops or port protection behavior.');}
+  if(stamp==='macphy') {score-=1; verdict.push('Timestamping at the MAC/PHY boundary is the safest timing model.');}
+  if(stamp==='before') {score+=3; verdict.push('Timestamping before variable MACsec processing can create offset spikes without packet loss.');}
+  if(stamp==='software') {score+=2; verdict.push('Software timestamping is usually too noisy for tight gPTP continuity validation.');}
+  let status='Low risk'; let cls='green';
+  if(score>=3){status='Moderate risk'; cls='yellow';}
+  if(score>=6){status='High risk'; cls='red';}
+  const result=document.getElementById('simResult');
+  result.innerHTML=`<strong>${status}</strong><br>${verdict.join(' ')}`;
+  const bar=document.getElementById('barviz');
+  bar.innerHTML='';
+  for(let i=0;i<16;i++){
+    const d=document.createElement('div'); d.className='tick ok';
+    if(i===7||i===8) d.className='tick mka';
+    if(score>=3 && (i===8||i===9)) d.className='tick warn';
+    if(score>=6 && (i===8||i===9||i===10)) d.className='tick bad';
+    d.title=`interval ${i+1}`; bar.appendChild(d);
+  }
+}
+['policy','rollover','replay','stamp'].forEach(id=>document.getElementById(id).addEventListener('change',runSim));
+runSim();
+</script>
+</body>
+</html>

@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Automotive Ethernet Security Threat Landscape — Training Note</title>
+<style>
+:root{
+  --bg:#0b0f19;--bg2:#111827;--panel:#141b2d;--panel2:#182236;--panel3:#0f172a;
+  --text:#e8eefc;--muted:#a8b3cf;--faint:#73809d;--orange:#ff5f46;--orange2:#ff8a5b;
+  --blue:#60a5fa;--cyan:#22d3ee;--green:#4ade80;--yellow:#facc15;--red:#fb7185;--purple:#c084fc;
+  --line:#2a3552;--shadow:0 24px 60px rgba(0,0,0,.35);--radius:18px;
+}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(circle at top left,rgba(255,95,70,.14),transparent 30rem),radial-gradient(circle at 95% 0%,rgba(34,211,238,.12),transparent 26rem),var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.6}
+a{color:var(--cyan);text-decoration:none}a:hover{text-decoration:underline}.topbar{position:sticky;top:0;z-index:1000;background:rgba(11,15,25,.90);backdrop-filter:blur(16px);border-bottom:1px solid var(--line)}.progress{height:3px;background:linear-gradient(90deg,var(--orange),var(--cyan));width:0%;transition:width .1s linear}.context{display:grid;grid-template-columns:1.15fr 1.8fr 1fr;gap:12px;align-items:center;padding:10px 24px;max-width:1680px;margin:0 auto}.brand{font-weight:850;letter-spacing:.1px;display:flex;align-items:center;gap:10px;white-space:nowrap}.spark{width:12px;height:12px;background:var(--orange);transform:rotate(45deg);box-shadow:0 0 24px var(--orange)}.ctxbox{background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.08);border-radius:999px;padding:7px 12px;color:var(--muted);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ctxbox strong{color:#fff}.actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}.btn{border:1px solid rgba(255,255,255,.12);background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.035));color:var(--text);border-radius:999px;padding:8px 12px;font-weight:700;font-size:13px;cursor:pointer}.btn:hover{border-color:var(--orange);box-shadow:0 0 0 3px rgba(255,95,70,.15)}
+.layout{max-width:1680px;margin:0 auto;display:grid;grid-template-columns:310px minmax(0,1fr);gap:24px;padding:22px 24px 80px}aside{position:sticky;top:72px;align-self:start;max-height:calc(100vh - 88px);overflow:auto;background:rgba(20,27,45,.78);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}.navtitle{font-size:12px;color:var(--orange2);font-weight:900;letter-spacing:.14em;text-transform:uppercase;margin-bottom:8px}.toc{list-style:none;padding:0;margin:0;display:grid;gap:4px}.toc a{display:block;color:var(--muted);padding:8px 10px;border-radius:10px;font-size:13px;border:1px solid transparent}.toc a.active,.toc a:hover{background:rgba(255,95,70,.1);border-color:rgba(255,95,70,.25);color:#fff;text-decoration:none}.sidebox{margin-top:14px;border-top:1px solid var(--line);padding-top:14px;color:var(--muted);font-size:13px}.hero{border:1px solid var(--line);border-radius:28px;background:linear-gradient(135deg,rgba(255,95,70,.15),rgba(20,27,45,.97) 35%,rgba(34,211,238,.08));padding:34px;box-shadow:var(--shadow);position:relative;overflow:hidden}.hero:after{content:"";position:absolute;right:-90px;top:-90px;width:240px;height:240px;border:32px solid rgba(255,95,70,.11);transform:rotate(35deg);border-radius:36px}.eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:.18em;color:var(--orange2);font-weight:900;margin-bottom:12px}h1{font-size:clamp(32px,4.3vw,62px);line-height:1.04;margin:0 0 18px;letter-spacing:-.045em}.subtitle{font-size:clamp(16px,1.55vw,21px);color:var(--muted);max-width:1050px;margin:0 0 22px}.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:24px}.kpi{background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.09);border-radius:18px;padding:16px;min-height:125px}.kpi .n{font-size:30px;font-weight:950;color:#fff}.kpi .l{font-size:13px;color:var(--muted)}section{scroll-margin-top:92px;margin-top:28px}.card{background:rgba(20,27,45,.84);border:1px solid var(--line);border-radius:var(--radius);padding:22px;box-shadow:0 12px 40px rgba(0,0,0,.20)}h2{font-size:30px;line-height:1.15;margin:0 0 14px;letter-spacing:-.03em}h3{font-size:21px;margin:18px 0 10px;color:#fff}h4{margin:16px 0 8px;color:#fff}p{margin:9px 0;color:var(--muted)}ul,ol{color:var(--muted)}li{margin:6px 0}.strong{color:#fff;font-weight:750}.muted{color:var(--muted)}.small{font-size:13px}.foot{font-size:12px;color:var(--faint)}.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.grid4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.callout{border-left:4px solid var(--orange);background:rgba(255,95,70,.09);padding:14px 16px;border-radius:14px;margin:14px 0;color:var(--text)}.callout.blue{border-color:var(--cyan);background:rgba(34,211,238,.08)}.callout.yellow{border-color:var(--yellow);background:rgba(250,204,21,.08)}.callout.red{border-color:var(--red);background:rgba(251,113,133,.08)}.tag{display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);padding:4px 8px;border-radius:999px;font-size:12px;font-weight:850;color:#fff;margin:2px 4px 2px 0}.tag.orange{border-color:rgba(255,95,70,.35);color:var(--orange2)}.tag.green{border-color:rgba(74,222,128,.35);color:var(--green)}.tag.red{border-color:rgba(251,113,133,.35);color:var(--red)}.tag.blue{border-color:rgba(34,211,238,.35);color:var(--cyan)}.tag.purple{border-color:rgba(192,132,252,.35);color:var(--purple)}
+.diagram{background:linear-gradient(180deg,rgba(15,23,42,.92),rgba(17,24,39,.92));border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:18px;overflow:auto;margin:14px 0}.pipeline{display:flex;align-items:center;gap:10px;min-width:950px}.block{min-width:126px;text-align:center;background:rgba(96,165,250,.09);border:1px solid rgba(96,165,250,.28);padding:12px;border-radius:14px;color:#fff;font-weight:850}.block.orange{background:rgba(255,95,70,.1);border-color:rgba(255,95,70,.34)}.block.green{background:rgba(74,222,128,.09);border-color:rgba(74,222,128,.28)}.block.red{background:rgba(251,113,133,.09);border-color:rgba(251,113,133,.28)}.block.purple{background:rgba(192,132,252,.1);border-color:rgba(192,132,252,.3)}.block.yellow{background:rgba(250,204,21,.09);border-color:rgba(250,204,21,.3)}.arrow{color:var(--faint);font-size:25px;font-weight:900}.frame{display:flex;align-items:stretch;gap:3px;min-width:1040px;margin:14px 0}.field{border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.055);border-radius:8px;padding:10px 9px;text-align:center;min-width:86px}.field .bits{font-size:11px;color:var(--faint);display:block}.field .name{font-weight:900;color:#fff;font-size:13px}.field.risk{background:rgba(255,95,70,.14);border-color:rgba(255,95,70,.45)}.field.auth{background:rgba(74,222,128,.09);border-color:rgba(74,222,128,.30)}.field.vlan{background:rgba(34,211,238,.1);border-color:rgba(34,211,238,.28)}.field.time{background:rgba(192,132,252,.1);border-color:rgba(192,132,252,.30)}.field.payload{min-width:210px;background:rgba(74,222,128,.08);border-color:rgba(74,222,128,.25)}.hex{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;background:#060914;border:1px solid #26304b;color:#dbeafe;border-radius:16px;padding:16px;overflow:auto;white-space:pre;line-height:1.55}.hex .hi{color:var(--orange2);font-weight:900}.hex .ok{color:var(--green);font-weight:900}.hex .bad{color:var(--red);font-weight:900}.hex .dim{color:#74809a}.ladder{display:grid;grid-template-columns:repeat(5, minmax(150px,1fr));gap:10px;min-width:900px}.lane{border:1px dashed rgba(255,255,255,.16);border-radius:16px;padding:12px;background:rgba(255,255,255,.035)}.lane .label{font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:var(--faint);font-weight:900}.event{margin:10px 0;padding:9px;border-radius:12px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.08);font-size:13px;color:var(--muted)}.event.hot{background:rgba(251,113,133,.1);border-color:rgba(251,113,133,.34);color:#fff}.event.ok{background:rgba(74,222,128,.08);border-color:rgba(74,222,128,.28)}
+table{width:100%;border-collapse:separate;border-spacing:0;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:rgba(15,23,42,.55);margin:14px 0}th,td{padding:12px 13px;border-bottom:1px solid var(--line);vertical-align:top}th{text-align:left;background:rgba(255,255,255,.06);color:#fff;font-size:13px}td{color:var(--muted);font-size:14px}tr:last-child td{border-bottom:0}.nowrap{white-space:nowrap}.good{color:var(--green);font-weight:850}.warn{color:var(--yellow);font-weight:850}.bad{color:var(--red);font-weight:850}.info{color:var(--cyan);font-weight:850}.scenario-tabs{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 16px}.scenario-tab{cursor:pointer;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.045);color:var(--muted);border-radius:999px;padding:9px 12px;font-weight:800}.scenario-tab.active{background:rgba(255,95,70,.15);border-color:rgba(255,95,70,.55);color:#fff}.scenario-view{display:grid;grid-template-columns:1.05fr .95fr;gap:16px}.counter-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.counter{background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:12px}.counter .cname{font-size:12px;color:var(--faint);font-weight:850}.counter .cval{font-size:22px;color:#fff;font-weight:950}.counter .why{font-size:12px;color:var(--muted)}.stepper{display:grid;gap:10px}.step{display:grid;grid-template-columns:30px 1fr;gap:10px;align-items:start}.bubble{width:28px;height:28px;border-radius:50%;background:rgba(255,95,70,.18);border:1px solid rgba(255,95,70,.45);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900}.step div:last-child{color:var(--muted)}.threatgrid{display:grid;grid-template-columns:repeat(6,minmax(145px,1fr));gap:8px;min-width:980px}.threat{border-radius:14px;border:1px solid rgba(255,255,255,.10);padding:10px;background:rgba(255,255,255,.045)}.threat .t{font-weight:900;color:#fff;font-size:13px}.threat .d{font-size:12px;color:var(--muted)}.threat.hot{border-color:rgba(255,95,70,.5);background:rgba(255,95,70,.1)}.footer{margin-top:36px;padding:22px;border-top:1px solid var(--line);color:var(--faint)}details{border:1px solid rgba(255,255,255,.10);border-radius:14px;background:rgba(255,255,255,.035);padding:12px;margin:10px 0}summary{cursor:pointer;color:#fff;font-weight:850}.print-note{display:none}
+@media (max-width:1120px){.layout{grid-template-columns:1fr}aside{position:relative;top:0;max-height:none}.context{grid-template-columns:1fr}.actions{justify-content:flex-start}.kpis,.grid4{grid-template-columns:repeat(2,1fr)}.grid2,.grid3,.scenario-view{grid-template-columns:1fr}.hero{padding:24px}}@media print{body{background:#fff;color:#000}.topbar,aside,.actions{display:none}.layout{display:block;padding:0}.card,.hero{box-shadow:none;border-color:#999;background:#fff;color:#000}.muted,p,td,li{color:#111}.print-note{display:block}.hex{white-space:pre-wrap;color:#111;background:#f6f6f6}.field .name,.block,h1,h2,h3,summary{color:#000}}
+</style>
+</head>
+<body>
+<div class="topbar"><div class="progress" id="progress"></div><div class="context"><div class="brand"><span class="spark"></span> Automotive Ethernet Security</div><div class="ctxbox" id="ctx"><strong>Context:</strong> Threat landscape overview</div><div class="actions"><button class="btn" onclick="window.print()">Print / Save PDF</button><button class="btn" onclick="toggleDetails()">Expand notes</button><button class="btn" onclick="scrollTo(0,0)">Top</button></div></div></div>
+<div class="layout">
+<aside>
+  <div class="navtitle">Context map</div>
+  <ol class="toc" id="toc">
+    <li><a href="#overview">1. Threat model</a></li>
+    <li><a href="#standards">2. Standards map</a></li>
+    <li><a href="#surface">3. Attack surface stack</a></li>
+    <li><a href="#headers">4. PDU and header fields</a></li>
+    <li><a href="#switch">5. Switch pipeline view</a></li>
+    <li><a href="#threats">6. Threat families</a></li>
+    <li><a href="#scenarios">7. Scenario lab</a></li>
+    <li><a href="#observability">8. Observability</a></li>
+    <li><a href="#mitigation">9. Mitigation strategy</a></li>
+    <li><a href="#checklists">10. Checklists</a></li>
+    <li><a href="#quiz">11. Knowledge check</a></li>
+    <li><a href="#sources">12. Sources</a></li>
+  </ol>
+  <div class="sidebox"><span class="tag orange">defensive training</span><span class="tag blue">Ethernet</span><span class="tag purple">TSN</span><span class="tag green">SecOC/MACsec</span><p>This page avoids exploit instructions. The examples are framed as design review, lab validation, and incident-analysis scenarios.</p></div>
+</aside>
+<main>
+<section class="hero" id="overview" data-title="Threat model: automotive Ethernet is a routable, switched, service-oriented safety network">
+  <div class="eyebrow">Databricks dark theme training artifact</div>
+  <h1>Security threat landscape on Automotive Ethernet</h1>
+  <p class="subtitle">A standards-oriented, packet-oriented explanation of how attacks become possible in a modern in-vehicle Ethernet network, how they show up in headers and counters, and how to design observability and mitigations without reducing the subject to generic “firewall and encryption” advice.</p>
+  <div>
+    <span class="tag orange">Threat modeling</span><span class="tag blue">SOME/IP</span><span class="tag blue">DoIP</span><span class="tag purple">gPTP / TSN</span><span class="tag green">MACsec</span><span class="tag green">SecOC</span><span class="tag red">Availability</span>
+  </div>
+  <div class="kpis">
+    <div class="kpi"><div class="n">1</div><div class="l"><b>Compromised endpoint</b> can become a bridgehead into service discovery, diagnostics, and safety-domain traffic if segmentation is weak.</div></div>
+    <div class="kpi"><div class="n">L2</div><div class="l"><b>Link-layer identity</b> is not equivalent to ECU trust. MAC address, VLAN, and priority fields are metadata to validate, not proof of legitimacy.</div></div>
+    <div class="kpi"><div class="n">TSN</div><div class="l"><b>Timing and availability</b> are security properties. Bad time, bad priority, or bad policing can create safety-relevant failures without changing application payload.</div></div>
+    <div class="kpi"><div class="n">Defense</div><div class="l"><b>Layered controls</b> are required: secure boot, port trust, MACsec/MKA, SecOC, IP filtering, IDS, diagnostic authorization, and lifecycle governance.</div></div>
+  </div>
+  <div class="callout red"><b>Core teaching idea:</b> Automotive Ethernet security is not a single cryptographic feature. It is the disciplined control of who may attach, what frames may enter, which services may be discovered, which diagnostic routes may activate, what timing source is trusted, and whether the switch can enforce those decisions at line rate.</div>
+</section>
+
+<section class="card" id="standards" data-title="Standards map: security is spread across lifecycle, link, PDU, diagnostics, and operations">
+  <h2>1. Standards map: which document answers which security question?</h2>
+  <p>There is no single “Automotive Ethernet security standard” that covers the whole threat landscape. The landscape is a stack of complementary standards and practices.</p>
+  <table>
+    <thead><tr><th>Area</th><th>Relevant standards / practices</th><th>What they help you answer</th><th>What they do not solve alone</th></tr></thead>
+    <tbody>
+      <tr><td class="nowrap"><b>Cybersecurity lifecycle</b></td><td>ISO/SAE 21434, UN R155, Auto-ISAC, NHTSA guidance</td><td>How to identify assets, threats, risks, cybersecurity goals, validation evidence, production and post-production processes.</td><td>They do not define the exact wire format of each Ethernet security mechanism.</td></tr>
+      <tr><td><b>Link-layer protection</b></td><td>IEEE 802.1AE MAC Security (MACsec), IEEE 802.1X MACsec Key Agreement (MKA), OPEN Alliance Automotive MKA</td><td>How to authenticate and integrity-protect Ethernet frames between directly connected MACsec peers. Optionally encrypt user data.</td><td>Does not replace application authorization. A compromised trusted ECU can still send malicious but cryptographically valid traffic.</td></tr>
+      <tr><td><b>PDU authenticity</b></td><td>AUTOSAR Secure Onboard Communication (SecOC)</td><td>How to authenticate and freshness-protect selected critical AUTOSAR I-PDUs with an authenticator and freshness value.</td><td>Does not protect every byte on the link unless configured for the relevant PDU. Does not hide metadata.</td></tr>
+      <tr><td><b>Service communication</b></td><td>AUTOSAR SOME/IP and SOME/IP Service Discovery</td><td>How service IDs, method IDs, event notifications, service offers, subscriptions, endpoint options, and session identifiers appear on the wire.</td><td>The protocol format itself is not an authorization policy. Service access must be restricted by design.</td></tr>
+      <tr><td><b>Diagnostics</b></td><td>ISO 13400 Diagnostic communication over IP as implemented in AUTOSAR DoIP</td><td>How testers discover vehicles, activate routing, and send diagnostic messages with source and target logical addresses.</td><td>DoIP transport format does not itself decide whether the human, tool, or backend is allowed to request a security-critical UDS service.</td></tr>
+      <tr><td><b>Timing and TSN</b></td><td>IEEE 802.1AS/gPTP, IEEE 802.1Q time-sensitive networking functions such as VLAN priority, filtering, policing, shaping, and scheduling</td><td>How time, priority, queues, gate schedules, stream filters, and deterministic forwarding interact with security and availability.</td><td>TSN improves determinism but can be misconfigured or abused. Deterministic failure is still failure.</td></tr>
+    </tbody>
+  </table>
+  <div class="callout blue"><b>Training rule:</b> Treat Ethernet security as a chain of evidence. For each critical message, ask: which ECU identity is trusted, which link is protected, which VLAN and priority are allowed, which service or diagnostic endpoint is allowed, which PDU has authenticity/freshness, and which logs prove it?</div>
+</section>
+
+<section class="card" id="surface" data-title="Attack surface stack: entry point, lateral movement, service abuse, timing abuse, and safety impact">
+  <h2>2. Automotive Ethernet attack surface stack</h2>
+  <p>The threat landscape becomes clear when you draw the path from attacker position to vehicle effect. The attacker rarely begins inside a brake ECU. More commonly, the path starts from a connected surface and then moves toward in-vehicle services.</p>
+  <div class="diagram">
+    <div class="pipeline">
+      <div class="block red">External entry<br><span class="foot">TCU, Wi-Fi, BT, USB, app, OTA, service tool</span></div><div class="arrow">→</div>
+      <div class="block orange">Compromised ECU<br><span class="foot">infotainment, telematics, camera, gateway app</span></div><div class="arrow">→</div>
+      <div class="block yellow">Ethernet access<br><span class="foot">port, VLAN, multicast, IP route, switch ACL</span></div><div class="arrow">→</div>
+      <div class="block purple">Protocol leverage<br><span class="foot">SOME/IP-SD, DoIP, gPTP, ARP, DHCP, AVTP</span></div><div class="arrow">→</div>
+      <div class="block green">Safety or privacy effect<br><span class="foot">wrong data, missing data, delayed data, leaked data</span></div>
+    </div>
+  </div>
+  <div class="grid3">
+    <div class="card"><h3>Remote-to-internal</h3><p>A telematics or infotainment compromise gives the attacker an IP-speaking node. The first security question is whether that node can discover, route to, or spoof services in the safety network.</p></div>
+    <div class="card"><h3>Physical / service access</h3><p>Debug connectors, workshop tools, OBD-connected equipment, replaced ECUs, and test harnesses can introduce a valid electrical Ethernet node. The question becomes attachment trust and diagnostic authorization.</p></div>
+    <div class="card"><h3>Supply-chain / update path</h3><p>A vulnerable software component, mis-signed update, leaked key, or weak certificate provisioning can make later network controls ineffective because the ECU is now a legitimate but malicious speaker.</p></div>
+  </div>
+  <h3>Why Ethernet changes the threat model compared with classic CAN</h3>
+  <ul>
+    <li><b>Service discovery exists.</b> Attackers can learn service topology from offers, finds, subscriptions, multicast groups, and port usage.</li>
+    <li><b>IP routing exists.</b> Once traffic is IP, firewalling, routing tables, NAT-like gateways, TCP state, and UDP multicast behavior all matter.</li>
+    <li><b>Priorities exist.</b> PCP and queue selection can become an availability attack path if ingress classification is trusted too much.</li>
+    <li><b>Time is a network service.</b> gPTP is not just a clock convenience. It affects schedules, timestamps, logging, sensor fusion, and deterministic forwarding.</li>
+    <li><b>Switches are policy enforcement devices.</b> VLAN membership, port state, stream filters, policing, FDB learning, multicast replication, and mirror ports become security controls.</li>
+  </ul>
+</section>
+
+<section class="card" id="headers" data-title="PDU and header fields: where attacks become visible on the wire">
+  <h2>3. PDU and header fields that matter for security</h2>
+  <p>Many Automotive Ethernet attacks are not mysterious at the packet level. They manipulate identity, routing, service, freshness, time, or priority fields. The figures below show where those fields live.</p>
+  <h3>3.1 Ethernet + VLAN frame: the minimum security metadata</h3>
+  <div class="diagram">
+    <div class="frame">
+      <div class="field risk"><span class="bits">48b</span><span class="name">Destination MAC</span></div>
+      <div class="field risk"><span class="bits">48b</span><span class="name">Source MAC</span></div>
+      <div class="field vlan"><span class="bits">16b</span><span class="name">TPID 0x8100</span></div>
+      <div class="field vlan"><span class="bits">3b</span><span class="name">PCP</span></div>
+      <div class="field vlan"><span class="bits">1b</span><span class="name">DEI</span></div>
+      <div class="field vlan"><span class="bits">12b</span><span class="name">VID</span></div>
+      <div class="field"><span class="bits">16b</span><span class="name">EtherType</span></div>
+      <div class="field payload"><span class="bits">variable</span><span class="name">IP / AVTP / PTP / Payload</span></div>
+      <div class="field"><span class="bits">32b</span><span class="name">FCS</span></div>
+    </div>
+  </div>
+  <table>
+    <thead><tr><th>Field</th><th>Threat question</th><th>Defensive interpretation</th></tr></thead>
+    <tbody>
+      <tr><td>Source MAC</td><td>Is a node claiming the identity of another ECU?</td><td>Use port binding, static FDB entries for critical ECUs, MACsec peer identity, and IDS correlation. MAC alone is not trust.</td></tr>
+      <tr><td>VID</td><td>Is the frame entering a VLAN it should never reach?</td><td>Ingress VLAN admission must be per port. Do not let endpoint-supplied tags override switch policy.</td></tr>
+      <tr><td>PCP</td><td>Is low-criticality traffic marking itself as high priority?</td><td>Use priority regeneration at ingress. Map application traffic to priority by trusted port/rule, not by blind acceptance.</td></tr>
+      <tr><td>Multicast DA</td><td>Is a discovery, time-sync, or streaming group being flooded unexpectedly?</td><td>Use multicast filtering, stream reservation policy, and rate limits. Unexpected group joins are security events.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>3.2 MACsec frame: link protection, not whole-vehicle authorization</h3>
+  <div class="diagram">
+    <div class="frame">
+      <div class="field"><span class="bits">48b</span><span class="name">DA</span></div>
+      <div class="field"><span class="bits">48b</span><span class="name">SA</span></div>
+      <div class="field auth"><span class="bits">16b</span><span class="name">EtherType 0x88E5</span></div>
+      <div class="field auth"><span class="bits">TCI/AN</span><span class="name">SecTAG control</span></div>
+      <div class="field auth"><span class="bits">8b</span><span class="name">Short Length</span></div>
+      <div class="field auth"><span class="bits">32b / XPN</span><span class="name">Packet Number</span></div>
+      <div class="field auth"><span class="bits">optional 64b</span><span class="name">SCI</span></div>
+      <div class="field payload"><span class="bits">protected</span><span class="name">Encrypted or integrity-protected data</span></div>
+      <div class="field auth"><span class="bits">ICV</span><span class="name">Integrity Check Value</span></div>
+    </div>
+  </div>
+  <p>MACsec is excellent for preventing a rogue device on a physical link from silently injecting or modifying frames, and it can provide confidentiality. However, it protects a link between MACsec peers. Once a frame emerges from a trusted ECU or decrypted switch port, application authorization is still required.</p>
+
+  <h3>3.3 SOME/IP header: where service abuse appears</h3>
+  <div class="diagram">
+    <div class="frame">
+      <div class="field risk"><span class="bits">16b</span><span class="name">Service ID</span></div>
+      <div class="field risk"><span class="bits">16b</span><span class="name">Method / Event ID</span></div>
+      <div class="field"><span class="bits">32b</span><span class="name">Length</span></div>
+      <div class="field risk"><span class="bits">16b</span><span class="name">Client ID</span></div>
+      <div class="field"><span class="bits">16b</span><span class="name">Session ID</span></div>
+      <div class="field"><span class="bits">8b</span><span class="name">Protocol Ver.</span></div>
+      <div class="field risk"><span class="bits">8b</span><span class="name">Interface Ver.</span></div>
+      <div class="field risk"><span class="bits">8b</span><span class="name">Msg Type</span></div>
+      <div class="field"><span class="bits">8b</span><span class="name">Return Code</span></div>
+      <div class="field payload"><span class="bits">variable</span><span class="name">Serialized payload</span></div>
+    </div>
+  </div>
+  <p>A malicious SOME/IP pattern is often visible as a wrong service/method pair, unexpected client ID, abnormal session reuse, unapproved event subscription, abnormal message length, or a high rate of error responses.</p>
+
+  <h3>3.4 SOME/IP Service Discovery: the attacker’s map if not controlled</h3>
+  <div class="diagram">
+    <div class="pipeline">
+      <div class="block purple">SOME/IP-SD header<br><span class="foot">flags + reserved</span></div><div class="arrow">→</div>
+      <div class="block orange">Entries Array<br><span class="foot">FindService, OfferService, SubscribeEventgroup</span></div><div class="arrow">→</div>
+      <div class="block blue">Options Array<br><span class="foot">IPv4/IPv6 endpoint, multicast, config, load balancing</span></div><div class="arrow">→</div>
+      <div class="block red">Security decision<br><span class="foot">Is this offer/subscription allowed on this port/VLAN?</span></div>
+    </div>
+  </div>
+  <p>Service discovery is useful because clients can find providers dynamically. The same property creates a reconnaissance and spoofing surface. A fake service offer or fake event subscription can redirect clients, trigger unwanted data flow, or expose internal service topology.</p>
+
+  <h3>3.5 DoIP generic header and diagnostic payload</h3>
+  <div class="diagram">
+    <div class="frame">
+      <div class="field risk"><span class="bits">1B</span><span class="name">Protocol version</span></div>
+      <div class="field"><span class="bits">1B</span><span class="name">Inverse version</span></div>
+      <div class="field risk"><span class="bits">2B</span><span class="name">Payload type</span></div>
+      <div class="field risk"><span class="bits">4B</span><span class="name">Payload length</span></div>
+      <div class="field risk"><span class="bits">2B</span><span class="name">Source logical address</span></div>
+      <div class="field risk"><span class="bits">2B</span><span class="name">Target logical address</span></div>
+      <div class="field payload"><span class="bits">variable</span><span class="name">UDS diagnostic data</span></div>
+    </div>
+  </div>
+  <p>DoIP risk is not “because diagnostics are bad.” Diagnostics are essential. The risk appears when routing activation, source address binding, diagnostic role, and UDS security access are not tightly bound to the authorized tester, session, physical context, and operational state.</p>
+
+  <h3>3.6 SecOC secured I-PDU: authenticity and freshness at PDU level</h3>
+  <div class="diagram">
+    <div class="frame">
+      <div class="field auth"><span class="bits">optional</span><span class="name">Secured I-PDU Header</span></div>
+      <div class="field payload"><span class="bits">variable</span><span class="name">Authentic I-PDU</span></div>
+      <div class="field auth"><span class="bits">optional/truncated</span><span class="name">Freshness Value</span></div>
+      <div class="field auth"><span class="bits">truncated/configured</span><span class="name">Authenticator / MAC</span></div>
+    </div>
+  </div>
+  <p>SecOC is especially relevant for replay and payload tampering. A frame can pass Ethernet checksum and IP checksum yet still be rejected because the authenticator or freshness value does not match the configured secured PDU.</p>
+
+  <h3>3.7 gPTP / time-sync message fields: timing is security-relevant</h3>
+  <div class="diagram">
+    <div class="frame">
+      <div class="field time"><span class="bits">4b</span><span class="name">messageType</span></div>
+      <div class="field"><span class="bits">4b</span><span class="name">versionPTP</span></div>
+      <div class="field time"><span class="bits">16b</span><span class="name">messageLength</span></div>
+      <div class="field time"><span class="bits">8b</span><span class="name">domainNumber</span></div>
+      <div class="field time"><span class="bits">64b</span><span class="name">correctionField</span></div>
+      <div class="field time"><span class="bits">80b</span><span class="name">sourcePortIdentity</span></div>
+      <div class="field time"><span class="bits">16b</span><span class="name">sequenceId</span></div>
+      <div class="field payload"><span class="bits">varies</span><span class="name">Announce / Sync / Follow_Up / Pdelay</span></div>
+    </div>
+  </div>
+  <p>For TSN and sensor fusion, a bad time source can be as damaging as a bad data source. A security review should validate who is allowed to be grandmaster-capable, whether BMCA role changes are expected, and whether time jumps are observable.</p>
+</section>
+
+<section class="card" id="switch" data-title="Switch pipeline view: security enforcement should happen before queueing and scheduling">
+  <h2>4. Switch-pipeline view of Automotive Ethernet security</h2>
+  <p>A secure automotive switch is not a passive cable concentrator. It is a policy engine that should decide whether a frame is admitted before the frame can consume high-priority resources.</p>
+  <div class="diagram">
+    <div class="pipeline">
+      <div class="block orange">Ingress PHY/MAC<br><span class="foot">link, errors, MACsec decrypt</span></div><div class="arrow">→</div>
+      <div class="block blue">Parser<br><span class="foot">DA, SA, VLAN, EtherType, IP, ports</span></div><div class="arrow">→</div>
+      <div class="block purple">Port trust profile<br><span class="foot">allowed MACs, VLANs, PCP map, multicast groups</span></div><div class="arrow">→</div>
+      <div class="block red">Security filter<br><span class="foot">ACL, stream filter, rate policer, DoIP/SOME/IP policy</span></div><div class="arrow">→</div>
+      <div class="block yellow">Queue selection<br><span class="foot">priority regeneration, Qci, CBS/ATS/Qbv</span></div><div class="arrow">→</div>
+      <div class="block green">Egress decision<br><span class="foot">FDB, VLAN membership, replication, shaping</span></div>
+    </div>
+  </div>
+  <div class="callout yellow"><b>Important:</b> If a frame is classified into a high-priority queue before the switch validates the ingress port, VLAN, stream identity, and rate, the attacker can convert protocol abuse into a scheduler-level denial of service.</div>
+  <table>
+    <thead><tr><th>Pipeline point</th><th>Security decision</th><th>Failure symptom if missing</th></tr></thead>
+    <tbody>
+      <tr><td>Ingress port</td><td>Which ECU identity and VLANs are allowed on this physical port?</td><td>Replacement ECU or compromised node can impersonate another sender.</td></tr>
+      <tr><td>MACsec SecY / MKA</td><td>Has the peer authenticated and installed the expected Secure Association Key?</td><td>Unauthorized nodes can inject or observe frames on the physical link.</td></tr>
+      <tr><td>VLAN classifier</td><td>Are tags accepted, stripped, regenerated, or overridden by port policy?</td><td>VLAN hopping, incorrect domain crossing, or priority abuse.</td></tr>
+      <tr><td>Multicast control</td><td>Which ports may send or receive each multicast group?</td><td>Discovery storms, service topology leakage, or camera/audio stream leakage.</td></tr>
+      <tr><td>Stream filter / policer</td><td>Does the frame match the expected stream and rate envelope?</td><td>TSN queues fill with invalid or excessive traffic before deadlines.</td></tr>
+      <tr><td>Mirror / debug port</td><td>Who can enable monitoring and where does copied traffic go?</td><td>Silent data exfiltration or unexpected extra load.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="card" id="threats" data-title="Threat families: spoofing, discovery abuse, diagnostics, timing, DoS, and data leakage">
+  <h2>5. Threat families on Automotive Ethernet</h2>
+  <div class="diagram"><div class="threatgrid">
+    <div class="threat hot"><div class="t">Spoofing</div><div class="d">MAC, IP, service identity, diagnostic source address, time master identity.</div></div>
+    <div class="threat hot"><div class="t">Tampering</div><div class="d">Payload modification, false sensor values, malformed SOME/IP, altered diagnostics.</div></div>
+    <div class="threat hot"><div class="t">Replay</div><div class="d">Old control/status PDUs or old diagnostic responses reused at a later time.</div></div>
+    <div class="threat hot"><div class="t">Discovery abuse</div><div class="d">Fake OfferService, excessive FindService, unauthorized event subscriptions.</div></div>
+    <div class="threat hot"><div class="t">Availability</div><div class="d">Floods, multicast storms, high PCP misuse, queue starvation, buffer exhaustion.</div></div>
+    <div class="threat hot"><div class="t">Timing abuse</div><div class="d">Grandmaster spoof, time jump, wrong domain, correction-field anomalies.</div></div>
+  </div></div>
+  <div class="grid2">
+    <div><h3>Confidentiality threats</h3><p>Ethernet carries richer data than traditional control buses: camera streams, audio, diagnostics, vehicle identity, service metadata, and sometimes occupant-related information. Passive observation matters, especially at service ports, debug ports, and unprotected links.</p></div>
+    <div><h3>Integrity threats</h3><p>Integrity threats include payload tampering, false service providers, spoofed diagnostic source addresses, and message replay. SecOC and MACsec address different parts of the integrity problem; neither replaces authorization.</p></div>
+    <div><h3>Availability threats</h3><p>Availability threats are central in TSN networks because latency and jitter are part of correctness. A flood in the wrong priority class can become a safety problem even when every application payload is syntactically valid.</p></div>
+    <div><h3>Authenticity and freshness threats</h3><p>A receiver needs confidence that a message came from the expected sender and belongs to the current moment. This is why freshness counters, packet numbers, diagnostic state, and time synchronization logs are security artifacts.</p></div>
+  </div>
+</section>
+
+<section class="card" id="scenarios" data-title="Scenario lab: follow the attack path, affected headers, observable symptoms, and controls">
+  <h2>6. Interactive scenario lab</h2>
+  <p>Select a scenario. Each scenario shows the attacker position, manipulated header or protocol behavior, likely symptoms, and the controls that would break the attack chain.</p>
+  <div class="scenario-tabs" id="scenarioTabs"></div>
+  <div class="scenario-view">
+    <div class="card">
+      <h3 id="scTitle">Scenario</h3>
+      <p id="scNarrative"></p>
+      <div class="diagram"><div class="ladder" id="scLadder"></div></div>
+      <h4>Key teaching point</h4>
+      <p id="scTeaching"></p>
+    </div>
+    <div class="card">
+      <h3>Observables and controls</h3>
+      <div class="counter-grid" id="scCounters"></div>
+      <h4>What to inspect in a trace</h4>
+      <div class="hex" id="scTrace"></div>
+    </div>
+  </div>
+</section>
+
+<section class="card" id="observability" data-title="Observability: collect evidence from switch, ECU, MACsec, SecOC, DoIP, SOME/IP, gPTP, and backend">
+  <h2>7. Observability: how failures and attacks become visible</h2>
+  <p>A security architecture that cannot be observed is difficult to validate and almost impossible to operate after deployment. Observability should be designed at every layer.</p>
+  <table>
+    <thead><tr><th>Layer</th><th>Useful observables</th><th>Interesting failure signatures</th></tr></thead>
+    <tbody>
+      <tr><td>PHY / MAC</td><td>Link up/down, CRC/FCS errors, symbol errors, MACsec validation failures, MKA state, packet number rollover alarms.</td><td>Rogue attachment, link flapping, cable disturbance, failed MACsec peer authentication, physical-layer fault used as DoS.</td></tr>
+      <tr><td>Switch ingress</td><td>Port/VLAN admission drops, source MAC moves, static FDB violations, unexpected multicast source, ACL hits.</td><td>ECU impersonation, miswired harness, unauthorized device, VLAN crossing attempt.</td></tr>
+      <tr><td>QoS / TSN</td><td>Qci stream gate drops, policer drops, per-queue occupancy, CBS credit behavior, ATS residence-time drops, Qbv gate violations.</td><td>Priority abuse, excessive stream rate, malformed stream identity, availability attack that does not look like payload tampering.</td></tr>
+      <tr><td>SOME/IP / SD</td><td>OfferService/FindService rate, wrong endpoint option, unexpected eventgroup subscription, interface-version mismatch, return-code distribution.</td><td>Fake provider, topology reconnaissance, unauthorized client, incompatible or malicious service endpoint.</td></tr>
+      <tr><td>DoIP / UDS</td><td>Vehicle identification requests, routing activation attempts, logical address mismatch, diagnostic NACK code, security-access failures, session transitions.</td><td>Unauthorized tester, diagnostic brute forcing, access outside workshop state, route activation from wrong network.</td></tr>
+      <tr><td>SecOC</td><td>Authenticator verification failures, freshness-window failures, truncated MAC mismatch, synchronization resets, per-PDU rejection counters.</td><td>Replay, stale sender state after sleep/wake, payload tampering, wrong key or wrong configured PDU binding.</td></tr>
+      <tr><td>gPTP / time sync</td><td>Grandmaster identity changes, clockClass changes, domain mismatch, time step, path delay anomaly, sequence gaps.</td><td>Time-master spoof, topology change, switch asymmetry, time-driven TSN schedule instability.</td></tr>
+      <tr><td>Backend / lifecycle</td><td>Certificate provisioning, key rotation, OTA update evidence, vulnerability exposure inventory, incident response records.</td><td>Key compromise, obsolete software, unpatched third-party component, fleet-wide repeated anomaly.</td></tr>
+    </tbody>
+  </table>
+  <div class="callout blue"><b>Best practice:</b> Normalize evidence into a shared incident vocabulary: <i>who spoke, on which port, with which cryptographic state, in which VLAN, to which service or diagnostic target, at what rate, using which priority, and with what verification result</i>.</div>
+</section>
+
+<section class="card" id="mitigation" data-title="Mitigation: layered controls that break specific attack chains">
+  <h2>8. Mitigation strategy: map controls to attack chains</h2>
+  <p>Good security design is not a list of controls. It is a set of controls placed at the exact point where an attack chain can be broken.</p>
+  <table>
+    <thead><tr><th>Attack chain step</th><th>Primary controls</th><th>What to validate</th></tr></thead>
+    <tbody>
+      <tr><td>Unauthorized node attaches to Ethernet</td><td>MACsec with MKA, port binding, secure device identity, production key provisioning, disabled unused ports.</td><td>Link does not pass protected traffic until authentication and correct policy state are established.</td></tr>
+      <tr><td>Compromised node tries lateral movement</td><td>Gateway firewall, VLAN segmentation, service allowlists, routing control, least-privilege service topology.</td><td>Infotainment/TCU cannot discover or call safety-domain services unless explicitly permitted.</td></tr>
+      <tr><td>Fake service offer or subscription</td><td>SOME/IP-SD policy, endpoint allowlists, multicast scoping, IDS signatures, service authorization at provider.</td><td>Client binds only to an expected provider identity and endpoint in the expected VLAN or zone.</td></tr>
+      <tr><td>Diagnostic misuse</td><td>DoIP routing activation controls, UDS security access, secure diagnostics certificates, workshop-state checks, backend authorization.</td><td>Diagnostic sessions and high-impact services are impossible from normal driving networks and unauthorized tools.</td></tr>
+      <tr><td>Payload replay or tamper</td><td>SecOC for critical I-PDUs, freshness windows, key management, fault handling strategy, per-PDU monitoring.</td><td>Old or modified PDUs are rejected and produce an observable, rate-limited diagnostic event.</td></tr>
+      <tr><td>Timing manipulation</td><td>Trusted grandmaster policy, gPTP port-role restrictions, time jump detection, domain filtering, independent plausibility checks.</td><td>Unexpected grandmaster changes and time steps are alarmed and do not silently destabilize TSN schedules.</td></tr>
+      <tr><td>Priority or flood DoS</td><td>Ingress priority regeneration, Qci stream filters and policers, storm control, multicast filtering, queue occupancy alarms.</td><td>Invalid high-priority traffic is dropped before consuming protected queues.</td></tr>
+      <tr><td>Compromised software stack</td><td>Secure boot, measured boot, code signing, memory safety, OTA rollback protection, SBOM/VEX-based vulnerability management.</td><td>Network controls assume endpoint compromise is possible and still limit blast radius.</td></tr>
+    </tbody>
+  </table>
+  <details><summary>Why MACsec and SecOC are both useful</summary><p><b>MACsec</b> protects Ethernet frames on a link and can prevent untrusted physical peers from injecting, observing, or modifying traffic. <b>SecOC</b> protects selected AUTOSAR I-PDUs end-to-end at the PDU level with authenticity and freshness. In a routed or switched network, both are useful because they answer different questions. MACsec asks whether the link peer is allowed to participate. SecOC asks whether this specific PDU is authentic and fresh for the receiver.</p></details>
+  <details><summary>Why a firewall alone is insufficient</summary><p>A firewall can restrict IP addresses, ports, and sometimes application patterns. It usually does not prove freshness of a control PDU, enforce TSN stream rate at line rate, validate gPTP time authority, or protect confidentiality on a raw link. Automotive Ethernet security needs network filtering plus PDU authentication, link security, timing policy, and endpoint hardening.</p></details>
+</section>
+
+<section class="card" id="checklists" data-title="Design review and validation checklists">
+  <h2>9. Design review and validation checklists</h2>
+  <div class="grid2">
+    <div class="card"><h3>Network architecture review</h3><ul><li>List all Ethernet ports, VLANs, multicast groups, and IP routes.</li><li>Mark each port as trusted ECU, service/debug, external, or manufacturing-only.</li><li>Define which ECUs may be service providers, service consumers, gPTP masters, diagnostic testers, and stream talkers.</li><li>Verify that priority and VLAN are regenerated at ingress where endpoint trust is not absolute.</li><li>Confirm that every unused port and unused service path has a deny-by-default state.</li></ul></div>
+    <div class="card"><h3>Protocol validation</h3><ul><li>For SOME/IP, validate allowed service IDs, method IDs, eventgroups, client IDs, interface versions, and endpoint options.</li><li>For DoIP, validate routing activation state, source logical address binding, target address authorization, and UDS security access.</li><li>For SecOC, validate freshness counter persistence across sleep/wake and reset cases.</li><li>For MACsec, validate peer authorization, MKA startup time, rekey behavior, and bypass rules.</li><li>For gPTP, validate allowed grandmaster identities and alarm behavior on time jumps.</li></ul></div>
+    <div class="card"><h3>Switch validation</h3><ul><li>Verify source MAC move alarms and static FDB violations.</li><li>Test VLAN admission on each port with allowed and disallowed tags.</li><li>Test multicast containment for service discovery and streaming groups.</li><li>Test stream filters, max service data unit, and policers for high-priority streams.</li><li>Check that drops are counted at the stage where they occur, not only at end-to-end application timeout.</li></ul></div>
+    <div class="card"><h3>Incident triage</h3><ul><li>Start with time: was there a grandmaster change, time jump, or clock-domain anomaly?</li><li>Check whether the sender identity moved to a different port.</li><li>Correlate service discovery changes with application symptoms.</li><li>Separate payload authentication failures from transport drops and queue drops.</li><li>Preserve key lifecycle and software version evidence for post-production analysis.</li></ul></div>
+  </div>
+</section>
+
+<section class="card" id="quiz" data-title="Knowledge check: validate understanding">
+  <h2>10. Knowledge-check questions</h2>
+  <ol>
+    <li>Why is source MAC address not sufficient as proof of ECU identity?</li>
+    <li>What is the difference between MACsec link protection and SecOC PDU protection?</li>
+    <li>How can a malicious PCP value create a safety-relevant availability failure?</li>
+    <li>Which SOME/IP fields help identify a suspicious method call or event subscription?</li>
+    <li>Why should SOME/IP Service Discovery be considered both a functionality mechanism and a reconnaissance surface?</li>
+    <li>Which DoIP fields and states are most important when investigating unauthorized diagnostic access?</li>
+    <li>Why can a gPTP grandmaster change be a security event?</li>
+    <li>Where in the switch pipeline should traffic policing happen to prevent high-priority queue abuse?</li>
+    <li>What logs would you collect to distinguish a replay attack from a simple packet loss problem?</li>
+    <li>Why does ISO/SAE 21434 matter even though it does not define Ethernet frame formats?</li>
+  </ol>
+</section>
+
+<section class="card" id="sources" data-title="Sources and standards consulted">
+  <h2>11. Sources and standards consulted</h2>
+  <p class="foot">The document is a training synthesis. It intentionally avoids copyrighted clause reproduction and uses only compact protocol summaries and field-level teaching diagrams.</p>
+  <ul>
+    <li>ISO/SAE 21434:2021, Road vehicles — Cybersecurity engineering.</li>
+    <li>UN Regulation No. 155, Cyber security and cyber security management system.</li>
+    <li>IEEE 802.1AE MAC Security and IEEE 802.1X MACsec Key Agreement concepts.</li>
+    <li>OPEN Alliance Automotive MKA Specification, public release 2025.</li>
+    <li>AUTOSAR R24-11 Foundation SOME/IP Protocol, SOME/IP Service Discovery Protocol, and SecOC Protocol.</li>
+    <li>AUTOSAR R24-11 Classic Platform Diagnostic over IP and MACsec Key Agreement specifications.</li>
+    <li>NHTSA Cybersecurity Best Practices for the Safety of Modern Vehicles, 2022.</li>
+    <li>Auto-ISAC Best Practice Guides.</li>
+  </ul>
+</section>
+<div class="footer">Prepared as a defensive training artifact for Automotive Ethernet security analysis. Use in a lab or design-review setting.</div>
+</main></div>
+<script>
+const sections=[...document.querySelectorAll('section[data-title]')];const toc=[...document.querySelectorAll('.toc a')];const ctx=document.getElementById('ctx');const progress=document.getElementById('progress');function onScroll(){let current=sections[0];for(const s of sections){if(s.getBoundingClientRect().top<140)current=s;}ctx.innerHTML='<strong>Context:</strong> '+current.dataset.title;toc.forEach(a=>a.classList.toggle('active',a.getAttribute('href')==='#'+current.id));const h=document.documentElement;const pct=(h.scrollTop)/(h.scrollHeight-h.clientHeight)*100;progress.style.width=Math.max(0,Math.min(100,pct))+'%';}document.addEventListener('scroll',onScroll,{passive:true});onScroll();let detailsOpen=false;function toggleDetails(){detailsOpen=!detailsOpen;document.querySelectorAll('details').forEach(d=>d.open=detailsOpen);}window.toggleDetails=toggleDetails;
+const scenarios=[
+ {id:'sd',title:'Fake SOME/IP service offer',narrative:'A compromised infotainment ECU cannot directly control a safety actuator, but it can observe service discovery traffic. It emits an unauthorized OfferService for a service ID that a consumer expects from a zonal controller.',teaching:'Service discovery must not be treated as proof of provider legitimacy. The consumer and the network must both know which provider identities, ports, VLANs, and endpoint options are valid.',steps:[['Attacker ECU','Observes FindService and service IDs'],['Switch','Receives unauthorized OfferService from wrong port'],['Client','Could bind to fake endpoint if policy is weak'],['Gateway / IDS','Detects provider-port mismatch'],['Outcome','Drop, alarm, no client binding']],counters:[['OfferService from wrong port','High'],['Endpoint option mismatch','Present'],['Unexpected provider MAC','Present'],['Client bind prevented','Yes']],trace:'SOME/IP-SD\n  Entry: OfferService\n  Service ID: expected-but-from-wrong-provider  <red flag>\n  Instance ID: plausible value\n  Endpoint option: attacker IP:port          <red flag>\n  VLAN/Port: infotainment VLAN, not zonal controller VLAN'},
+ {id:'doip',title:'Unauthorized diagnostics over IP',narrative:'A device on a service or external-facing network sends vehicle identification and routing activation traffic. It then attempts diagnostic messages toward a target logical address outside its authorized role.',teaching:'DoIP is a transport for diagnostics. The security decision must include routing activation state, tester identity, source logical address, target address, diagnostic session, UDS security access, and vehicle operational state.',steps:[['Tester','Vehicle identification request'],['DoIP entity','Routing activation attempt'],['Gateway','Checks source address and target mapping'],['ECU','Accepts only authorized UDS session'],['Outcome','NACK/drop/log if unauthorized']],counters:[['Routing activation failures','Rising'],['Source-address mismatch','Observed'],['Diagnostic NACK','0x02/0x03/0x06 style symptom'],['SecurityAccess failures','Rising']],trace:'DoIP generic header\n  ProtocolVersion / InverseVersion\n  PayloadType: 0x0005 Routing Activation or 0x8001 Diagnostic Message\n  PayloadLength: validate against maximum\nDiagnostic payload\n  SourceAddress: tester logical address     <bind to authorized tester>\n  TargetAddress: ECU logical address        <policy check>\n  UDS data: session/security/service         <application authorization>'},
+ {id:'pcp',title:'Priority abuse and TSN queue starvation',narrative:'A compromised low-criticality ECU marks bulk traffic with a high Priority Code Point. If ingress priority is trusted blindly, the traffic enters a protected queue and delays legitimate control or sensor frames.',teaching:'Availability is a security property. PCP must be regenerated or validated at ingress. Stream filters and policers should drop invalid high-priority traffic before it reaches the critical queue.',steps:[['ECU','Sends frames with high PCP'],['Switch ingress','Validates port-to-PCP policy'],['Qci policer','Drops out-of-envelope frames'],['Scheduler','Keeps critical queue bounded'],['Outcome','No starvation if ingress policy is correct']],counters:[['Ingress PCP rewrite','Expected'],['Qci/policer drops','Rising under attack'],['High-priority queue occupancy','Should remain bounded'],['Latency violation','None if protected']],trace:'802.1Q tag\n  PCP: high priority from low-trust port      <red flag>\n  VID: allowed or disallowed VLAN\nSwitch policy\n  ingress port profile says max PCP = low\n  action: rewrite or drop before queue selection'},
+ {id:'gptp',title:'Rogue time master / gPTP disturbance',narrative:'An unauthorized node emits time synchronization messages that appear better than the current grandmaster or creates abnormal timing messages. Receivers may shift time, affecting TSN gates, timestamps, logging, and sensor fusion.',teaching:'Time authority must be treated as a security role. Only selected ports and identities should be grandmaster-capable, and time steps must be detected and correlated with network symptoms.',steps:[['Rogue node','Sends Announce/Sync-like timing traffic'],['Bridge','Applies port-role and domain policy'],['Time clients','Reject unauthorized GM'],['TSN','Gate schedules remain stable'],['Outcome','Alarm instead of silent time shift']],counters:[['Grandmaster identity change','Security event'],['Domain mismatch','Drop/alarm'],['Time step magnitude','Monitor'],['Path delay anomaly','Investigate']],trace:'gPTP / 802.1AS\n  messageType: Announce / Sync / Follow_Up\n  domainNumber: expected domain?\n  sourcePortIdentity: allowed GM identity?     <policy>\n  sequenceId: monotonic?\n  correctionField / path delay: plausible?'},
+ {id:'secoc',title:'Replay after sleep/wake freshness reset',narrative:'A receiver observes a valid-looking control PDU after a sleep/wake or reset transition. The payload and network headers look normal, but the freshness value is stale or inconsistent with the expected counter window.',teaching:'Freshness is not optional decoration. Reset, sleep/wake, and non-volatile counter persistence must be part of the security design and validation plan.',steps:[['Attacker','Replays old but captured PDU'],['Receiver SecOC','Constructs expected freshness'],['Authenticator check','Fails or freshness outside window'],['Application','Does not consume stale data'],['Outcome','Reject, count, diagnose']],counters:[['Freshness verification failures','Rising'],['Authenticator mismatch','Possible'],['Post-wakeup sync resets','Correlate'],['Application fallback','Should be defined']],trace:'Secured I-PDU\n  Authentic I-PDU: plausible value\n  Freshness Value: old/truncated             <red flag>\n  Authenticator: valid only for old context\nReceiver\n  FreshnessVerifyValue != sender context\n  action: reject and log per secured PDU'},
+ {id:'macsec',title:'MACsec bypass or wrong protection policy',narrative:'A link is expected to be MACsec-protected, but selected EtherTypes or VLANs are configured to bypass protection, or the peer is not in the expected MKA state after link-up.',teaching:'MACsec policy must be validated per port and per traffic class. Bypass rules are legitimate for some protocols, but every bypass is a security decision that needs evidence.',steps:[['Link up','MKA discovers peer and installs SAK'],['SecY','Protects or bypasses by configured rule'],['Switch','Classifies only after policy state is valid'],['Monitor','Checks validate/decrypt/ICV counters'],['Outcome','Fail closed for critical traffic']],counters:[['MKA not secure','Critical alarm'],['ICV validation failures','Attack/fault symptom'],['Unexpected bypass traffic','Policy review'],['SAK rollover issue','Investigate']],trace:'MACsec\n  EtherType 0x88E5 present for protected frames\n  SecTAG: AN/PN/SCI expected\n  ICV validation: pass/fail\nBypass check\n  VLAN/EtherType allowed to bypass?           <explicit policy required>'}
+];
+const tabs=document.getElementById('scenarioTabs');const title=document.getElementById('scTitle');const narrative=document.getElementById('scNarrative');const ladder=document.getElementById('scLadder');const teaching=document.getElementById('scTeaching');const counters=document.getElementById('scCounters');const trace=document.getElementById('scTrace');function renderScenario(i){const s=scenarios[i];[...tabs.children].forEach((b,idx)=>b.classList.toggle('active',idx===i));title.textContent=s.title;narrative.textContent=s.narrative;teaching.textContent=s.teaching;ladder.innerHTML=s.steps.map((st,idx)=>`<div class="lane"><div class="label">${idx+1}. ${st[0]}</div><div class="event ${idx===1||idx===2?'hot':'ok'}">${st[1]}</div></div>`).join('');counters.innerHTML=s.counters.map(c=>`<div class="counter"><div class="cname">${c[0]}</div><div class="cval">${c[1]}</div><div class="why">Use as incident evidence, not as a standalone verdict.</div></div>`).join('');trace.textContent=s.trace;ctx.innerHTML='<strong>Scenario:</strong> '+s.title;}scenarios.forEach((s,i)=>{const b=document.createElement('button');b.className='scenario-tab';b.textContent=s.title;b.onclick=()=>renderScenario(i);tabs.appendChild(b);});renderScenario(0);
+</script>
+</body>
+</html>

@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MACsec Counters and Diagnostics Training</title>
+<style>
+:root{
+  --bg:#0b1020;
+  --bg-deep:#070a13;
+  --panel:#101827;
+  --panel2:#151e33;
+  --panel3:#0d1324;
+  --ink:#f8fafc;
+  --muted:#a8b3cf;
+  --subtle:#73809f;
+  --line:#26334f;
+  --accent:#ff5f46;
+  --accent2:#ffb45c;
+  --cyan:#46d9ff;
+  --green:#7ee787;
+  --blue:#7aa2ff;
+  --purple:#c084fc;
+  --red:#ff6b7a;
+  --yellow:#ffe082;
+  --shadow:0 18px 55px rgba(0,0,0,.38);
+  --radius:18px;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace;
+  --sans:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji";
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;
+  background:
+    radial-gradient(1200px 650px at 12% -8%, rgba(255,95,70,.23), transparent 60%),
+    radial-gradient(900px 520px at 94% 6%, rgba(70,217,255,.14), transparent 58%),
+    radial-gradient(750px 480px at 55% 4%, rgba(192,132,252,.10), transparent 56%),
+    linear-gradient(180deg,#080b13 0%,var(--bg) 42%,#090d18 100%);
+  color:var(--ink); font-family:var(--sans); line-height:1.56;
+}
+a{color:#93d5ff;text-decoration:none} a:hover{text-decoration:underline}
+.topbar{position:sticky;top:0;z-index:50;background:rgba(7,10,19,.90);backdrop-filter:blur(18px);border-bottom:1px solid rgba(255,255,255,.08)}
+.topbar-inner{max-width:1560px;margin:0 auto;padding:10px 22px;display:grid;grid-template-columns:1fr auto;gap:14px;align-items:center}
+.context-title{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:10px;min-width:0}.context-title strong{color:var(--ink);font-size:14px;white-space:nowrap}
+.context-pill{display:inline-flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid rgba(255,255,255,.11);border-radius:999px;background:rgba(255,255,255,.045);color:#e7edf8;white-space:nowrap;font-size:12px}.context-pill .dot{width:8px;height:8px;border-radius:99px;background:linear-gradient(135deg,var(--accent),var(--cyan));box-shadow:0 0 18px rgba(255,95,70,.55)}
+.context-track{height:4px;background:rgba(255,255,255,.08);overflow:hidden;border-radius:99px;grid-column:1/-1}#progress{height:100%;width:0%;background:linear-gradient(90deg,var(--accent),var(--cyan),var(--purple));border-radius:99px}
+.layout{display:grid;grid-template-columns:310px minmax(0,1fr);gap:28px;max-width:1560px;margin:0 auto;padding:28px 22px 76px}
+aside{position:sticky;top:74px;align-self:start;max-height:calc(100vh - 92px);overflow:auto;border:1px solid rgba(255,255,255,.08);border-radius:var(--radius);background:rgba(15,23,42,.72);box-shadow:var(--shadow)}
+.nav-head{padding:18px 18px 8px;color:var(--muted);font-size:12px;letter-spacing:.08em;text-transform:uppercase}nav a{display:block;padding:10px 18px;color:#cbd5e1;font-size:14px;border-left:3px solid transparent}nav a.active{background:rgba(255,95,70,.12);color:white;border-left-color:var(--accent)}
+main{min-width:0}.hero{border:1px solid rgba(255,255,255,.10);border-radius:30px;padding:38px;background:linear-gradient(135deg,rgba(255,95,70,.17),rgba(70,217,255,.08) 47%,rgba(192,132,252,.12)),rgba(17,24,39,.80);box-shadow:var(--shadow);overflow:hidden;position:relative}.hero:after{content:"";position:absolute;inset:auto -120px -150px auto;width:370px;height:370px;border-radius:50%;background:rgba(255,95,70,.14);filter:blur(10px)}
+.eyebrow{color:var(--accent2);font-weight:800;letter-spacing:.08em;text-transform:uppercase;font-size:12px}h1{font-size:clamp(34px,5vw,66px);line-height:1.02;margin:12px 0 16px;letter-spacing:-.045em}h2{font-size:clamp(26px,3vw,40px);line-height:1.12;letter-spacing:-.032em;margin:0 0 18px}h3{font-size:22px;margin:26px 0 12px;letter-spacing:-.015em}h4{font-size:16px;margin:18px 0 8px;color:#e2e8f0}p{margin:0 0 14px}.lead{font-size:19px;color:#dce6f5;max-width:1000px}
+section{margin-top:28px;padding:28px;border:1px solid rgba(255,255,255,.08);border-radius:24px;background:rgba(15,23,42,.78);box-shadow:var(--shadow)}.grid{display:grid;gap:18px}.grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}.grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}.grid.four{grid-template-columns:repeat(4,minmax(0,1fr))}.grid.five{grid-template-columns:repeat(5,minmax(0,1fr))}
+.card{border:1px solid rgba(255,255,255,.09);border-radius:18px;background:rgba(255,255,255,.036);padding:18px;min-width:0}.card.good{border-color:rgba(126,231,135,.32);background:rgba(126,231,135,.06)}.card.warn{border-color:rgba(255,180,92,.38);background:rgba(255,180,92,.06)}.card.bad{border-color:rgba(255,107,122,.36);background:rgba(255,107,122,.06)}.card.info{border-color:rgba(70,217,255,.32);background:rgba(70,217,255,.06)}.card.purple{border-color:rgba(192,132,252,.34);background:rgba(192,132,252,.06)}
+.kpi{font-family:var(--mono);color:#e2e8f0;font-size:13px}.badge{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:999px;font-size:12px;font-weight:800;color:#08111f;background:#e2e8f0;margin:2px 5px 2px 0}.badge.sec{background:var(--accent2)}.badge.crypto{background:var(--cyan)}.badge.ok{background:var(--green)}.badge.warn{background:var(--yellow)}.badge.bad{background:var(--red);color:#2c0106}.badge.meta{background:var(--purple);color:#16051f}.badge.blue{background:var(--blue)}
+.table-wrap{overflow:auto;border:1px solid rgba(255,255,255,.08);border-radius:16px}table{width:100%;border-collapse:collapse;min-width:900px}th,td{padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.08);vertical-align:top}th{color:#f8fafc;text-align:left;background:rgba(255,255,255,.05);font-size:13px}td{color:#d6deec;font-size:14px}tr:last-child td{border-bottom:0}
+code,.code{font-family:var(--mono);color:#f5d491;background:rgba(255,255,255,.06);padding:.15rem .35rem;border-radius:6px}pre{white-space:pre-wrap;overflow:auto;background:#070b14;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:16px;color:#d7e1f2}ul,ol{margin:0 0 12px 20px;padding:0}li{margin:6px 0;color:#d6deec}
+.pipeline{display:grid;grid-template-columns:repeat(7,minmax(110px,1fr));gap:10px;align-items:stretch;margin:18px 0}.stage{border:1px solid rgba(255,255,255,.11);border-radius:16px;padding:14px 12px;background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.025));position:relative;min-height:128px}.stage:not(:last-child):after{content:"→";position:absolute;right:-16px;top:43%;color:var(--subtle);font-size:22px;z-index:2}.stage b{display:block;color:white;margin-bottom:6px}.stage small{display:block;color:var(--muted);line-height:1.4}.stage.sec{box-shadow:inset 0 0 0 1px rgba(255,180,92,.24)}.stage.crypto{box-shadow:inset 0 0 0 1px rgba(70,217,255,.25)}.stage.ok{box-shadow:inset 0 0 0 1px rgba(126,231,135,.23)}.stage.bad{box-shadow:inset 0 0 0 1px rgba(255,107,122,.25)}
+.pdu{overflow:auto;padding:14px;border:1px solid rgba(255,255,255,.08);border-radius:18px;background:#070b14}.pdu-row{display:flex;min-width:max-content;margin:8px 0}.octet{min-width:74px;padding:10px 8px;text-align:center;border:1px solid rgba(255,255,255,.12);margin-left:-1px;background:rgba(255,255,255,.04);font-family:var(--mono);font-size:12px;color:#e5eefb;position:relative}.octet:first-child{margin-left:0;border-top-left-radius:10px;border-bottom-left-radius:10px}.octet:last-child{border-top-right-radius:10px;border-bottom-right-radius:10px}.octet.big{min-width:145px}.octet.wide{min-width:230px}.octet.xwide{min-width:320px}.octet.sec{background:rgba(255,180,92,.12);border-color:rgba(255,180,92,.32)}.octet.crypto{background:rgba(70,217,255,.10);border-color:rgba(70,217,255,.30)}.octet.good{background:rgba(126,231,135,.10);border-color:rgba(126,231,135,.30)}.octet.bad{background:rgba(255,107,122,.10);border-color:rgba(255,107,122,.30)}.octet.muted{background:rgba(148,163,184,.08);color:#aeb9ce}.octet .sub{display:block;color:#a7b1ca;font-size:11px;margin-top:4px}.octet:hover:after{content:attr(data-tip);position:absolute;left:50%;transform:translateX(-50%);bottom:calc(100% + 8px);background:#020617;color:#e2e8f0;border:1px solid rgba(255,255,255,.14);padding:9px 10px;border-radius:10px;width:280px;white-space:normal;z-index:20;box-shadow:var(--shadow);font-family:var(--sans);line-height:1.35;font-size:12px;text-align:left}
+.bitbar{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;margin:14px 0}.bit{border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:10px 8px;background:rgba(255,255,255,.04);text-align:center}.bit b{display:block;font-family:var(--mono);font-size:12px}.bit small{display:block;color:var(--muted);margin-top:4px;font-size:11px}.bit.on{border-color:rgba(70,217,255,.38);background:rgba(70,217,255,.08)}.bit.hot{border-color:rgba(255,180,92,.42);background:rgba(255,180,92,.09)}.bit.bad{border-color:rgba(255,107,122,.42);background:rgba(255,107,122,.08)}
+.diagram{border:1px solid rgba(255,255,255,.08);border-radius:18px;background:#070b14;padding:18px;overflow:auto}.flowline{display:flex;align-items:center;min-width:960px;gap:10px}.node{border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:14px;background:rgba(255,255,255,.045);min-width:150px;text-align:center}.node strong{display:block}.node small{display:block;color:var(--muted);margin-top:5px}.arrow{color:var(--subtle);font-size:24px}.lock{font-size:24px}.select-row{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0}.btn{appearance:none;border:1px solid rgba(255,255,255,.13);background:rgba(255,255,255,.05);color:#e7edf8;padding:10px 13px;border-radius:12px;cursor:pointer;font-weight:700}.btn:hover{background:rgba(255,255,255,.09)}.btn.active{background:linear-gradient(135deg,rgba(255,95,70,.32),rgba(70,217,255,.18));border-color:rgba(255,255,255,.24)}
+.scenario,.packetcase{display:none}.scenario.active,.packetcase.active{display:block}.callout{border-left:4px solid var(--accent);background:rgba(255,95,70,.08);padding:14px 16px;border-radius:12px;margin:16px 0}.callout.cyan{border-left-color:var(--cyan);background:rgba(70,217,255,.07)}.callout.green{border-left-color:var(--green);background:rgba(126,231,135,.07)}.callout.yellow{border-left-color:var(--yellow);background:rgba(255,224,130,.07)}.callout.red{border-left-color:var(--red);background:rgba(255,107,122,.07)}
+.timeline{display:grid;gap:12px;margin-top:12px}.step{display:grid;grid-template-columns:54px minmax(0,1fr);gap:12px;align-items:start}.step .num{width:38px;height:38px;border-radius:99px;background:linear-gradient(135deg,var(--accent),var(--purple));display:flex;align-items:center;justify-content:center;font-weight:900}.step .body{border:1px solid rgba(255,255,255,.09);border-radius:16px;background:rgba(255,255,255,.035);padding:14px}.mini{font-size:12px;color:var(--muted)}.formula{font-family:var(--mono);padding:14px;border-radius:14px;background:#050914;border:1px solid rgba(255,255,255,.10);color:#f7e3aa;overflow:auto}.src{font-size:13px;color:#cbd5e1}.src li{margin-bottom:8px}.footer{margin-top:28px;color:#91a0bd;font-size:13px;text-align:center}.meter{height:10px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden}.fill{height:100%;background:linear-gradient(90deg,var(--green),var(--yellow),var(--red));width:0%}.counter-chip{display:inline-block;font-family:var(--mono);font-size:12px;border:1px solid rgba(255,255,255,.12);border-radius:999px;padding:5px 8px;margin:3px;background:rgba(255,255,255,.045)}
+@media(max-width:1180px){.layout{grid-template-columns:1fr}aside{position:relative;top:0;max-height:none}.pipeline{grid-template-columns:1fr 1fr}.stage:after{display:none}.grid.two,.grid.three,.grid.four,.grid.five{grid-template-columns:1fr}.topbar-inner{grid-template-columns:1fr}.context-pill{justify-self:start}.flowline{min-width:780px}}
+@media(max-width:640px){section,.hero{padding:22px}.pipeline{grid-template-columns:1fr}.bitbar{grid-template-columns:repeat(2,1fr)}h1{font-size:34px}.layout{padding-left:14px;padding-right:14px}.topbar-inner{padding-left:14px;padding-right:14px}}
+@media print{.topbar,aside{display:none}.layout{display:block;max-width:none;padding:0}body{background:white;color:black}section,.hero,.card{box-shadow:none;background:white;color:black;border-color:#ddd}a{color:black}.octet,.diagram,.pdu,pre,.formula{background:white;color:black}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="context-title"><strong>Current context</strong><span id="currentSection">Overview</span></div>
+    <div class="context-pill"><span class="dot"></span><span id="scenarioPill">Mode: diagnostics reading</span></div>
+    <div class="context-track"><div id="progress"></div></div>
+  </div>
+</div>
+<div class="layout">
+<aside>
+  <div class="nav-head">MACsec diagnostics</div>
+  <nav id="nav">
+    <a href="#overview">1. Big picture</a>
+    <a href="#mental-model">2. Counter mental model</a>
+    <a href="#pdu">3. PDU and header format</a>
+    <a href="#rx-pipeline">4. Receive pipeline</a>
+    <a href="#tx-pipeline">5. Transmit pipeline</a>
+    <a href="#counter-map">6. Counter map</a>
+    <a href="#packet-microscope">7. Packet microscope</a>
+    <a href="#scenarios">8. Interesting scenarios</a>
+    <a href="#playbook">9. Diagnostic playbook</a>
+    <a href="#automotive">10. Automotive notes</a>
+    <a href="#references">11. Standards anchors</a>
+  </nav>
+</aside>
+<main>
+<section class="hero observe" id="overview" data-title="Overview: MACsec counters as packet-level evidence">
+  <div class="eyebrow">IEEE 802.1AE MAC Security observability</div>
+  <h1>MACsec counters and diagnostics explained from the wire upward</h1>
+  <p class="lead">MACsec counters are not random interface statistics. They are evidence left by a frame as it passes through the MAC Security Entity, the Secure Channel lookup, the Secure Association lookup, packet-number replay checks, and GCM-AES authentication/decryption.</p>
+  <div class="grid four" style="margin-top:22px">
+    <div class="card"><span class="badge sec">SecY</span><h3>Where the decision happens</h3><p>The MAC Security Entity separates protected controlled-port traffic from uncontrolled traffic such as key agreement.</p></div>
+    <div class="card"><span class="badge crypto">SecTAG</span><h3>What the receiver reads first</h3><p>EtherType, TCI/AN, Short Length, Packet Number, and optional Secure Channel Identifier drive parsing and lookup.</p></div>
+    <div class="card"><span class="badge ok">PN + replay</span><h3>Freshness diagnosis</h3><p>Packet Number movement explains late, delayed, replayed, duplicated, and out-of-order reception signatures.</p></div>
+    <div class="card"><span class="badge bad">ICV</span><h3>Cryptographic failure evidence</h3><p>A bad Integrity Check Value points to wrong key, wrong SA, tampering, bit corruption, or mismatched protected bytes.</p></div>
+  </div>
+  <div class="callout yellow"><strong>Teaching rule.</strong> Always read MACsec counters together with the frame format. A rising counter tells you not only that a problem occurred, but also which parsing or validation stage accepted or rejected the frame.</div>
+</section>
+
+<section class="observe" id="mental-model" data-title="Mental model: where each MACsec counter lives">
+  <h2>1. The counter mental model</h2>
+  <p>A good diagnostics model has three layers. The first layer is the <strong>SecY or interface layer</strong>, which sees whether the frame even looks like a MACsec frame. The second layer is the <strong>Secure Channel layer</strong>, which represents one transmitting peer or one local transmit channel. The third layer is the <strong>Secure Association layer</strong>, which is the actual key and packet-number context selected by the Association Number.</p>
+  <div class="diagram">
+    <div class="flowline">
+      <div class="node"><strong>Physical/Common port</strong><small>DA, SA, EtherType visible on wire</small></div>
+      <div class="arrow">→</div>
+      <div class="node"><strong>SecY interface counters</strong><small>NoTag, BadTag, NoSCI, UnknownSCI, octets</small></div>
+      <div class="arrow">→</div>
+      <div class="node"><strong>RxSC / TxSC counters</strong><small>Secure Channel behaviour per peer/direction</small></div>
+      <div class="arrow">→</div>
+      <div class="node"><strong>RxSA / TxSA counters</strong><small>AN, key, PN, replay window, next PN</small></div>
+      <div class="arrow">→</div>
+      <div class="node"><strong>Controlled port</strong><small>Delivered only after policy and validation</small></div>
+    </div>
+  </div>
+  <div class="grid three" style="margin-top:18px">
+    <div class="card info"><h3>Interface counters answer</h3><p>Did the frame have a MACsec EtherType? Was the SecTAG syntactically acceptable? Could the receiver identify the Secure Channel?</p></div>
+    <div class="card purple"><h3>SC counters answer</h3><p>For this peer/channel, were frames accepted, late, delayed, invalid, not valid, or using a wrong/unavailable SA?</p></div>
+    <div class="card good"><h3>SA counters answer</h3><p>For this key generation and Association Number, how many frames used this SA, and what packet number should come next?</p></div>
+  </div>
+</section>
+
+<section class="observe" id="pdu" data-title="PDU and header format: what counters inspect first">
+  <h2>2. MACsec PDU and header format</h2>
+  <p>On the wire, MACsec inserts the SecTAG after the source MAC address and appends the Integrity Check Value at the end of the protected frame. The MACsec EtherType is <code>0x88E5</code>. The SecTAG is 8 octets without Secure Channel Identifier and 16 octets when the optional 8-octet Secure Channel Identifier is present.</p>
+  <div class="pdu">
+    <div class="pdu-row">
+      <div class="octet big muted" data-tip="Destination MAC address remains visible so normal Ethernet forwarding can still happen on the MACsec hop.">DA<br><span class="sub">6 B</span></div>
+      <div class="octet big muted" data-tip="Source MAC address remains visible and may be used with port information to infer SCI when SCI is omitted in point-to-point cases.">SA<br><span class="sub">6 B</span></div>
+      <div class="octet sec" data-tip="MACsec EtherType. If absent where MACsec is required, NoTag or untagged counters become relevant.">88-E5<br><span class="sub">2 B</span></div>
+      <div class="octet sec" data-tip="Tag Control Information plus 2-bit Association Number. Drives SCI presence, encryption/protection state, and SA selection.">TCI/AN<br><span class="sub">1 B</span></div>
+      <div class="octet sec" data-tip="Short Length. Used for short MACsec protected frames so the real protected data length can be checked.">SL<br><span class="sub">1 B</span></div>
+      <div class="octet sec big" data-tip="Packet Number. Used in the GCM nonce and replay protection. Non-XPN mode uses a 32-bit transmitted PN.">PN<br><span class="sub">4 B</span></div>
+      <div class="octet sec big" data-tip="Optional Secure Channel Identifier. When present, it explicitly identifies the transmit Secure Channel.">SCI optional<br><span class="sub">8 B</span></div>
+      <div class="octet crypto xwide" data-tip="Secure Data. Encrypted when confidentiality is enabled, integrity protected when only integrity is enabled.">Secure Data<br><span class="sub">original EtherType + payload, maybe encrypted</span></div>
+      <div class="octet good big" data-tip="Integrity Check Value generated by GCM-AES. Failure maps to invalid or not-valid counters depending on validation policy and TCI bits.">ICV<br><span class="sub">usually 16 B</span></div>
+    </div>
+  </div>
+  <h3>TCI/AN byte as a diagnostic source</h3>
+  <p>The exact bit numbering is normally hidden by device software, but the receiver uses the TCI/AN byte as follows: version/reserved validity checks, End Station or Single Copy Broadcast indications, SCI-present indication, encryption/protection indication, and the two-bit Association Number.</p>
+  <div class="bitbar">
+    <div class="bit bad"><b>V</b><small>version must be valid</small></div>
+    <div class="bit on"><b>ES</b><small>end station</small></div>
+    <div class="bit on"><b>SC</b><small>SCI present</small></div>
+    <div class="bit on"><b>SCB</b><small>single copy broadcast</small></div>
+    <div class="bit hot"><b>E</b><small>encrypted data</small></div>
+    <div class="bit hot"><b>C</b><small>changed text / confidentiality-related</small></div>
+    <div class="bit"><b>AN</b><small>SA select bit 1</small></div>
+    <div class="bit"><b>AN</b><small>SA select bit 0</small></div>
+  </div>
+  <div class="callout cyan"><strong>Counter implication.</strong> A malformed SecTAG increments a tag-level counter before the receiver can make a meaningful cryptographic decision. A valid SecTAG with wrong SCI or AN reaches lookup counters. A valid lookup with bad ICV reaches validation counters.</div>
+</section>
+
+<section class="observe" id="rx-pipeline" data-title="Receive pipeline: from SecTAG parse to controlled-port delivery">
+  <h2>3. Receive diagnostic pipeline</h2>
+  <p>The receive path is where most troubleshooting happens. Read the counters in pipeline order. A frame can only increment a later-stage counter if it survived earlier parsing and lookup.</p>
+  <div class="pipeline">
+    <div class="stage sec"><b>1. EtherType classify</b><small>Is this a MACsec frame with EtherType <code>0x88E5</code>?</small><span class="counter-chip">InPktsUntagged</span><span class="counter-chip">InPktsNoTag</span></div>
+    <div class="stage sec"><b>2. SecTAG syntax</b><small>Check TCI version, legal combinations, length, SL, PN validity.</small><span class="counter-chip">InPktsBadTag</span></div>
+    <div class="stage"><b>3. SCI determination</b><small>Use explicit SCI or infer SCI if policy/topology allows it.</small><span class="counter-chip">InPktsNoSCI</span><span class="counter-chip">InPktsUnknownSCI</span></div>
+    <div class="stage"><b>4. RxSC lookup</b><small>Find the receive Secure Channel for the peer.</small><span class="counter-chip">RxSC context</span></div>
+    <div class="stage"><b>5. RxSA lookup</b><small>Use AN to select the active receive Secure Association.</small><span class="counter-chip">InPktsNotUsingSA</span><span class="counter-chip">InPktsUnusedSA</span></div>
+    <div class="stage crypto"><b>6. GCM + replay</b><small>Check PN freshness and authenticate/decrypt ICV.</small><span class="counter-chip">InPktsLate</span><span class="counter-chip">InPktsInvalid</span><span class="counter-chip">InPktsNotValid</span></div>
+    <div class="stage ok"><b>7. Deliver or drop</b><small>Pass to controlled port, count valid/decrypted octets, or discard.</small><span class="counter-chip">InPktsOK</span><span class="counter-chip">InOctetsValidated</span><span class="counter-chip">InOctetsDecrypted</span></div>
+  </div>
+  <div class="grid two">
+    <div class="card good"><h3>Most useful receive question</h3><p><strong>How far did the packet get?</strong> NoTag and BadTag mean it failed before SCI/SA lookup. UnknownSCI means the header was parseable but peer/channel mapping failed. NotUsingSA or UnusedSA means the channel was found but the Association Number/key state was wrong. Invalid or NotValid means cryptographic validation failed.</p></div>
+    <div class="card warn"><h3>Replay-window nuance</h3><p>A packet can be out of order but still acceptable if it is within the configured replay window. It becomes late when it falls below the lowest acceptable packet number under replay protection. Some stacks also distinguish delayed from late when validation or replay policy accepts observation but marks old order.</p></div>
+  </div>
+</section>
+
+<section class="observe" id="tx-pipeline" data-title="Transmit pipeline: from client frame to protected MPDU">
+  <h2>4. Transmit diagnostic pipeline</h2>
+  <p>Transmit counters prove that the local SecY is protecting frames and show whether it is protecting only integrity or both confidentiality and integrity. They also expose packet-number exhaustion, frame-size expansion, and whether traffic bypassed MACsec as untagged.</p>
+  <div class="pipeline">
+    <div class="stage"><b>1. Controlled or uncontrolled?</b><small>Data traffic should enter the controlled port. MKA and allowed exceptions use the uncontrolled path.</small><span class="counter-chip">OutPktsUntagged</span></div>
+    <div class="stage"><b>2. TxSC select</b><small>Choose the transmit Secure Channel for the local SecY.</small><span class="counter-chip">TxSC in use</span></div>
+    <div class="stage"><b>3. TxSA select</b><small>Use encoding SA, write AN, and use that SA key.</small><span class="counter-chip">TxSA[AN]</span></div>
+    <div class="stage sec"><b>4. PN allocation</b><small>Use NextPN and advance after protected frame construction.</small><span class="counter-chip">NextPN</span></div>
+    <div class="stage sec"><b>5. SecTAG insert</b><small>Add EtherType 0x88E5, TCI/AN, SL, PN, optional SCI.</small><span class="counter-chip">OutPktsProtected</span></div>
+    <div class="stage crypto"><b>6. GCM-AES</b><small>Authenticate visible fields and encrypt Secure Data if E/C policy enables confidentiality.</small><span class="counter-chip">OutPktsEncrypted</span></div>
+    <div class="stage bad"><b>7. Size check</b><small>MACsec overhead can make an original frame too long for the egress MAC/PHY path.</small><span class="counter-chip">OutPktsTooLong</span></div>
+  </div>
+  <div class="callout yellow"><strong>Counter implication.</strong> If <code>OutPktsProtected</code> rises but <code>OutPktsEncrypted</code> stays flat, the link may be in integrity-only protection. That can be correct when configured, but it is not confidentiality.</div>
+</section>
+
+<section class="observe" id="counter-map" data-title="Counter map: names, meanings and likely root causes">
+  <h2>5. Counter map with practical meanings</h2>
+  <p>The names below follow the common IEEE SecY/SC/SA naming used by many management models and vendor interfaces. Exact CLI grouping may differ, but the diagnostic meaning remains similar.</p>
+  <h3>Interface / SecY counters</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Counter</th><th>Where it increments</th><th>Packet/header clue</th><th>Likely causes</th><th>First diagnostic action</th></tr></thead>
+    <tbody>
+      <tr><td><code>InPktsUntagged</code></td><td>Receive interface policy path</td><td>Frame is not MACsec tagged and is treated/admitted as untagged according to validation mode or controlled-port policy.</td><td>Peer not protecting, policy exception, permissive mode, wrong port, data arriving before MKA completes.</td><td>Check whether MACsec is required for that EtherType/VLAN and whether controlled port is enabled.</td></tr>
+      <tr><td><code>InPktsNoTag</code></td><td>Receive interface policy path</td><td>Frame lacks a SecTAG even though protected reception is expected.</td><td>Peer MACsec disabled, bypass path, wrong VLAN/subinterface, link partner using clear traffic.</td><td>Capture wire frame and verify <code>0x88E5</code> after source MAC.</td></tr>
+      <tr><td><code>InPktsBadTag</code></td><td>SecTAG syntax parser</td><td>MACsec EtherType present, but SecTAG is structurally invalid.</td><td>Malformed TCI, illegal flag combination, invalid short length, zero PN in non-XPN mode, truncated frame, wrong ICV length assumption.</td><td>Decode SecTAG byte-by-byte before suspecting keys.</td></tr>
+      <tr><td><code>InPktsNoSCI</code></td><td>SCI determination stage</td><td>SCI absent and receiver cannot infer a unique Secure Channel.</td><td>SCI omitted on a non-point-to-point or ambiguous topology, multiple SecYs/SCs, wrong ES/SC/SCB usage.</td><td>Enable include-SCI or fix point-to-point/SCI inference configuration.</td></tr>
+      <tr><td><code>InPktsUnknownSCI</code></td><td>RxSC lookup</td><td>SCI present or inferred, but not known to the receiver.</td><td>Wrong peer SCI, old CA, stale RxSC, wrong port mapping, MKA did not install peer receive SC.</td><td>Compare received SCI with MKA live peer list and configured RxSC table.</td></tr>
+      <tr><td><code>InPktsOverrun</code></td><td>Implementation receive resources</td><td>Frame path could not be processed because of local resource overrun.</td><td>MACsec engine congestion, DMA/FIFO pressure, driver/NAPI starvation, hardware offload queue overflow.</td><td>Correlate with line rate bursts, CPU/IRQ load, and MAC/PHY drop counters.</td></tr>
+      <tr><td><code>OutPktsUntagged</code></td><td>Transmit policy bypass</td><td>Local SecY transmitted traffic without SecTAG.</td><td>Uncontrolled traffic, MACsec disabled, policy exception, controlled port not used.</td><td>Confirm whether these frames are expected exceptions such as MKA or a real protection gap.</td></tr>
+      <tr><td><code>OutPktsTooLong</code></td><td>Transmit frame expansion check</td><td>Original frame plus SecTAG plus ICV exceeds permitted size.</td><td>MTU not adjusted for MACsec overhead, stacked VLANs, SCI included unexpectedly, device maximum frame size too low.</td><td>Calculate wire length with SecTAG and ICV overhead; adjust MTU or max frame size.</td></tr>
+    </tbody>
+  </table></div>
+  <h3>Transmit SC/SA counters</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Counter/state</th><th>Meaning</th><th>Good pattern</th><th>Bad pattern</th></tr></thead>
+    <tbody>
+      <tr><td><code>OutPktsProtected</code></td><td>Frames transmitted with MACsec integrity protection under a TxSC/TxSA.</td><td>Rises with protected traffic.</td><td>Flat while clear data is leaving means traffic is bypassing SecY or controlled port is not used.</td></tr>
+      <tr><td><code>OutPktsEncrypted</code></td><td>Frames transmitted with confidentiality enabled.</td><td>Rises with encrypted mode.</td><td>Flat while protected rises means integrity-only mode or wrong encryption policy.</td></tr>
+      <tr><td><code>OutOctetsProtected</code></td><td>Plaintext octets integrity protected but not encrypted.</td><td>Rises for integrity-only traffic.</td><td>Rising when confidentiality was expected indicates policy mismatch.</td></tr>
+      <tr><td><code>OutOctetsEncrypted</code></td><td>Plaintext octets encrypted and integrity protected.</td><td>Rises with encrypted payload traffic.</td><td>Flat with traffic means confidentiality not active, not selected SA, or offload accounting issue.</td></tr>
+      <tr><td><code>NextPN</code></td><td>Next packet number to transmit on a TxSA.</td><td>Monotonic growth; moves to a fresh SA before exhaustion.</td><td>Near wrap in 32-bit PN mode requires rekey; reset or reuse is a serious security error.</td></tr>
+    </tbody>
+  </table></div>
+  <h3>Receive SC/SA counters</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Counter</th><th>Meaning</th><th>Common root cause</th><th>Packet-level check</th></tr></thead>
+    <tbody>
+      <tr><td><code>InPktsOK</code></td><td>Validated/decrypted frame accepted for controlled-port delivery.</td><td>Healthy protected reception.</td><td>PN is acceptable, ICV validates, RxSA is active.</td></tr>
+      <tr><td><code>InPktsInvalid</code></td><td>ICV/authentication failed but policy allows check/observation rather than strict discard in some modes.</td><td>Wrong SAK, wrong AN, modified frame, FCS-independent corruption, mismatched confidentiality offset or ICV length.</td><td>SCI and AN are plausible, but GCM verification fails.</td></tr>
+      <tr><td><code>InPktsNotValid</code></td><td>Frame failed validation and is discarded under strict policy or because the frame indicates protected/confidential data.</td><td>Wrong key, tampering, truncated ICV, peer out of sync after rekey.</td><td>Look for ICV failure after successful SCI/SA lookup.</td></tr>
+      <tr><td><code>InPktsLate</code></td><td>Packet number below the lowest acceptable PN under replay protection.</td><td>Replay attack, duplicate mirror injection, extreme reordering, stale packet replayed after capture.</td><td>Received PN is lower than replay window threshold.</td></tr>
+      <tr><td><code>InPktsDelayed</code></td><td>Old or delayed packet observed relative to expected PN, typically within diagnostic handling when not strictly late.</td><td>Benign out-of-order traffic, preemption/reordering below MACsec, replay window too narrow, path asymmetry.</td><td>Compare received PN with NextPN and replay window.</td></tr>
+      <tr><td><code>InPktsUnchecked</code></td><td>Frame accepted without full validation when validation is disabled or checking is not enforced.</td><td>Permissive or disabled validation policy used during deployment/testing.</td><td>Do not mistake this for cryptographic success.</td></tr>
+      <tr><td><code>InPktsNotUsingSA</code></td><td>Frame refers to an SA that exists but should not currently be used for receive.</td><td>Rekey overlap error, peer still using old AN, receiver disabled that SA too early.</td><td>Check AN and SA in-use state.</td></tr>
+      <tr><td><code>InPktsUnusedSA</code></td><td>Frame refers to an unused or not-installed RxSA.</td><td>Peer selected an AN for which this receiver has no active key.</td><td>Check MKA install/delete timing and AN rotation.</td></tr>
+      <tr><td><code>InOctetsValidated</code></td><td>Octets accepted with integrity-only protection.</td><td>Expected in protect-only mode.</td><td>E bit not set for confidentiality.</td></tr>
+      <tr><td><code>InOctetsDecrypted</code></td><td>Octets accepted after decryption.</td><td>Expected in confidentiality mode.</td><td>E/C indicates encrypted Secure Data and ICV succeeds.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="observe" id="packet-microscope" data-title="Packet microscope: choose a frame and see the counters">
+  <h2>6. Interactive packet microscope</h2>
+  <p>Select a packet case. The diagram highlights which header fields matter and which counters should move. This is the fastest way to teach diagnostics because it links the visible PDU to the invisible SecY decision.</p>
+  <div class="select-row">
+    <button class="btn active" data-case="caseHealthy">Healthy encrypted</button>
+    <button class="btn" data-case="caseNoTag">No SecTAG</button>
+    <button class="btn" data-case="caseBadTag">Bad SecTAG</button>
+    <button class="btn" data-case="caseUnknownSCI">Unknown SCI</button>
+    <button class="btn" data-case="caseLate">Replay / late PN</button>
+    <button class="btn" data-case="caseICV">ICV failure</button>
+    <button class="btn" data-case="caseRekey">Rekey AN mismatch</button>
+  </div>
+  <div id="caseHealthy" class="packetcase active">
+    <div class="pdu"><div class="pdu-row"><div class="octet muted big">DA</div><div class="octet muted big">SA</div><div class="octet sec">88-E5</div><div class="octet sec">TCI E+C, AN=1</div><div class="octet sec">SL=0</div><div class="octet sec big">PN=10231</div><div class="octet sec big">SCI known</div><div class="octet crypto xwide">Encrypted Secure Data</div><div class="octet good big">ICV OK</div></div></div>
+    <div class="grid three"><div class="card good"><h3>Counters that rise</h3><p><code>InPktsOK</code>, <code>InOctetsDecrypted</code>, matching RxSA <code>InPktsOK</code>.</p></div><div class="card"><h3>Meaning</h3><p>Header parses, SCI finds RxSC, AN finds RxSA, PN is fresh, ICV validates, controlled-port delivery occurs.</p></div><div class="card info"><h3>Operator conclusion</h3><p>MACsec data plane is healthy for this peer and SA.</p></div></div>
+  </div>
+  <div id="caseNoTag" class="packetcase">
+    <div class="pdu"><div class="pdu-row"><div class="octet muted big">DA</div><div class="octet muted big">SA</div><div class="octet bad">0800 / 8100</div><div class="octet xwide bad">Clear IP/VLAN payload where MACsec was expected</div></div></div>
+    <div class="grid three"><div class="card bad"><h3>Counters that rise</h3><p><code>InPktsNoTag</code> or <code>InPktsUntagged</code>, depending on validation/policy.</p></div><div class="card"><h3>Meaning</h3><p>The receiver never reaches SCI/SA/ICV processing. There is no SecTAG to parse.</p></div><div class="card info"><h3>Operator conclusion</h3><p>Do not debug keys yet. First debug why the peer is sending clear frames or why this traffic is on the wrong port.</p></div></div>
+  </div>
+  <div id="caseBadTag" class="packetcase">
+    <div class="pdu"><div class="pdu-row"><div class="octet muted big">DA</div><div class="octet muted big">SA</div><div class="octet sec">88-E5</div><div class="octet bad">Illegal TCI</div><div class="octet bad">SL mismatch</div><div class="octet bad big">PN=0</div><div class="octet muted xwide">Payload not trusted</div></div></div>
+    <div class="grid three"><div class="card bad"><h3>Counters that rise</h3><p><code>InPktsBadTag</code>.</p></div><div class="card"><h3>Meaning</h3><p>MACsec EtherType exists, but SecTAG fails structural validation.</p></div><div class="card info"><h3>Operator conclusion</h3><p>Decode TCI/AN, SL, transmitted length and PN before checking MKA.</p></div></div>
+  </div>
+  <div id="caseUnknownSCI" class="packetcase">
+    <div class="pdu"><div class="pdu-row"><div class="octet muted big">DA</div><div class="octet muted big">SA</div><div class="octet sec">88-E5</div><div class="octet sec">SC=1</div><div class="octet sec">SL</div><div class="octet sec big">PN=909</div><div class="octet bad big">SCI not in table</div><div class="octet muted xwide">Secure Data</div><div class="octet muted big">ICV</div></div></div>
+    <div class="grid three"><div class="card bad"><h3>Counters that rise</h3><p><code>InPktsUnknownSCI</code> or <code>InPktsNoSCI</code> if SCI cannot be determined.</p></div><div class="card"><h3>Meaning</h3><p>The frame is parseable but the receiver does not know which peer/channel it belongs to.</p></div><div class="card info"><h3>Operator conclusion</h3><p>Compare received SCI with MKA participant and RxSC state; check include-SCI policy on switched or multi-peer media.</p></div></div>
+  </div>
+  <div id="caseLate" class="packetcase">
+    <div class="pdu"><div class="pdu-row"><div class="octet muted big">DA</div><div class="octet muted big">SA</div><div class="octet sec">88-E5</div><div class="octet sec">AN=0</div><div class="octet sec">SL</div><div class="octet bad big">PN=4700</div><div class="octet sec big">SCI known</div><div class="octet crypto xwide">Secure Data</div><div class="octet good big">ICV may be OK</div></div></div>
+    <div class="grid three"><div class="card bad"><h3>Counters that rise</h3><p><code>InPktsLate</code> if PN is below the replay threshold; <code>InPktsDelayed</code> for older accepted/observed packets depending on policy.</p></div><div class="card"><h3>Meaning</h3><p>A cryptographically correct old packet can still be rejected because freshness failed.</p></div><div class="card info"><h3>Operator conclusion</h3><p>Investigate replay, duplicate packet paths, capture reinjection, excessive reordering, or too-small replay window.</p></div></div>
+  </div>
+  <div id="caseICV" class="packetcase">
+    <div class="pdu"><div class="pdu-row"><div class="octet muted big">DA</div><div class="octet muted big">SA</div><div class="octet sec">88-E5</div><div class="octet sec">TCI/AN OK</div><div class="octet sec">SL OK</div><div class="octet sec big">PN fresh</div><div class="octet sec big">SCI known</div><div class="octet crypto xwide">Secure Data changed / wrong key</div><div class="octet bad big">ICV FAIL</div></div></div>
+    <div class="grid three"><div class="card bad"><h3>Counters that rise</h3><p><code>InPktsInvalid</code> or <code>InPktsNotValid</code>, depending on validation mode and protected/confidential indication.</p></div><div class="card"><h3>Meaning</h3><p>The frame got through parse and lookup, but GCM authentication failed.</p></div><div class="card info"><h3>Operator conclusion</h3><p>Focus on SAK/AN mismatch, wrong cipher suite/XPN mode, frame modification, ICV length, or offload bug.</p></div></div>
+  </div>
+  <div id="caseRekey" class="packetcase">
+    <div class="pdu"><div class="pdu-row"><div class="octet muted big">DA</div><div class="octet muted big">SA</div><div class="octet sec">88-E5</div><div class="octet bad">AN=2</div><div class="octet sec">SL</div><div class="octet sec big">PN=1</div><div class="octet sec big">SCI known</div><div class="octet crypto xwide">Secure Data</div><div class="octet muted big">ICV</div></div></div>
+    <div class="grid three"><div class="card warn"><h3>Counters that rise</h3><p><code>InPktsUnusedSA</code> or <code>InPktsNotUsingSA</code>; sometimes <code>InPktsNotValid</code> if wrong key is attempted.</p></div><div class="card"><h3>Meaning</h3><p>The peer switched AN/key before the receiver installed or enabled the matching RxSA, or the receiver removed the old SA too soon.</p></div><div class="card info"><h3>Operator conclusion</h3><p>Debug MKA timing and SA overlap. Rekey is a control-plane/data-plane synchronization problem.</p></div></div>
+  </div>
+</section>
+
+<section class="observe" id="scenarios" data-title="Interesting scenarios: diagnosing real MACsec failures">
+  <h2>7. Interesting diagnostic scenarios</h2>
+  <p>These examples are intentionally written as investigations. Each scenario starts with symptoms, then interprets the counter fingerprint, then identifies the most likely root cause.</p>
+  <div class="select-row">
+    <button class="btn active" data-scenario="sc1">A. Healthy encryption baseline</button>
+    <button class="btn" data-scenario="sc2">B. MKA up, data clear</button>
+    <button class="btn" data-scenario="sc3">C. Unknown SCI after switch change</button>
+    <button class="btn" data-scenario="sc4">D. Replay attack vs reordering</button>
+    <button class="btn" data-scenario="sc5">E. Rekey AN race</button>
+    <button class="btn" data-scenario="sc6">F. MTU/too-long failure</button>
+    <button class="btn" data-scenario="sc7">G. Wrong key or cipher suite</button>
+    <button class="btn" data-scenario="sc8">H. TSN counters disappear</button>
+  </div>
+  <div id="sc1" class="scenario active">
+    <h3>A. Healthy encrypted link baseline</h3>
+    <div class="timeline">
+      <div class="step"><div class="num">1</div><div class="body"><strong>Observation</strong><p>Traffic flows. <code>OutPktsEncrypted</code> rises on transmitter. <code>InPktsOK</code> and <code>InOctetsDecrypted</code> rise on receiver. <code>InPktsInvalid</code>, <code>InPktsLate</code>, and <code>InPktsUnknownSCI</code> stay flat.</p></div></div>
+      <div class="step"><div class="num">2</div><div class="body"><strong>Packet interpretation</strong><p>SecTAG parse succeeds, SCI maps to RxSC, AN maps to active RxSA, PN is fresh, GCM-AES ICV succeeds.</p></div></div>
+      <div class="step"><div class="num">3</div><div class="body"><strong>Teaching point</strong><p>Capture this baseline before inducing faults. It gives a known-good fingerprint for every later scenario.</p></div></div>
+    </div>
+  </div>
+  <div id="sc2" class="scenario">
+    <h3>B. MKA is alive, but user data is clear or blocked</h3>
+    <div class="timeline">
+      <div class="step"><div class="num">1</div><div class="body"><strong>Symptom</strong><p>MKA state looks connected, but protected user traffic does not pass. Receive side shows <code>InPktsNoTag</code> or <code>InPktsUntagged</code>.</p></div></div>
+      <div class="step"><div class="num">2</div><div class="body"><strong>Why this can happen</strong><p>MKA Protocol Data Units use the uncontrolled path. They can still be exchanged while the controlled port is not enabled, the data traffic is on the wrong subinterface, or the peer is not applying SecY protection to that traffic class.</p></div></div>
+      <div class="step"><div class="num">3</div><div class="body"><strong>Action</strong><p>Check controlled-port state, policy exceptions, VLAN/subinterface binding, and whether the data frame actually has EtherType <code>0x88E5</code>.</p></div></div>
+    </div>
+  </div>
+  <div id="sc3" class="scenario">
+    <h3>C. Unknown SCI after a switch or topology change</h3>
+    <div class="timeline">
+      <div class="step"><div class="num">1</div><div class="body"><strong>Symptom</strong><p><code>InPktsUnknownSCI</code> increases. <code>InPktsBadTag</code> stays flat. ICV-related counters do not rise.</p></div></div>
+      <div class="step"><div class="num">2</div><div class="body"><strong>Interpretation</strong><p>The SecTAG is syntactically valid. The receiver can read an SCI, but no matching receive Secure Channel exists.</p></div></div>
+      <div class="step"><div class="num">3</div><div class="body"><strong>Likely root causes</strong><p>Peer moved to another port, old RxSC was not removed, MKA has a stale peer identity, or SCI omission/inference is invalid now that the link is no longer unambiguous point-to-point.</p></div></div>
+    </div>
+  </div>
+  <div id="sc4" class="scenario">
+    <h3>D. Replay attack versus benign reordering</h3>
+    <div class="timeline">
+      <div class="step"><div class="num">1</div><div class="body"><strong>Symptom</strong><p><code>InPktsLate</code> rises during a test where old captured frames are injected. In another test, <code>InPktsDelayed</code> rises but traffic still passes.</p></div></div>
+      <div class="step"><div class="num">2</div><div class="body"><strong>Interpretation</strong><p>Late means the packet number is below the replay window threshold and replay protection rejects it. Delayed means the packet is older than the current expected sequence context but is still within what the policy/window can observe or tolerate.</p></div></div>
+      <div class="step"><div class="num">3</div><div class="body"><strong>Action</strong><p>Compare received PN to RxSA NextPN and replay-window size. For TSN or preemption cases, verify whether reordering below the MACsec hop is possible.</p></div></div>
+    </div>
+  </div>
+  <div id="sc5" class="scenario">
+    <h3>E. Rekey AN race</h3>
+    <div class="timeline">
+      <div class="step"><div class="num">1</div><div class="body"><strong>Symptom</strong><p>Short burst of drops during rekey. Counters show <code>InPktsUnusedSA</code>, <code>InPktsNotUsingSA</code>, or <code>InPktsNotValid</code>. After a few seconds, traffic recovers.</p></div></div>
+      <div class="step"><div class="num">2</div><div class="body"><strong>Interpretation</strong><p>The transmitting peer selected a new Association Number before the receiver had the corresponding RxSA installed/enabled, or the old SA was disabled too early.</p></div></div>
+      <div class="step"><div class="num">3</div><div class="body"><strong>Action</strong><p>Review MKA live peer state, TxSA encoding SA, RxSA in-use flags, and deletion timing. Rekey must maintain overlap so fresh keys can replace old keys without dropping live traffic.</p></div></div>
+    </div>
+  </div>
+  <div id="sc6" class="scenario">
+    <h3>F. MTU and frame-size expansion failure</h3>
+    <div class="timeline">
+      <div class="step"><div class="num">1</div><div class="body"><strong>Symptom</strong><p>Large payloads fail, small payloads pass. Transmitter shows <code>OutPktsTooLong</code>.</p></div></div>
+      <div class="step"><div class="num">2</div><div class="body"><strong>Interpretation</strong><p>MACsec adds SecTAG and ICV overhead. If SCI is included, overhead is higher. Stacked VLAN tags make the total wire length larger too.</p></div></div>
+      <div class="step"><div class="num">3</div><div class="body"><strong>Calculation</strong><p>Approximate protected frame growth: base Ethernet frame + 8 B SecTAG without SCI or 16 B with SCI + 16 B ICV. Adjust MTU or maximum frame-size limits accordingly.</p></div></div>
+    </div>
+  </div>
+  <div id="sc7" class="scenario">
+    <h3>G. Wrong key, wrong cipher suite, or wrong XPN mode</h3>
+    <div class="timeline">
+      <div class="step"><div class="num">1</div><div class="body"><strong>Symptom</strong><p>SCI is known and AN exists, but <code>InPktsInvalid</code> or <code>InPktsNotValid</code> rises. Replay counters are not the primary movers.</p></div></div>
+      <div class="step"><div class="num">2</div><div class="body"><strong>Interpretation</strong><p>The receiver reached cryptographic verification. Failure here usually means the GCM nonce/key/protected bytes do not match what the transmitter used.</p></div></div>
+      <div class="step"><div class="num">3</div><div class="body"><strong>Action</strong><p>Check SAK identity, cipher suite, XPN versus non-XPN mode, SSCI/salt in XPN mode, ICV length, confidentiality offset, and offload configuration.</p></div></div>
+    </div>
+  </div>
+  <div id="sc8" class="scenario">
+    <h3>H. TSN or switch counters disappear behind MACsec</h3>
+    <div class="timeline">
+      <div class="step"><div class="num">1</div><div class="body"><strong>Symptom</strong><p>After enabling encryption, downstream stream filters, deep packet classifiers, or protocol-specific counters stop matching payload fields.</p></div></div>
+      <div class="step"><div class="num">2</div><div class="body"><strong>Interpretation</strong><p>MACsec leaves outer DA, SA, and SecTAG visible, but Secure Data may hide the original EtherType and payload. If the switch needs those fields, it must classify before encryption, terminate MACsec at that hop, or rely on fields intentionally left visible.</p></div></div>
+      <div class="step"><div class="num">3</div><div class="body"><strong>Action</strong><p>Decide whether MACsec is hop-by-hop at the bridge, end-to-end across a bridge, or implemented in a PHY/MAC offload before/after classification. Observability depends on this placement.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="observe" id="playbook" data-title="Diagnostic playbook: from counter fingerprint to root cause">
+  <h2>8. Diagnostic playbook</h2>
+  <p>Use this as a field checklist. Start with the earliest counter in the receive path and move right only when earlier stages are clean.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Observed fingerprint</th><th>Most likely layer</th><th>Do not jump to</th><th>Useful next check</th><th>Example conclusion</th></tr></thead>
+    <tbody>
+      <tr><td><code>InPktsNoTag</code> rising, no <code>UnknownSCI</code>, no <code>Invalid</code></td><td>Protection policy / peer egress</td><td>Wrong SAK</td><td>Wire capture for EtherType <code>0x88E5</code>; controlled-port state</td><td>Peer is sending clear data or traffic bypassed SecY.</td></tr>
+      <tr><td><code>InPktsBadTag</code> rising</td><td>SecTAG syntax</td><td>MKA rekey timing</td><td>Decode TCI/AN, SL, PN, frame length, SCI-present bit</td><td>Frame format is invalid before cryptography.</td></tr>
+      <tr><td><code>InPktsUnknownSCI</code> rising</td><td>SC identity / peer mapping</td><td>AES failure</td><td>Compare received SCI with RxSC table and MKA live peer list</td><td>Receiver does not know this secure channel.</td></tr>
+      <tr><td><code>InPktsUnusedSA</code> or <code>NotUsingSA</code> during rekey</td><td>SA activation overlap</td><td>Physical layer</td><td>Compare AN in packet with installed RxSA and TxSA encoding SA</td><td>Control plane and data plane disagree on active AN.</td></tr>
+      <tr><td><code>InPktsLate</code> rising</td><td>Replay protection / PN freshness</td><td>Wrong VLAN</td><td>Compare received PN to expected PN and replay window</td><td>Old packets are being injected or reordering exceeds window.</td></tr>
+      <tr><td><code>InPktsInvalid</code> / <code>NotValid</code> rising after known SCI</td><td>GCM-AES verification</td><td>NoTag/BadTag</td><td>Check SAK, AN, cipher suite, XPN mode, salt/SSCI, ICV length</td><td>The receiver used a different cryptographic context or frame was modified.</td></tr>
+      <tr><td><code>OutPktsTooLong</code> rising</td><td>Transmit size expansion</td><td>Replay protection</td><td>Compute MTU + SecTAG + ICV + VLAN overhead</td><td>MACsec overhead exceeded device or link frame-size limits.</td></tr>
+      <tr><td><code>OutPktsProtected</code> rises, <code>OutPktsEncrypted</code> flat</td><td>Confidentiality policy</td><td>RX key failure</td><td>Check encrypt/confidentiality configuration and TCI E/C bits</td><td>Integrity-only protection is active, not encryption.</td></tr>
+    </tbody>
+  </table></div>
+  <h3>Minimum counter set to capture in every incident</h3>
+  <div class="grid three">
+    <div class="card"><h3>Interface / SecY</h3><p><code>InPktsUntagged</code>, <code>InPktsNoTag</code>, <code>InPktsBadTag</code>, <code>InPktsUnknownSCI</code>, <code>InPktsNoSCI</code>, <code>OutPktsTooLong</code>.</p></div>
+    <div class="card"><h3>RxSC and RxSA</h3><p><code>InPktsOK</code>, <code>InPktsInvalid</code>, <code>InPktsNotValid</code>, <code>InPktsLate</code>, <code>InPktsDelayed</code>, <code>InPktsNotUsingSA</code>, <code>InPktsUnusedSA</code>, RxSA <code>NextPN</code>.</p></div>
+    <div class="card"><h3>TxSC and TxSA</h3><p><code>OutPktsProtected</code>, <code>OutPktsEncrypted</code>, <code>OutOctetsProtected</code>, <code>OutOctetsEncrypted</code>, TxSA <code>NextPN</code>, active encoding SA.</p></div>
+  </div>
+</section>
+
+<section class="observe" id="automotive" data-title="Automotive and AUTOSAR-style integration notes">
+  <h2>9. Automotive and AUTOSAR-style integration notes</h2>
+  <p>In an automotive Ethernet design, MACsec counters are useful not only for live debugging but also for diagnostic trouble codes, end-of-line testing, security monitoring, and service-bay analysis. The key design question is where the MACsec function sits: inside the host MAC, inside the switch, inside the PHY, or in software.</p>
+  <div class="grid two">
+    <div class="card info"><h3>Placement changes visibility</h3><p>If MACsec is terminated before a bridge classifier, the bridge can see the original VLAN, priority, IP, or stream fields. If encrypted traffic crosses the bridge without termination, many inner fields become hidden and only outer MACsec-visible fields remain usable.</p></div>
+    <div class="card warn"><h3>Counter ownership changes</h3><p>A PHY offload may maintain counters in the PHY. A switch offload may expose per-port or per-SecY counters. A software implementation may expose Linux-style statistics. Do not compare raw names without confirming which SecY instance owns them.</p></div>
+  </div>
+  <h3>Example diagnostic event mapping</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Vehicle symptom</th><th>Counter fingerprint</th><th>Diagnostic interpretation</th><th>Recommended DTC/supporting data</th></tr></thead>
+    <tbody>
+      <tr><td>ECU loses secure service after wake-up</td><td><code>InPktsNoTag</code> until MKA/controlled port completes</td><td>Data started before secure channel was ready, or peer failed to enable SecY after wake-up.</td><td>Log MKA state, controlled-port state, first bad frame timestamp, wake-up timing.</td></tr>
+      <tr><td>Intermittent loss during periodic rekey</td><td><code>InPktsUnusedSA</code> / <code>NotUsingSA</code> bursts</td><td>Association Number transition is not synchronized between peers.</td><td>Log active AN, RxSA installed flags, TxSA encoding SA, MKA key server state.</td></tr>
+      <tr><td>Large diagnostic downloads fail only with MACsec enabled</td><td><code>OutPktsTooLong</code></td><td>MACsec overhead exceeded adjusted MTU/frame-size budget.</td><td>Log payload length, VLAN tags, SCI include mode, ICV length, max frame size.</td></tr>
+      <tr><td>Security monitor detects possible replay</td><td><code>InPktsLate</code> rising</td><td>Old PN frames are arriving outside the replay window.</td><td>Log SCI, AN, received PN, RxSA NextPN, replay window, ingress port.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout cyan"><strong>Practical rule for training labs.</strong> Make students intentionally create NoTag, UnknownSCI, replay, ICV failure, and too-long cases. A counter that was learned from a controlled fault becomes much easier to recognize in a real vehicle network.</div>
+</section>
+
+<section class="observe" id="references" data-title="Standards anchors and reading map">
+  <h2>10. Standards anchors and reading map</h2>
+  <div class="grid two">
+    <div class="card"><h3>IEEE 802.1AE MACsec</h3><p>Defines the MAC Security Entity, SecTAG, Secure Channels, Secure Associations, packet-number freshness, GCM-AES protection, validation behaviour, and MACsec frame format.</p></div>
+    <div class="card"><h3>IEEE8021-SECY-MIB / YANG management</h3><p>Provides the management view for SecY, controlled and uncontrolled ports, SC/SA objects, cipher suite selection, SCI inclusion, replay protection, and statistics.</p></div>
+    <div class="card"><h3>IEEE 802.1X MKA</h3><p>Defines MACsec Key Agreement, which establishes the Connectivity Association, distributes or installs SAKs, controls TxSA/RxSA state, and enables rekey without service interruption.</p></div>
+    <div class="card"><h3>AUTOSAR Classic MACsec integration</h3><p>In automotive software stacks, the MKA module and Ethernet Interface/Switch/Transceiver layers can expose SecY parameters and statistics to diagnostics and monitoring paths. Exact APIs are implementation/profile dependent.</p></div>
+  </div>
+  <h3>Recommended reading order for engineers</h3>
+  <ol>
+    <li>Start with SecTAG format and the receive validation pipeline.</li>
+    <li>Then read the SecY statistics model so each counter has a home.</li>
+    <li>Then study MKA rekey and SA overlap, because many real faults happen at AN transitions.</li>
+    <li>Finally map the standard counters to your vendor CLI, SNMP, AUTOSAR diagnostic event, or hardware offload registers.</li>
+  </ol>
+</section>
+<div class="footer">Generated as a self-contained training HTML. No external JavaScript or fonts are required.</div>
+</main>
+</div>
+<script>
+const sections=[...document.querySelectorAll('.observe')];
+const navLinks=[...document.querySelectorAll('nav a')];
+const current=document.getElementById('currentSection');
+const progress=document.getElementById('progress');
+const scenarioPill=document.getElementById('scenarioPill');
+const observer=new IntersectionObserver(entries=>{
+  entries.forEach(entry=>{
+    if(entry.isIntersecting){
+      const id=entry.target.id;
+      current.textContent=entry.target.dataset.title||entry.target.querySelector('h2,h1')?.textContent||id;
+      navLinks.forEach(a=>a.classList.toggle('active',a.getAttribute('href')==='#'+id));
+    }
+  });
+},{rootMargin:'-32% 0px -58% 0px',threshold:0.01});
+sections.forEach(s=>observer.observe(s));
+function updateProgress(){
+  const h=document.documentElement;
+  const max=h.scrollHeight-h.clientHeight;
+  progress.style.width=max>0?(h.scrollTop/max*100)+'%':'0%';
+}
+document.addEventListener('scroll',updateProgress,{passive:true});updateProgress();
+function wireButtons(groupSelector, panelClass, dataAttr, prefix){
+  document.querySelectorAll(groupSelector).forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const id=btn.dataset[dataAttr];
+      const row=btn.parentElement;
+      row.querySelectorAll('.btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.'+panelClass).forEach(p=>p.classList.remove('active'));
+      document.getElementById(id)?.classList.add('active');
+      scenarioPill.textContent=prefix+btn.textContent.trim();
+    });
+  });
+}
+wireButtons('#packet-microscope .btn','packetcase','case','Packet: ');
+wireButtons('#scenarios .btn','scenario','scenario','Scenario: ');
+</script>
+</body>
+</html>

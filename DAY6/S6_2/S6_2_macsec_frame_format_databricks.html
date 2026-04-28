@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MACsec Frame Format Deep Dive</title>
+<style>
+  :root{
+    --db-bg:#0e1117;
+    --db-bg2:#111827;
+    --db-card:#161b22;
+    --db-card2:#1f2937;
+    --db-line:#2f3b52;
+    --db-line2:#3a465e;
+    --db-text:#f4f7fb;
+    --db-muted:#a7b0c0;
+    --db-orange:#ff5f46;
+    --db-orange2:#ff8a65;
+    --db-blue:#60a5fa;
+    --db-cyan:#22d3ee;
+    --db-green:#34d399;
+    --db-yellow:#fbbf24;
+    --db-red:#fb7185;
+    --db-purple:#c084fc;
+    --db-shadow:0 18px 45px rgba(0,0,0,.35);
+    --radius:18px;
+    --mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+    --sans:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;
+    font-family:var(--sans);
+    color:var(--db-text);
+    background:
+      radial-gradient(circle at top left, rgba(255,95,70,.18), transparent 34rem),
+      radial-gradient(circle at 85% 10%, rgba(34,211,238,.10), transparent 30rem),
+      linear-gradient(180deg,#0b0f16 0%,var(--db-bg) 45%,#080b11 100%);
+    line-height:1.62;
+  }
+  a{color:#93c5fd;text-decoration:none}
+  a:hover{text-decoration:underline}
+  .topbar{
+    position:sticky;top:0;z-index:50;
+    backdrop-filter:blur(16px);
+    background:rgba(10,13,20,.82);
+    border-bottom:1px solid rgba(255,255,255,.10);
+    box-shadow:0 10px 28px rgba(0,0,0,.32);
+  }
+  .topbar-inner{
+    max-width:1440px;margin:0 auto;padding:10px 18px;
+    display:grid;grid-template-columns:280px 1fr 330px;gap:14px;align-items:center;
+  }
+  .brand{display:flex;align-items:center;gap:12px;font-weight:800;letter-spacing:.2px}
+  .cube{
+    width:34px;height:34px;border-radius:10px;
+    background:linear-gradient(135deg,var(--db-orange),#d62828);
+    box-shadow:0 0 22px rgba(255,95,70,.45);
+    position:relative;transform:rotate(0deg);
+  }
+  .cube:before,.cube:after{content:"";position:absolute;border:2px solid rgba(255,255,255,.78);border-radius:6px;inset:7px;transform:rotate(45deg)}
+  .cube:after{inset:13px;border-color:rgba(255,255,255,.95)}
+  .crumbs{font-size:13px;color:var(--db-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .crumbs b{color:#fff}
+  .progress-wrap{display:flex;align-items:center;gap:12px}
+  .progress-label{font-size:12px;color:var(--db-muted);min-width:95px;text-align:right}
+  .progress{height:8px;background:#0a0e15;border:1px solid #243044;border-radius:99px;overflow:hidden;width:100%}
+  .progress span{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--db-orange),var(--db-cyan));transition:width .2s ease}
+  .hero{
+    max-width:1440px;margin:0 auto;padding:60px 22px 28px;
+    display:grid;grid-template-columns:minmax(0,1.1fr) minmax(370px,.9fr);gap:28px;align-items:center;
+  }
+  .eyebrow{display:inline-flex;align-items:center;gap:8px;padding:6px 11px;border:1px solid rgba(255,95,70,.35);border-radius:999px;background:rgba(255,95,70,.08);color:#ffd0c8;font-size:13px;font-weight:700}
+  h1{font-size:clamp(34px,5vw,68px);line-height:1.03;margin:18px 0 16px;letter-spacing:-2px}
+  .subtitle{font-size:clamp(17px,2vw,22px);color:#d5dbea;max-width:920px}
+  .hero-card{
+    background:linear-gradient(180deg,rgba(31,41,55,.88),rgba(17,24,39,.78));
+    border:1px solid rgba(255,255,255,.12);border-radius:24px;padding:22px;box-shadow:var(--db-shadow)
+  }
+  .hero-metrics{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:20px}
+  .metric{background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.09);border-radius:16px;padding:14px}
+  .metric strong{display:block;font-size:25px;color:#fff}.metric span{font-size:12px;color:var(--db-muted)}
+  .layout{max-width:1440px;margin:0 auto;padding:12px 22px 80px;display:grid;grid-template-columns:300px minmax(0,1fr);gap:22px;align-items:start}
+  .toc{position:sticky;top:72px;max-height:calc(100vh - 92px);overflow:auto;background:rgba(17,24,39,.78);border:1px solid rgba(255,255,255,.11);border-radius:20px;padding:16px;box-shadow:var(--db-shadow)}
+  .toc h3{margin:0 0 8px;color:#fff;font-size:14px;text-transform:uppercase;letter-spacing:.12em}
+  .toc a{display:block;padding:8px 9px;border-radius:11px;color:#b9c3d5;font-size:13px;line-height:1.28;margin:2px 0}
+  .toc a.active,.toc a:hover{background:rgba(255,95,70,.15);color:#fff;text-decoration:none}
+  main{min-width:0}
+  section{scroll-margin-top:90px;background:linear-gradient(180deg,rgba(22,27,34,.86),rgba(15,20,29,.82));border:1px solid rgba(255,255,255,.10);border-radius:24px;margin-bottom:22px;padding:26px;box-shadow:0 12px 34px rgba(0,0,0,.26)}
+  h2{font-size:clamp(25px,3vw,39px);line-height:1.1;margin:0 0 14px;letter-spacing:-.8px}
+  h3{font-size:22px;margin:24px 0 10px} h4{font-size:17px;margin:18px 0 7px;color:#fff}
+  p{margin:10px 0;color:#d7deec}.muted{color:var(--db-muted)}
+  .callout{border-left:4px solid var(--db-orange);background:rgba(255,95,70,.08);border-radius:16px;padding:15px 17px;margin:16px 0;color:#ffe6e1}
+  .note{border-left:4px solid var(--db-cyan);background:rgba(34,211,238,.075);border-radius:16px;padding:15px 17px;margin:16px 0;color:#dff9ff}
+  .danger{border-left:4px solid var(--db-red);background:rgba(251,113,133,.08);border-radius:16px;padding:15px 17px;margin:16px 0;color:#ffe5eb}
+  .grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.grid-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+  .mini-card{background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.10);border-radius:18px;padding:16px}
+  .mini-card h4{margin-top:0}.tag{display:inline-block;padding:2px 8px;border-radius:999px;background:rgba(96,165,250,.13);border:1px solid rgba(96,165,250,.35);color:#bfdbfe;font-size:12px;font-weight:700;margin:2px 4px 2px 0}
+  .tag.orange{background:rgba(255,95,70,.12);border-color:rgba(255,95,70,.35);color:#ffd3cc}.tag.green{background:rgba(52,211,153,.13);border-color:rgba(52,211,153,.35);color:#c5ffe8}.tag.yellow{background:rgba(251,191,36,.13);border-color:rgba(251,191,36,.35);color:#fff2bf}.tag.purple{background:rgba(192,132,252,.13);border-color:rgba(192,132,252,.35);color:#ead7ff}.tag.red{background:rgba(251,113,133,.13);border-color:rgba(251,113,133,.35);color:#ffd1da}
+  code,.code{font-family:var(--mono);background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.10);border-radius:8px;padding:2px 6px;color:#e8f4ff}
+  pre{white-space:pre-wrap;word-break:break-word;background:#0a0f16;border:1px solid #263348;border-radius:18px;padding:18px;overflow:auto;color:#e5edf8;font-family:var(--mono);font-size:13px;line-height:1.48}
+  table{width:100%;border-collapse:separate;border-spacing:0;margin:14px 0;overflow:hidden;border-radius:16px;border:1px solid rgba(255,255,255,.12)}
+  th,td{padding:11px 12px;border-bottom:1px solid rgba(255,255,255,.08);vertical-align:top}th{background:rgba(96,165,250,.13);color:#eaf3ff;text-align:left}tr:last-child td{border-bottom:0}td{color:#d7deec}
+  .frame{display:flex;align-items:stretch;gap:4px;overflow-x:auto;padding:12px;background:#0a0e15;border:1px solid #28364e;border-radius:18px;margin:16px 0}
+  .field{min-width:96px;border-radius:12px;padding:12px 10px;text-align:center;border:1px solid rgba(255,255,255,.16);position:relative;box-shadow:inset 0 -14px 30px rgba(0,0,0,.12)}
+  .field .name{font-weight:800;font-size:13px}.field .bytes{display:block;font-size:11px;color:rgba(255,255,255,.72);margin-top:4px}.field .hint{display:none;position:absolute;left:8px;top:calc(100% + 10px);z-index:10;width:280px;text-align:left;background:#050910;border:1px solid #3b4b67;border-radius:14px;padding:12px;box-shadow:0 20px 40px rgba(0,0,0,.5);font-size:13px;color:#dbeafe}.field:hover .hint{display:block}
+  .f-da{background:linear-gradient(180deg,#1e3a8a,#1d4ed8)}.f-sa{background:linear-gradient(180deg,#0f766e,#0d9488)}.f-st{background:linear-gradient(180deg,#7c2d12,#ea580c)}.f-sd{background:linear-gradient(180deg,#4c1d95,#7e22ce)}.f-icv{background:linear-gradient(180deg,#7f1d1d,#dc2626)}.f-fcs{background:linear-gradient(180deg,#374151,#4b5563)}.f-vlan{background:linear-gradient(180deg,#92400e,#d97706)}.f-plain{background:linear-gradient(180deg,#14532d,#16a34a)}.f-ciph{background:linear-gradient(180deg,#581c87,#a855f7)}
+  .bitrow{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;margin:16px 0}.bit{border:1px solid rgba(255,255,255,.14);border-radius:14px;background:rgba(255,255,255,.06);padding:12px 8px;text-align:center}.bit strong{display:block;font-family:var(--mono);font-size:18px}.bit span{display:block;color:var(--db-muted);font-size:12px}.bit.on{background:rgba(255,95,70,.18);border-color:rgba(255,95,70,.55)}
+  .scenario-tabs{display:flex;flex-wrap:wrap;gap:9px;margin:16px 0}.tabbtn{cursor:pointer;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.065);color:#dbeafe;border-radius:999px;padding:9px 13px;font-weight:750}.tabbtn.active{background:linear-gradient(90deg,var(--db-orange),#f97316);color:white;border-color:transparent;box-shadow:0 8px 25px rgba(255,95,70,.25)}.tabpanel{display:none}.tabpanel.active{display:block}
+  .timeline{position:relative;margin:16px 0 0;padding-left:28px}.timeline:before{content:"";position:absolute;left:9px;top:2px;bottom:2px;width:2px;background:linear-gradient(var(--db-orange),var(--db-cyan))}.step{position:relative;margin:0 0 16px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.09);border-radius:16px;padding:14px}.step:before{content:"";position:absolute;left:-25px;top:18px;width:12px;height:12px;border-radius:99px;background:var(--db-orange);box-shadow:0 0 0 5px rgba(255,95,70,.17)}
+  .split{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:18px}.sticky-side{position:sticky;top:86px;background:rgba(10,15,22,.86);border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:16px;max-height:calc(100vh - 110px);overflow:auto}.sticky-side h3{margin-top:0}
+  .legend{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.legend span{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--db-muted)}.swatch{width:14px;height:14px;border-radius:4px;display:inline-block}.kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.kpi .mini-card{text-align:center}.kpi strong{font-size:26px;display:block;color:#fff}.small{font-size:13px}.center{text-align:center}.hr{height:1px;background:rgba(255,255,255,.10);margin:20px 0}.pillbar{display:flex;gap:8px;flex-wrap:wrap}.pill{border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.055);padding:7px 10px;color:#dce7f8;font-size:13px}.checklist li{margin:8px 0}.sources li{margin:9px 0;color:#d7deec}.bytegrid{display:grid;grid-template-columns:repeat(8,minmax(66px,1fr));gap:7px;margin:12px 0}.byte{font-family:var(--mono);background:#08101a;border:1px solid #263348;border-radius:12px;padding:9px;text-align:center}.byte small{display:block;color:var(--db-muted);font-family:var(--sans);font-size:11px}
+  .interactive-card{border:1px solid rgba(255,255,255,.12);border-radius:20px;background:rgba(255,255,255,.045);padding:16px;margin:16px 0}.control-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:8px 0 14px}.select{background:#0b111b;color:#fff;border:1px solid #34445f;border-radius:12px;padding:9px 12px}.result{border:1px solid rgba(52,211,153,.25);background:rgba(52,211,153,.08);border-radius:16px;padding:14px;margin-top:12px}
+  .print-note{display:none}
+  @media (max-width:1100px){.topbar-inner{grid-template-columns:1fr}.progress-label{text-align:left}.hero{grid-template-columns:1fr}.layout{grid-template-columns:1fr}.toc{position:relative;top:0;max-height:none}.split{grid-template-columns:1fr}.sticky-side{position:relative;top:0}.grid-2,.grid-3{grid-template-columns:1fr}.kpi{grid-template-columns:repeat(2,1fr)}}
+  @media print{body{background:white;color:black}.topbar,.toc{display:none}.layout,.hero{display:block}.hero-card,section{box-shadow:none;background:white;color:black;border-color:#ccc}.print-note{display:block}.field{color:white}.muted,p,td{color:#222}}
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="brand"><div class="cube"></div><div>MACsec Frame Format</div></div>
+      <div class="crumbs">Context: <b id="contextTitle">Start</b> <span id="contextSub">— frame anatomy, SecTAG, ICV, examples</span></div>
+      <div class="progress-wrap"><div class="progress-label">Reading path</div><div class="progress"><span id="scrollProgress"></span></div></div>
+    </div>
+  </div>
+
+  <header class="hero" id="top" data-title="Overview" data-sub="Why MACsec changes the Ethernet frame">
+    <div>
+      <div class="eyebrow">Databricks dark theme • context tracking • standards-oriented training note</div>
+      <h1>MACsec Frame Format Deep Dive</h1>
+      <p class="subtitle">A protocol-standard based explanation of the MACsec protected Ethernet frame, the SecTAG header, the protected and encrypted regions, the Integrity Check Value, and realistic automotive Ethernet examples.</p>
+      <div class="hero-metrics">
+        <div class="metric"><strong>0x88E5</strong><span>MACsec EtherType inserted after source MAC address</span></div>
+        <div class="metric"><strong>8 / 16 B</strong><span>base SecTAG without / with explicit Secure Channel Identifier</span></div>
+        <div class="metric"><strong>16 B</strong><span>common GCM-AES Integrity Check Value length</span></div>
+        <div class="metric"><strong>24 / 32 B</strong><span>typical frame overhead without / with explicit SCI, excluding preamble and IFG</span></div>
+      </div>
+    </div>
+    <div class="hero-card">
+      <h3>Core mental model</h3>
+      <p>MACsec does not create a new Layer 3 tunnel. It protects the MAC service data on an Ethernet link by inserting a security tag after the source MAC address and by appending an integrity check value before the Ethernet frame check sequence.</p>
+      <div class="frame" aria-label="Short MACsec frame model">
+        <div class="field f-da"><span class="name">DA</span><span class="bytes">6 B</span></div>
+        <div class="field f-sa"><span class="name">SA</span><span class="bytes">6 B</span></div>
+        <div class="field f-st"><span class="name">SecTAG</span><span class="bytes">8 or 16 B</span></div>
+        <div class="field f-sd"><span class="name">Secure Data</span><span class="bytes">clear or encrypted</span></div>
+        <div class="field f-icv"><span class="name">ICV</span><span class="bytes">typically 16 B</span></div>
+        <div class="field f-fcs"><span class="name">FCS</span><span class="bytes">4 B</span></div>
+      </div>
+      <p class="muted small">Hover over detailed diagrams below to see field behaviour.</p>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="toc" id="toc">
+      <h3>Learning path</h3>
+      <a href="#standards">1. Standards basis</a>
+      <a href="#pdu">2. MACsec PDU placement</a>
+      <a href="#sectag">3. SecTAG header format</a>
+      <a href="#tci">4. TCI/AN bit map</a>
+      <a href="#boundaries">5. Integrity and encryption boundaries</a>
+      <a href="#modes">6. Protection modes</a>
+      <a href="#examples">7. Byte-level examples</a>
+      <a href="#scenarios">8. Interesting scenarios</a>
+      <a href="#pipeline">9. Transmit and receive pipeline</a>
+      <a href="#overhead">10. Overhead and MTU</a>
+      <a href="#pitfalls">11. Validation pitfalls</a>
+      <a href="#quiz">12. Knowledge checks</a>
+      <a href="#sources">13. References</a>
+    </aside>
+
+    <main>
+      <section id="standards" data-title="Standards basis" data-sub="IEEE 802.1AE, IEEE 802.1X, AUTOSAR guidance">
+        <h2>1. Standards basis and scope</h2>
+        <p><strong>IEEE 802.1AE MAC Security</strong>, normally called <strong>MACsec</strong>, specifies connectionless data confidentiality, data integrity, data origin authenticity, and privacy-related protection services for MAC clients. The security function is transparent to higher-layer clients because a protected frame is still an Ethernet frame on the wire.</p>
+        <p><strong>IEEE 802.1X</strong> is closely related but not the same protocol. IEEE 802.1AE defines the protection of data frames. IEEE 802.1X defines the port access control and MACsec Key Agreement machinery that discovers authenticated peers and establishes the Secure Associations used by MACsec.</p>
+        <div class="grid-3">
+          <div class="mini-card"><h4>802.1AE</h4><p>Defines MACsec entities, secured frame format, Secure Channels, Secure Associations, cipher suites, validation, replay protection, and the SecTAG/ICV frame transformation.</p></div>
+          <div class="mini-card"><h4>802.1X and MKA</h4><p>Provides the MACsec Key Agreement protocol. MKA authenticates peers, elects a key server, distributes Secure Association Keys, and rotates keys.</p></div>
+          <div class="mini-card"><h4>AUTOSAR usage</h4><p>Automotive stacks usually integrate MACsec with an MKA daemon or module, port-specific configuration, monitoring, and explicit handling of unprotected traffic classes.</p></div>
+        </div>
+        <div class="callout"><strong>Training boundary:</strong> this document explains the protected data frame format. It intentionally separates that from MKA control frames. MKA control traffic uses IEEE 802.1X/EAPOL control-plane PDUs. MACsec protected data frames use EtherType <span class="code">0x88E5</span>.</div>
+      </section>
+
+      <section id="pdu" data-title="MACsec PDU placement" data-sub="Where the SecTAG and ICV sit in an Ethernet frame">
+        <h2>2. MACsec PDU placement inside Ethernet</h2>
+        <p>A normal Ethernet frame has destination MAC address, source MAC address, an EtherType or length field, MAC service data, and a frame check sequence. MACsec transforms the MAC service data into a secured MACsec PDU by inserting a <strong>SecTAG</strong> after the source MAC address and by appending an <strong>Integrity Check Value</strong> before the FCS.</p>
+        <h3>Unprotected frame</h3>
+        <div class="frame">
+          <div class="field f-da"><span class="name">Destination MAC</span><span class="bytes">6 B</span><span class="hint">Visible to every bridge on the link. MACsec does not hide the outer destination address in the basic frame format.</span></div>
+          <div class="field f-sa"><span class="name">Source MAC</span><span class="bytes">6 B</span><span class="hint">Visible to every bridge on the link. Some privacy extensions address traffic correlation, but the ordinary protected frame still carries outer MAC addresses.</span></div>
+          <div class="field f-vlan"><span class="name">EtherType / VLAN</span><span class="bytes">2 or more B</span><span class="hint">For a VLAN-tagged frame, this begins with 0x8100 or another tag protocol identifier. This becomes part of the User Data protected by MACsec.</span></div>
+          <div class="field f-plain"><span class="name">Payload</span><span class="bytes">User Data</span><span class="hint">The MAC client data, including Layer 3 packet and possibly VLAN tags. MACsec can integrity-protect it only, or both encrypt and integrity-protect it.</span></div>
+          <div class="field f-fcs"><span class="name">FCS</span><span class="bytes">4 B</span><span class="hint">The physical MAC calculates FCS after MACsec has produced the protected frame.</span></div>
+        </div>
+        <h3>MACsec protected frame</h3>
+        <div class="frame">
+          <div class="field f-da"><span class="name">Destination MAC</span><span class="bytes">6 B</span><span class="hint">Authenticated by the ICV, but still transmitted in clear text so the link can deliver the frame.</span></div>
+          <div class="field f-sa"><span class="name">Source MAC</span><span class="bytes">6 B</span><span class="hint">Authenticated by the ICV. May also help infer the SCI when the explicit SCI is omitted and the End Station bit is used.</span></div>
+          <div class="field f-st"><span class="name">SecTAG</span><span class="bytes">8 or 16 B</span><span class="hint">Contains MACsec EtherType 0x88E5, TCI/AN, Short Length, Packet Number, and optional Secure Channel Identifier.</span></div>
+          <div class="field f-sd"><span class="name">Secure Data</span><span class="bytes">original User Data transformed</span><span class="hint">In integrity-only mode, this remains readable. In confidentiality mode, all or part of it is ciphertext depending on the configured confidentiality offset.</span></div>
+          <div class="field f-icv"><span class="name">ICV</span><span class="bytes">typically 16 B</span><span class="hint">Authentication tag produced by the cipher suite. It validates the outer MAC addresses, SecTAG, and protected data. It is not the Ethernet FCS.</span></div>
+          <div class="field f-fcs"><span class="name">FCS</span><span class="bytes">4 B</span><span class="hint">The FCS protects against random transmission errors. It is recomputed on the final transmitted Ethernet frame.</span></div>
+        </div>
+        <div class="note"><strong>Important:</strong> Preamble, Start Frame Delimiter, Interpacket Gap, and physical coding are outside the MACsec protected PDU. The Ethernet FCS is also not a MACsec cryptographic authentication tag.</div>
+      </section>
+
+      <section id="sectag" data-title="SecTAG header" data-sub="MACsec EtherType, TCI/AN, SL, PN, optional SCI">
+        <h2>3. SecTAG header format</h2>
+        <p>The SecTAG is the MACsec-specific header immediately after the source MAC address. Its base form is 8 octets. If the Secure Channel Identifier is explicitly present, the SecTAG grows to 16 octets.</p>
+        <div class="frame">
+          <div class="field f-st"><span class="name">MACsec EtherType</span><span class="bytes">2 B<br>0x88E5</span><span class="hint">Identifies the frame as a MACsec protected frame. It replaces the original EtherType position. The original EtherType moves into Secure Data as part of the protected User Data.</span></div>
+          <div class="field f-st"><span class="name">TCI / AN</span><span class="bytes">1 B</span><span class="hint">Tag Control Information plus Association Number. It says whether an SCI is present, whether confidentiality is used, and which receive Secure Association should validate the frame.</span></div>
+          <div class="field f-st"><span class="name">SL</span><span class="bytes">1 B<br>6 useful bits</span><span class="hint">Short Length. Encodes the Secure Data length when it is less than 48 octets. Otherwise it is zero. Values 48 and above are invalid in normal validation.</span></div>
+          <div class="field f-st"><span class="name">PN</span><span class="bytes">4 B</span><span class="hint">Packet Number. It is unique per transmit Secure Association and is used for replay protection and AES-GCM nonce construction. PN 0 is not a normal transmitted data PN.</span></div>
+          <div class="field f-st"><span class="name">SCI</span><span class="bytes">optional 8 B</span><span class="hint">Secure Channel Identifier. Normally composed from a 6-octet system identifier and a 2-octet port identifier. Present only when indicated by the SC bit.</span></div>
+        </div>
+        <table>
+          <thead><tr><th>Field</th><th>Size</th><th>Why it exists</th><th>Common implementation interpretation</th></tr></thead>
+          <tbody>
+            <tr><td>MACsec EtherType</td><td>2 octets</td><td>Marks the frame as a MACsec frame using <span class="code">0x88E5</span>.</td><td>The original inner EtherType, such as IPv4 <span class="code">0x0800</span> or VLAN TPID <span class="code">0x8100</span>, is no longer in the outer EtherType slot.</td></tr>
+            <tr><td>TCI/AN</td><td>1 octet</td><td>Combines tag-control flags and the 2-bit Association Number.</td><td>Receiver uses the AN to choose one of up to four receive SAs for the selected Secure Channel.</td></tr>
+            <tr><td>Short Length</td><td>1 octet, with valid short values below 48</td><td>Lets the receiver recover the original short MAC service data length after padding.</td><td>If Secure Data length is 48 octets or more, SL is normally 0.</td></tr>
+            <tr><td>Packet Number</td><td>4 octets visible in the tag</td><td>Prevents replay and contributes to the cryptographic nonce.</td><td>Transmitter increments per SA. Receiver validates monotonicity according to replay-window policy.</td></tr>
+            <tr><td>SCI</td><td>8 octets when present</td><td>Explicitly identifies the Secure Channel.</td><td>Often included when the receiver cannot safely infer the transmitting Secure Channel from the port or source address.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="tci" data-title="TCI/AN bit map" data-sub="How one byte encodes SCI presence, encryption and SA number">
+        <h2>4. TCI/AN bit map</h2>
+        <p>The TCI/AN octet is small but very dense. The following display uses the common left-to-right teaching layout from most significant to least significant bit.</p>
+        <div class="bitrow">
+          <div class="bit"><strong>V</strong><span>Version</span></div>
+          <div class="bit"><strong>ES</strong><span>End station</span></div>
+          <div class="bit on"><strong>SC</strong><span>SCI present</span></div>
+          <div class="bit"><strong>SCB</strong><span>Single-copy bcast</span></div>
+          <div class="bit on"><strong>E</strong><span>Encrypted</span></div>
+          <div class="bit on"><strong>C</strong><span>Changed text</span></div>
+          <div class="bit"><strong>AN1</strong><span>SA select</span></div>
+          <div class="bit on"><strong>AN0</strong><span>SA select</span></div>
+        </div>
+        <div class="interactive-card">
+          <h3>Interactive TCI/AN explainer</h3>
+          <div class="control-row">
+            <label for="modeSel">Protection mode:</label>
+            <select id="modeSel" class="select">
+              <option value="integrity">Integrity only</option>
+              <option value="conf0" selected>Integrity + confidentiality, offset 0</option>
+              <option value="conf30">Integrity + confidentiality, offset 30</option>
+            </select>
+            <label for="sciSel">SCI:</label>
+            <select id="sciSel" class="select">
+              <option value="present" selected>Explicit SCI present</option>
+              <option value="es">SCI inferred from source MAC and Port Identifier 1</option>
+            </select>
+            <label for="anSel">AN:</label>
+            <select id="anSel" class="select"><option>0</option><option selected>1</option><option>2</option><option>3</option></select>
+          </div>
+          <div id="tciResult" class="result"></div>
+        </div>
+        <table>
+          <thead><tr><th>Bit</th><th>Name</th><th>Meaning</th><th>Teaching caution</th></tr></thead>
+          <tbody>
+            <tr><td>V</td><td>Version</td><td>Version bit for the tag format. For the ordinary frame format it is clear.</td><td>If set unexpectedly, validation fails.</td></tr>
+            <tr><td>ES</td><td>End Station</td><td>Indicates a form where the Secure Channel Identifier can be inferred using the source address and a standard Port Identifier.</td><td>ES and explicit SCI are not used together.</td></tr>
+            <tr><td>SC</td><td>SCI present</td><td>When set, the 8-octet SCI follows the PN in the SecTAG.</td><td>If SC is clear, the receiver must infer the Secure Channel by other configured context.</td></tr>
+            <tr><td>SCB</td><td>Single Copy Broadcast</td><td>Special capability for single-copy broadcast cases.</td><td>Not a normal automotive unicast design assumption.</td></tr>
+            <tr><td>E</td><td>Encryption</td><td>Indicates confidentiality protection is being provided.</td><td>The combination E=1 and C=0 is reserved for control use and is not delivered as a normal data frame.</td></tr>
+            <tr><td>C</td><td>Changed Text</td><td>Indicates that Secure Data is not exactly the original User Data in the simple integrity-only sense.</td><td>Confidentiality with a non-zero offset still has C set because part of the User Data is ciphertext.</td></tr>
+            <tr><td>AN</td><td>Association Number</td><td>Selects one of four Secure Associations within the Secure Channel.</td><td>Key rollover uses AN to move traffic from one SA to another without ambiguity.</td></tr>
+          </tbody>
+        </table>
+        <div class="danger"><strong>Do not teach E/C as a four-mode selector.</strong> Valid data frames normally use <span class="code">E=0,C=0</span> for integrity-only or <span class="code">E=1,C=1</span> for confidentiality. The confidentiality offset is not encoded as a separate SecTAG byte. It is an SA/cipher-suite operating parameter known to both peers.</div>
+      </section>
+
+      <section id="boundaries" data-title="Protection boundaries" data-sub="What is authenticated and what is encrypted">
+        <h2>5. Integrity and encryption boundaries</h2>
+        <p>MACsec uses authenticated encryption principles. Even when confidentiality is disabled, the receiver still verifies that the protected frame was generated by a peer possessing the active Secure Association Key.</p>
+        <div class="grid-2">
+          <div class="mini-card">
+            <h4>Authenticated by the ICV</h4>
+            <p><span class="tag green">Outer DA</span><span class="tag green">Outer SA</span><span class="tag green">SecTAG</span><span class="tag green">Secure Data</span></p>
+            <p>The ICV catches tampering with addresses, PN, AN, VLAN tag, IP header, transport header, or payload, depending on what is present in the frame.</p>
+          </div>
+          <div class="mini-card">
+            <h4>Not authenticated by MACsec ICV</h4>
+            <p><span class="tag red">Preamble</span><span class="tag red">SFD</span><span class="tag red">Interpacket gap</span><span class="tag red">FCS as a separate CRC</span></p>
+            <p>The FCS is recalculated by the Ethernet MAC and catches accidental transmission errors. It is not a substitute for the MACsec ICV.</p>
+          </div>
+        </div>
+        <h3>Confidentiality boundaries</h3>
+        <div class="frame">
+          <div class="field f-da"><span class="name">DA</span><span class="bytes">clear + authenticated</span></div>
+          <div class="field f-sa"><span class="name">SA</span><span class="bytes">clear + authenticated</span></div>
+          <div class="field f-st"><span class="name">SecTAG</span><span class="bytes">clear + authenticated</span></div>
+          <div class="field f-ciph"><span class="name">Secure Data</span><span class="bytes">encrypted if confidentiality offset = 0</span></div>
+          <div class="field f-icv"><span class="name">ICV</span><span class="bytes">authentication tag</span></div>
+          <div class="field f-fcs"><span class="name">FCS</span><span class="bytes">CRC</span></div>
+        </div>
+        <div class="frame">
+          <div class="field f-da"><span class="name">DA</span><span class="bytes">clear + authenticated</span></div>
+          <div class="field f-sa"><span class="name">SA</span><span class="bytes">clear + authenticated</span></div>
+          <div class="field f-st"><span class="name">SecTAG</span><span class="bytes">clear + authenticated</span></div>
+          <div class="field f-plain"><span class="name">Offset bytes</span><span class="bytes">clear + authenticated</span></div>
+          <div class="field f-ciph"><span class="name">Remaining data</span><span class="bytes">encrypted + authenticated</span></div>
+          <div class="field f-icv"><span class="name">ICV</span><span class="bytes">authentication tag</span></div>
+          <div class="field f-fcs"><span class="name">FCS</span><span class="bytes">CRC</span></div>
+        </div>
+        <p>With a non-zero confidentiality offset, the first configured number of octets of User Data are carried in clear text but still included in the authenticated data. That allows limited classification on early headers while still preventing undetected modification.</p>
+      </section>
+
+      <section id="modes" data-title="Protection modes" data-sub="Integrity-only, full confidentiality, confidentiality offset">
+        <h2>6. Protection modes</h2>
+        <p>For a frame-format discussion, the three practical operating modes are easiest to understand by looking at the Secure Data region.</p>
+        <table>
+          <thead><tr><th>Mode</th><th>TCI E/C</th><th>Secure Data on the wire</th><th>What an observer can see</th><th>What an attacker cannot do silently</th></tr></thead>
+          <tbody>
+            <tr><td>Integrity only</td><td><span class="code">E=0, C=0</span></td><td>Original User Data remains visible.</td><td>VLAN, EtherType, IP, transport headers and payload if not otherwise encrypted.</td><td>Modify protected fields, replay old frames outside policy, or forge frames without SAK.</td></tr>
+            <tr><td>Confidentiality, offset 0</td><td><span class="code">E=1, C=1</span></td><td>All User Data after SecTAG is ciphertext.</td><td>Outer DA, outer SA, SecTAG, length/timing, and ICV.</td><td>Read or modify the protected User Data.</td></tr>
+            <tr><td>Confidentiality with offset</td><td><span class="code">E=1, C=1</span></td><td>First offset octets are clear and authenticated; the rest is ciphertext.</td><td>Early headers up to the configured offset, plus outer MAC addresses and SecTAG.</td><td>Modify the clear headers silently or read encrypted portion.</td></tr>
+          </tbody>
+        </table>
+        <div class="note"><strong>Automotive interpretation:</strong> integrity-only may be chosen where confidentiality is unnecessary but tamper and replay protection matter. Full confidentiality is strongest for data privacy but hides inner VLAN/IP fields from devices that do not terminate MACsec. Confidentiality offset is a compromise for systems that need limited classification on initial header bytes.</div>
+      </section>
+
+      <section id="examples" data-title="Byte-level examples" data-sub="From VLAN/IP Ethernet to MACsec protected frame">
+        <h2>7. Byte-level examples</h2>
+        <p>Assume an ECU sends a VLAN-tagged IPv4 frame. The original User Data begins with the VLAN tag and inner EtherType.</p>
+        <h3>Original unprotected Ethernet frame, simplified</h3>
+        <pre>DA  = 02 10 00 00 00 02
+SA  = 02 10 00 00 00 01
+User Data begins:
+  81 00 A0 64 08 00 45 00 ...
+  │     │     │     └─ IPv4 EtherType 0x0800
+  │     │     └────── VLAN TCI: PCP=5, DEI=0, VID=100
+  │     └──────────── TPID 0x8100
+  └────────────────── first octet of MAC service data</pre>
+        <h3>MACsec integrity-only with explicit SCI</h3>
+        <pre>DA      02 10 00 00 00 02
+SA      02 10 00 00 00 01
+SecTAG  88 E5 20 00 00 00 00 2A 02 10 00 00 00 01 00 01
+        │     │  │  │           │
+        │     │  │  │           └─ SCI = system identifier + port identifier
+        │     │  │  └───────────── PN = 42
+        │     │  └──────────────── SL = 0, because Secure Data is not short
+        │     └─────────────────── TCI/AN: SC=1, E=0, C=0, AN=0
+        └───────────────────────── MACsec EtherType
+Secure Data:
+        81 00 A0 64 08 00 45 00 ...  (visible, but integrity protected)
+ICV     16 octets authentication tag
+FCS     Ethernet CRC over final transmitted frame</pre>
+        <h3>MACsec confidentiality, offset 0</h3>
+        <pre>DA      02 10 00 00 00 02
+SA      02 10 00 00 00 01
+SecTAG  88 E5 2D 00 00 00 00 2B 02 10 00 00 00 01 00 01
+        │     │                 └─ PN = 43
+        │     └─────────────────── TCI/AN: SC=1, E=1, C=1, AN=1
+Secure Data:
+        9F 6A B1 33 D0 7E ...  (ciphertext, original VLAN and IPv4 hidden)
+ICV     16 octets authentication tag
+FCS     Ethernet CRC</pre>
+        <h3>MACsec confidentiality, offset 30</h3>
+        <pre>DA      02 10 00 00 00 02
+SA      02 10 00 00 00 01
+SecTAG  88 E5 2D 00 00 00 00 2C 02 10 00 00 00 01 00 01
+Secure Data:
+        81 00 A0 64 08 00 45 00 ... first 30 User Data octets clear + authenticated
+        C7 11 90 5A ... remaining User Data ciphertext + authenticated
+ICV     16 octets authentication tag
+FCS     Ethernet CRC</pre>
+        <div class="danger"><strong>Common misunderstanding:</strong> if a switch sees outer EtherType <span class="code">0x88E5</span>, it does not automatically see the original inner EtherType <span class="code">0x0800</span> unless that field is left clear by policy, or unless the switch itself terminates MACsec on that ingress port.</div>
+      </section>
+
+      <section id="scenarios" data-title="Interesting scenarios" data-sub="Tamper, replay, key rollover, SCI omission, preemption">
+        <h2>8. Interesting scenarios</h2>
+        <div class="scenario-tabs" role="tablist">
+          <button class="tabbtn active" data-tab="s1">1. VLAN PCP tamper</button>
+          <button class="tabbtn" data-tab="s2">2. Switch in the middle</button>
+          <button class="tabbtn" data-tab="s3">3. Replay and PN window</button>
+          <button class="tabbtn" data-tab="s4">4. Key rollover with AN</button>
+          <button class="tabbtn" data-tab="s5">5. SCI omitted</button>
+          <button class="tabbtn" data-tab="s6">6. Preemption and multiple SCs</button>
+          <button class="tabbtn" data-tab="s7">7. MKA vs data frame</button>
+        </div>
+
+        <div id="s1" class="tabpanel active">
+          <h3>Scenario 1 — Attacker changes VLAN PCP to get higher priority</h3>
+          <div class="timeline">
+            <div class="step"><strong>Start:</strong> ECU transmits a VLAN-tagged control frame with PCP 3. MACsec is in integrity-only mode because the payload is not confidential.</div>
+            <div class="step"><strong>Attack:</strong> an inline device flips the VLAN TCI bits so the frame appears as PCP 7.</div>
+            <div class="step"><strong>Receive:</strong> the receiver recomputes the authentication check using DA, SA, SecTAG, Secure Data, and the SAK.</div>
+            <div class="step"><strong>Result:</strong> ICV verification fails. The frame is discarded before being delivered to the controlled port. The attack did not require encryption to be blocked.</div>
+          </div>
+          <div class="frame">
+            <div class="field f-da"><span class="name">DA</span><span class="bytes">authenticated</span></div>
+            <div class="field f-sa"><span class="name">SA</span><span class="bytes">authenticated</span></div>
+            <div class="field f-st"><span class="name">SecTAG</span><span class="bytes">authenticated</span></div>
+            <div class="field f-vlan"><span class="name">VLAN TCI</span><span class="bytes">tampered</span></div>
+            <div class="field f-plain"><span class="name">Payload</span><span class="bytes">clear</span></div>
+            <div class="field f-icv"><span class="name">ICV</span><span class="bytes">mismatch</span></div>
+          </div>
+        </div>
+
+        <div id="s2" class="tabpanel">
+          <h3>Scenario 2 — ECU A talks to ECU B through a switch</h3>
+          <p>MACsec is normally link protection, not end-to-end IPsec. If ECU A reaches ECU B through a switch that participates in MACsec, the switch terminates and regenerates protection per port.</p>
+          <div class="frame">
+            <div class="field f-plain"><span class="name">ECU A</span><span class="bytes">SecY A</span></div>
+            <div class="field f-st"><span class="name">SC A→SW</span><span class="bytes">SAK #1</span></div>
+            <div class="field f-vlan"><span class="name">Switch Port 1</span><span class="bytes">decrypt + validate</span></div>
+            <div class="field f-vlan"><span class="name">Switch Port 2</span><span class="bytes">encrypt + protect</span></div>
+            <div class="field f-st"><span class="name">SC SW→B</span><span class="bytes">SAK #2</span></div>
+            <div class="field f-plain"><span class="name">ECU B</span><span class="bytes">SecY B</span></div>
+          </div>
+          <p>The frame that leaves switch port 2 has a new PN, possibly a different AN, a different SCI, and a new ICV. A failure on the first link does not produce a valid frame on the second link.</p>
+        </div>
+
+        <div id="s3" class="tabpanel">
+          <h3>Scenario 3 — Replay attack using an old valid frame</h3>
+          <div class="timeline">
+            <div class="step"><strong>Capture:</strong> attacker records a valid MACsec frame with PN 1050 and correct ICV.</div>
+            <div class="step"><strong>Progress:</strong> the receiver has already accepted frames up to PN 1102 on the same receive SA.</div>
+            <div class="step"><strong>Replay:</strong> attacker retransmits the old PN 1050 frame without modification.</div>
+            <div class="step"><strong>Result:</strong> ICV can still be mathematically valid, but replay validation rejects the stale PN according to the configured replay window.</div>
+          </div>
+          <div class="note">Replay protection is not merely a cryptographic property of the ICV. It is the receiver's stateful policy over packet numbers for the selected Secure Association.</div>
+        </div>
+
+        <div id="s4" class="tabpanel">
+          <h3>Scenario 4 — Key rollover with the Association Number</h3>
+          <p>The 2-bit AN allows a Secure Channel to carry up to four distinguishable Secure Associations. During key rollover, the transmitter can start sending with a new AN while the receiver still accepts the previous AN for a transition period.</p>
+          <table>
+            <thead><tr><th>Time</th><th>Active transmit SA</th><th>TCI/AN field</th><th>Receiver behaviour</th></tr></thead>
+            <tbody>
+              <tr><td>T0</td><td>SA using AN 0</td><td>AN=0</td><td>Receiver validates with SAK for AN 0.</td></tr>
+              <tr><td>T1</td><td>MKA distributes new SAK</td><td>No data-frame change yet</td><td>Receiver installs new receive SA but may not use it yet.</td></tr>
+              <tr><td>T2</td><td>Transmitter switches to AN 1</td><td>AN=1</td><td>Receiver selects SAK for AN 1 and validates new frames.</td></tr>
+              <tr><td>T3</td><td>Old SA retired</td><td>AN 0 rejected</td><td>Old frames fail because the receive SA is no longer valid or replay state rejects them.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div id="s5" class="tabpanel">
+          <h3>Scenario 5 — SCI omitted to save 8 bytes</h3>
+          <p>On a simple point-to-point link, the receiver may infer the Secure Channel from the controlled port and source-address context. This allows the explicit SCI to be omitted and reduces overhead by 8 octets.</p>
+          <div class="grid-2">
+            <div class="mini-card"><h4>SCI present</h4><p><span class="tag orange">SC=1</span><span class="tag">SecTAG = 16 B</span></p><p>Best when several possible secure channels can arrive at the receiver or when explicit management identity is useful.</p></div>
+            <div class="mini-card"><h4>SCI omitted</h4><p><span class="tag orange">SC=0</span><span class="tag">SecTAG = 8 B</span></p><p>Best when the link context is unambiguous. The receiver still needs a secure way to map the frame to the correct SC and SA.</p></div>
+          </div>
+          <div class="danger">An omitted SCI is not a missing identity check. It means identity is inferred from configured context rather than carried explicitly in every frame.</div>
+        </div>
+
+        <div id="s6" class="tabpanel">
+          <h3>Scenario 6 — Frame preemption can reorder protected traffic</h3>
+          <p>Automotive Ethernet may combine MACsec with Time-Sensitive Networking features such as frame preemption. If frames from different priorities can be reordered by the network behaviour, strict replay protection can become difficult if all priorities share one packet-number sequence.</p>
+          <div class="timeline">
+            <div class="step"><strong>Priority A frame:</strong> PN 200 is large and starts transmission.</div>
+            <div class="step"><strong>Priority B frame:</strong> a higher-priority express frame with PN 201 preempts or overtakes the lower-priority frame in an allowed architecture.</div>
+            <div class="step"><strong>Receiver risk:</strong> if strict replay is expecting monotonic arrival on a single SC, PN 201 may arrive before PN 200.</div>
+            <div class="step"><strong>Standards-aware design:</strong> separate transmit Secure Channels can be used for traffic classes where reordering is expected, preserving strict replay behaviour per SC.</div>
+          </div>
+        </div>
+
+        <div id="s7" class="tabpanel">
+          <h3>Scenario 7 — MKA control frame is not a MACsec data frame</h3>
+          <p>A common lab confusion is to capture both <span class="code">0x888E</span> EAPOL/MKA frames and <span class="code">0x88E5</span> MACsec protected data frames and treat them as one PDU family. They serve different roles.</p>
+          <table>
+            <thead><tr><th>Frame type</th><th>Outer EtherType</th><th>Purpose</th><th>Typical parser action</th></tr></thead>
+            <tbody>
+              <tr><td>MKA / EAPOL control</td><td><span class="code">0x888E</span></td><td>Authenticate peers, announce capabilities, distribute keys, manage live peers.</td><td>Pass to controlled/uncontrolled port logic and MKA engine.</td></tr>
+              <tr><td>MACsec protected data</td><td><span class="code">0x88E5</span></td><td>Carry protected user data using installed Secure Associations.</td><td>Pass to SecY receive validation, decrypt if required, then deliver recovered User Data.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="pipeline" data-title="SecY pipeline" data-sub="How a MACsec entity processes frames">
+        <h2>9. MACsec transmit and receive pipeline</h2>
+        <div class="split">
+          <div>
+            <h3>Transmit path</h3>
+            <div class="timeline">
+              <div class="step"><strong>Controlled Port accepts MAC service request:</strong> DA, SA, and User Data arrive from the MAC client.</div>
+              <div class="step"><strong>Classify security context:</strong> SecY identifies the transmit Secure Channel and current transmit Secure Association.</div>
+              <div class="step"><strong>Assign PN:</strong> next packet number is consumed. PN reuse with the same SAK must not occur.</div>
+              <div class="step"><strong>Construct SecTAG:</strong> write EtherType 0x88E5, TCI/AN, SL, PN, and optional SCI.</div>
+              <div class="step"><strong>Apply cipher suite:</strong> produce Secure Data and ICV using SAK, PN, SCI/context, and authenticated data.</div>
+              <div class="step"><strong>Transmit final Ethernet frame:</strong> physical MAC adds or recalculates FCS.</div>
+            </div>
+            <h3>Receive path</h3>
+            <div class="timeline">
+              <div class="step"><strong>Parse outer Ethernet:</strong> DA and SA are read. EtherType 0x88E5 routes the frame to the MACsec receive path.</div>
+              <div class="step"><strong>Validate SecTAG structure:</strong> check version, SCI rules, SL validity, PN validity, and minimum frame size.</div>
+              <div class="step"><strong>Identify SC and SA:</strong> use explicit SCI or configured inference, then use AN to choose the receive SA.</div>
+              <div class="step"><strong>Replay check:</strong> compare PN with replay-protection state before or during validation policy.</div>
+              <div class="step"><strong>ICV verification and decryption:</strong> accept only if cryptographic validation succeeds. Decrypt if confidentiality was used.</div>
+              <div class="step"><strong>Deliver recovered User Data:</strong> the original EtherType/VLAN/IP data is delivered to the MAC client.</div>
+            </div>
+          </div>
+          <aside class="sticky-side">
+            <h3>State carried outside the frame</h3>
+            <p><span class="tag">CA</span> Connectivity Association membership.</p>
+            <p><span class="tag">SC</span> Secure Channel identity and direction.</p>
+            <p><span class="tag">SA</span> Secure Association and selected SAK.</p>
+            <p><span class="tag">Replay window</span> Receiver PN acceptance state.</p>
+            <p><span class="tag">Cipher suite</span> GCM-AES-128, GCM-AES-256, or XPN variants depending on implementation and agreement.</p>
+            <p><span class="tag">Confidentiality offset</span> Not a separate SecTAG field. It is configured/agreed state.</p>
+          </aside>
+        </div>
+      </section>
+
+      <section id="overhead" data-title="Overhead and MTU" data-sub="Why MACsec changes wire size">
+        <h2>10. Frame overhead and MTU consequences</h2>
+        <p>MACsec adds bytes on the wire. Whether this becomes a problem depends on whether the link and switch ports support the enlarged frame size or whether the MAC client MTU must be reduced.</p>
+        <div class="kpi">
+          <div class="mini-card"><strong>8 B</strong><span>SecTAG without explicit SCI</span></div>
+          <div class="mini-card"><strong>16 B</strong><span>SecTAG with explicit SCI</span></div>
+          <div class="mini-card"><strong>16 B</strong><span>Typical ICV</span></div>
+          <div class="mini-card"><strong>+24/+32 B</strong><span>Total added without/with SCI</span></div>
+        </div>
+        <table>
+          <thead><tr><th>Original frame, excluding preamble and IFG</th><th>Original size</th><th>MACsec without SCI</th><th>MACsec with SCI</th><th>Comment</th></tr></thead>
+          <tbody>
+            <tr><td>Standard Ethernet, 1500-byte payload</td><td>1518 B</td><td>1542 B</td><td>1550 B</td><td>Original EtherType and payload become Secure Data.</td></tr>
+            <tr><td>VLAN Ethernet, 1500-byte payload</td><td>1522 B</td><td>1546 B</td><td>1554 B</td><td>The VLAN tag is part of protected User Data after SecTAG.</td></tr>
+            <tr><td>Short control frame</td><td>64 B minimum on wire</td><td>Still subject to minimum and padding rules</td><td>Still subject to minimum and padding rules</td><td>SL allows recovery of the original short Secure Data length.</td></tr>
+          </tbody>
+        </table>
+        <div class="note">When debugging unexplained drops, check whether the switch port, PHY/MAC, DMA buffers, and driver descriptors all accept MACsec-expanded frames. An application-level MTU setting alone may not expose the real bottleneck.</div>
+      </section>
+
+      <section id="pitfalls" data-title="Validation pitfalls" data-sub="What causes a MACsec protected frame to fail">
+        <h2>11. Validation pitfalls and “bad tag” examples</h2>
+        <div class="grid-2">
+          <div class="mini-card"><h4>Bad SecTAG layout</h4><p>Wrong EtherType, version bit set, impossible SCI combination, invalid SL value, or too-short frame for the claimed fields.</p></div>
+          <div class="mini-card"><h4>Wrong SA selection</h4><p>SCI or inferred SC maps to a channel that has no live receive SA for the indicated AN.</p></div>
+          <div class="mini-card"><h4>Replay failure</h4><p>PN is repeated, stale, zero, or outside the configured replay window for the selected SA.</p></div>
+          <div class="mini-card"><h4>ICV failure</h4><p>Frame was modified, wrong SAK is installed, PN/nonce context is wrong, or confidentiality-offset/cipher-suite state is mismatched.</p></div>
+        </div>
+        <h3>Quick parser checklist</h3>
+        <ol class="checklist">
+          <li>Is the outer EtherType <span class="code">0x88E5</span>?</li>
+          <li>Is the TCI version value expected?</li>
+          <li>Are ES, SC, and SCB combinations legal for the configured link?</li>
+          <li>If SC is set, are 8 SCI bytes present before Secure Data?</li>
+          <li>Is SL either zero or a short length less than 48?</li>
+          <li>Is PN non-zero and acceptable for the receive SA replay policy?</li>
+          <li>Does AN select a live receive SA for that Secure Channel?</li>
+          <li>Does ICV verify using the selected SAK and cipher-suite parameters?</li>
+        </ol>
+      </section>
+
+      <section id="quiz" data-title="Knowledge checks" data-sub="Use these to validate understanding">
+        <h2>12. Knowledge-check questions</h2>
+        <ol>
+          <li>Where is the SecTAG inserted relative to the destination and source MAC addresses?</li>
+          <li>Why does the original EtherType no longer appear in the normal outer EtherType position after MACsec is applied?</li>
+          <li>What is the difference between the Ethernet FCS and the MACsec ICV?</li>
+          <li>Why does SCI omission save 8 bytes but not remove the need to identify the Secure Channel?</li>
+          <li>In integrity-only mode, can a VLAN tag be read on the wire? Can it be modified silently?</li>
+          <li>Why does a confidentiality offset not require a separate field in the SecTAG?</li>
+          <li>How does AN help during key rollover?</li>
+          <li>Why can frame preemption or priority-based reordering influence the design of Secure Channels?</li>
+          <li>Why are MKA frames and MACsec protected data frames parsed differently?</li>
+          <li>What frame-size change should you expect when MACsec is enabled with explicit SCI?</li>
+        </ol>
+      </section>
+
+      <section id="sources" data-title="References" data-sub="Standards and implementation guidance used">
+        <h2>13. References and further reading</h2>
+        <p>This training artifact is a teaching interpretation and not a replacement for the normative standards text.</p>
+        <ul class="sources">
+          <li><a href="https://1.ieee802.org/security/802-1ae/" target="_blank" rel="noopener">IEEE 802.1AE MAC Security project page</a>. Current status page for IEEE 802.1AE MAC Security, amendments, corrigenda, and revision work.</li>
+          <li><a href="https://1.ieee802.org/security/802-1ae-2018/" target="_blank" rel="noopener">IEEE Std 802.1AE-2018 project page</a>. Base revision that incorporated earlier amendments for GCM-AES-256, Extended Packet Numbering, and Ethernet Data Encryption devices.</li>
+          <li><a href="https://standards.ieee.org/ieee/802.1X/7345/" target="_blank" rel="noopener">IEEE Std 802.1X-2020</a>. Port-based network access control and protocols used to discover and establish security associations for IEEE 802.1AE MAC Security.</li>
+          <li><a href="https://www.autosar.org/fileadmin/standards/R23-11/AP/AUTOSAR_AP_EXP_MACsec.pdf" target="_blank" rel="noopener">AUTOSAR AP R23-11 Explanation of MACsec and MKA Protocols</a>. Useful automotive-oriented explanatory guide for MACsec integration, frame components, modes, and point-to-point secure-channel interpretation.</li>
+          <li><a href="https://www.autosar.org/fileadmin/standards/R22-11/CP/AUTOSAR_SWS_MACsecKeyAgreement.pdf" target="_blank" rel="noopener">AUTOSAR CP SWS MACsec Key Agreement</a>. Classic Platform specification for MKA integration.</li>
+        </ul>
+      </section>
+    </main>
+  </div>
+
+<script>
+const sections = [...document.querySelectorAll('[data-title]')];
+const tocLinks = [...document.querySelectorAll('#toc a')];
+const contextTitle = document.getElementById('contextTitle');
+const contextSub = document.getElementById('contextSub');
+const progress = document.getElementById('scrollProgress');
+function updateProgress(){
+  const h = document.documentElement;
+  const scrolled = h.scrollTop / (h.scrollHeight - h.clientHeight);
+  progress.style.width = `${Math.max(0, Math.min(1, scrolled))*100}%`;
+}
+window.addEventListener('scroll', updateProgress, {passive:true});
+updateProgress();
+const obs = new IntersectionObserver(entries=>{
+  entries.forEach(entry=>{
+    if(entry.isIntersecting){
+      const id = entry.target.id;
+      contextTitle.textContent = entry.target.dataset.title || 'Context';
+      contextSub.textContent = '— ' + (entry.target.dataset.sub || '');
+      tocLinks.forEach(a=>a.classList.toggle('active', a.getAttribute('href') === '#'+id));
+    }
+  });
+},{rootMargin:'-25% 0px -70% 0px',threshold:0});
+sections.forEach(s=>obs.observe(s));
+
+document.querySelectorAll('.tabbtn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const id=btn.dataset.tab;
+    document.querySelectorAll('.tabbtn').forEach(b=>b.classList.toggle('active', b===btn));
+    document.querySelectorAll('.tabpanel').forEach(p=>p.classList.toggle('active', p.id===id));
+  });
+});
+function renderTCI(){
+  const mode = document.getElementById('modeSel').value;
+  const sci = document.getElementById('sciSel').value;
+  const an = parseInt(document.getElementById('anSel').value,10);
+  let V=0, ES=0, SC=0, SCB=0, E=0, C=0;
+  if(sci==='present'){SC=1;} else {ES=1;}
+  if(mode==='integrity'){E=0; C=0;} else {E=1; C=1;}
+  const value = (V<<7)|(ES<<6)|(SC<<5)|(SCB<<4)|(E<<3)|(C<<2)|an;
+  const secTagBytes = SC ? 16 : 8;
+  let interpretation = '';
+  if(mode==='integrity') interpretation='Secure Data remains in clear text but is authenticated. VLAN/IP/header fields can be seen but cannot be changed silently.';
+  if(mode==='conf0') interpretation='All User Data after the SecTAG is encrypted and authenticated. Inner VLAN and EtherType are hidden from devices that do not terminate MACsec.';
+  if(mode==='conf30') interpretation='The configured first 30 octets of User Data are clear and authenticated; the rest is encrypted. The offset is state, not an extra SecTAG byte.';
+  document.getElementById('tciResult').innerHTML = `
+    <div class="grid-3">
+      <div><span class="tag orange">TCI/AN byte</span><h3 style="margin:6px 0 0;font-family:var(--mono)">0x${value.toString(16).toUpperCase().padStart(2,'0')}</h3></div>
+      <div><span class="tag">SecTAG size</span><h3 style="margin:6px 0 0">${secTagBytes} bytes</h3></div>
+      <div><span class="tag green">Bits</span><p class="small" style="margin:6px 0 0;font-family:var(--mono)">V=${V} ES=${ES} SC=${SC} SCB=${SCB} E=${E} C=${C} AN=${an}</p></div>
+    </div>
+    <p>${interpretation}</p>`;
+}
+['modeSel','sciSel','anSel'].forEach(id=>document.getElementById(id).addEventListener('change',renderTCI));
+renderTCI();
+</script>
+</body>
+</html>

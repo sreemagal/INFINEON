@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MKA / IEEE 802.1X Key Hierarchy — CAK, KEK, ICK, SAK</title>
+<style>
+:root{
+  --bg:#0b0f19;--bg2:#111827;--panel:#141b2d;--panel2:#182236;--panel3:#0f172a;
+  --text:#e8eefc;--muted:#a8b3cf;--faint:#73809d;--orange:#ff5f46;--orange2:#ff8a5b;
+  --blue:#60a5fa;--cyan:#22d3ee;--green:#4ade80;--yellow:#facc15;--red:#fb7185;--purple:#c084fc;
+  --line:#2a3552;--shadow:0 24px 60px rgba(0,0,0,.35);--radius:18px;
+}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(circle at top left,rgba(255,95,70,.16),transparent 30rem),radial-gradient(circle at 95% 0%,rgba(34,211,238,.12),transparent 26rem),var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.6}
+a{color:var(--cyan);text-decoration:none}a:hover{text-decoration:underline}.topbar{position:sticky;top:0;z-index:1000;background:rgba(11,15,25,.92);backdrop-filter:blur(16px);border-bottom:1px solid var(--line)}.progress{height:3px;background:linear-gradient(90deg,var(--orange),var(--cyan));width:0%;transition:width .1s linear}.context{display:grid;grid-template-columns:1.1fr 1.8fr 1fr;gap:12px;align-items:center;padding:10px 24px;max-width:1720px;margin:0 auto}.brand{font-weight:850;letter-spacing:.1px;display:flex;align-items:center;gap:10px;white-space:nowrap}.spark{width:12px;height:12px;background:var(--orange);transform:rotate(45deg);box-shadow:0 0 24px var(--orange)}.ctxbox{background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.08);border-radius:999px;padding:7px 12px;color:var(--muted);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ctxbox strong{color:#fff}.actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}.btn{border:1px solid rgba(255,255,255,.12);background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.035));color:var(--text);border-radius:999px;padding:8px 12px;font-weight:700;font-size:13px;cursor:pointer}.btn:hover{border-color:var(--orange);box-shadow:0 0 0 3px rgba(255,95,70,.15)}
+.layout{max-width:1720px;margin:0 auto;display:grid;grid-template-columns:318px minmax(0,1fr);gap:24px;padding:22px 24px 80px}aside{position:sticky;top:72px;align-self:start;max-height:calc(100vh - 88px);overflow:auto;background:rgba(20,27,45,.78);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}.navtitle{font-size:12px;color:var(--orange2);font-weight:900;letter-spacing:.14em;text-transform:uppercase;margin-bottom:8px}.toc{list-style:none;padding:0;margin:0;display:grid;gap:4px}.toc a{display:block;color:var(--muted);padding:8px 10px;border-radius:10px;font-size:13px;border:1px solid transparent}.toc a.active,.toc a:hover{background:rgba(255,95,70,.1);border-color:rgba(255,95,70,.25);color:#fff;text-decoration:none}.sidebox{margin-top:14px;border-top:1px solid var(--line);padding-top:14px;color:var(--muted);font-size:13px}.hero{border:1px solid var(--line);border-radius:28px;background:linear-gradient(135deg,rgba(255,95,70,.16),rgba(20,27,45,.98) 38%,rgba(34,211,238,.08));padding:34px;box-shadow:var(--shadow);position:relative;overflow:hidden}.hero:after{content:"";position:absolute;right:-90px;top:-90px;width:240px;height:240px;border:32px solid rgba(255,95,70,.11);transform:rotate(35deg);border-radius:36px}.eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:.18em;color:var(--orange2);font-weight:900;margin-bottom:12px}h1{font-size:clamp(32px,4.5vw,64px);line-height:1.04;margin:0 0 18px;letter-spacing:-.045em}.subtitle{font-size:clamp(16px,1.55vw,21px);color:var(--muted);max-width:1120px;margin:0 0 22px}.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:24px}.kpi{background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.09);border-radius:18px;padding:16px;min-height:126px}.kpi .n{font-size:30px;font-weight:950;color:#fff}.kpi .l{font-size:13px;color:var(--muted)}section{scroll-margin-top:92px;margin-top:28px}.card{background:rgba(20,27,45,.84);border:1px solid var(--line);border-radius:var(--radius);padding:22px;box-shadow:0 12px 40px rgba(0,0,0,.20)}h2{font-size:30px;line-height:1.15;margin:0 0 14px;letter-spacing:-.03em}h3{font-size:21px;margin:18px 0 10px;color:#fff}h4{margin:16px 0 8px;color:#fff}p{margin:9px 0;color:var(--muted)}ul,ol{color:var(--muted)}li{margin:6px 0}.strong{color:#fff;font-weight:750}.muted{color:var(--muted)}.small{font-size:13px}.foot{font-size:12px;color:var(--faint)}.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.grid4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.callout{border-left:4px solid var(--orange);background:rgba(255,95,70,.09);padding:14px 16px;border-radius:14px;margin:14px 0;color:var(--text)}.callout.blue{border-color:var(--cyan);background:rgba(34,211,238,.08)}.callout.yellow{border-color:var(--yellow);background:rgba(250,204,21,.08)}.callout.red{border-color:var(--red);background:rgba(251,113,133,.08)}.callout.green{border-color:var(--green);background:rgba(74,222,128,.08)}.tag{display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);padding:4px 8px;border-radius:999px;font-size:12px;font-weight:850;color:#fff;margin:2px 4px 2px 0}.tag.orange{border-color:rgba(255,95,70,.35);color:var(--orange2)}.tag.green{border-color:rgba(74,222,128,.35);color:var(--green)}.tag.red{border-color:rgba(251,113,133,.35);color:var(--red)}.tag.blue{border-color:rgba(34,211,238,.35);color:var(--cyan)}.tag.purple{border-color:rgba(192,132,252,.35);color:var(--purple)}
+.diagram{background:linear-gradient(180deg,rgba(15,23,42,.92),rgba(17,24,39,.92));border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:18px;overflow:auto;margin:14px 0}.pipeline{display:flex;align-items:center;gap:10px;min-width:980px}.block{min-width:132px;text-align:center;background:rgba(96,165,250,.09);border:1px solid rgba(96,165,250,.28);padding:12px;border-radius:14px;color:#fff;font-weight:850}.block.orange{background:rgba(255,95,70,.1);border-color:rgba(255,95,70,.34)}.block.green{background:rgba(74,222,128,.09);border-color:rgba(74,222,128,.28)}.block.red{background:rgba(251,113,133,.09);border-color:rgba(251,113,133,.28)}.block.purple{background:rgba(192,132,252,.1);border-color:rgba(192,132,252,.3)}.block.yellow{background:rgba(250,204,21,.09);border-color:rgba(250,204,21,.3)}.arrow{color:var(--faint);font-size:25px;font-weight:900}.frame{display:flex;align-items:stretch;gap:3px;min-width:1040px;margin:14px 0}.field{border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.055);border-radius:8px;padding:10px 9px;text-align:center;min-width:86px}.field .bits{font-size:11px;color:var(--faint);display:block}.field .name{font-weight:900;color:#fff;font-size:13px}.field.risk{background:rgba(255,95,70,.14);border-color:rgba(255,95,70,.45)}.field.auth{background:rgba(74,222,128,.09);border-color:rgba(74,222,128,.30)}.field.vlan{background:rgba(34,211,238,.1);border-color:rgba(34,211,238,.28)}.field.time{background:rgba(192,132,252,.1);border-color:rgba(192,132,252,.30)}.field.payload{min-width:210px;background:rgba(74,222,128,.08);border-color:rgba(74,222,128,.25)}.field.wide{min-width:170px}.field.xwide{min-width:260px}.hex{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;background:#060914;border:1px solid #26304b;color:#dbeafe;border-radius:16px;padding:16px;overflow:auto;white-space:pre;line-height:1.55}.hex .hi{color:var(--orange2);font-weight:900}.hex .ok{color:var(--green);font-weight:900}.hex .bad{color:var(--red);font-weight:900}.hex .dim{color:#74809a}.ladder{display:grid;grid-template-columns:repeat(5, minmax(150px,1fr));gap:10px;min-width:900px}.lane{border:1px dashed rgba(255,255,255,.16);border-radius:16px;padding:12px;background:rgba(255,255,255,.035)}.lane .label{font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:var(--faint);font-weight:900}.event{margin:10px 0;padding:9px;border-radius:12px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.08);font-size:13px;color:var(--muted)}.event.hot{background:rgba(251,113,133,.1);border-color:rgba(251,113,133,.34);color:#fff}.event.ok{background:rgba(74,222,128,.08);border-color:rgba(74,222,128,.28)}.event.warn{background:rgba(250,204,21,.08);border-color:rgba(250,204,21,.28);color:#fff}
+table{width:100%;border-collapse:separate;border-spacing:0;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:rgba(15,23,42,.55);margin:14px 0}th,td{padding:12px 13px;border-bottom:1px solid var(--line);vertical-align:top}th{text-align:left;background:rgba(255,255,255,.06);color:#fff;font-size:13px}td{color:var(--muted);font-size:14px}tr:last-child td{border-bottom:0}.nowrap{white-space:nowrap}.good{color:var(--green);font-weight:850}.warn{color:var(--yellow);font-weight:850}.bad{color:var(--red);font-weight:850}.info{color:var(--cyan);font-weight:850}.scenario-tabs{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 16px}.scenario-tab{cursor:pointer;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.045);color:var(--muted);border-radius:999px;padding:9px 12px;font-weight:800}.scenario-tab.active{background:rgba(255,95,70,.15);border-color:rgba(255,95,70,.55);color:#fff}.scenario-view{display:grid;grid-template-columns:1.05fr .95fr;gap:16px}.counter-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.counter{background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:12px}.counter .cname{font-size:12px;color:var(--faint);font-weight:850}.counter .cval{font-size:22px;color:#fff;font-weight:950}.counter .why{font-size:12px;color:var(--muted)}.stepper{display:grid;gap:10px}.step{display:grid;grid-template-columns:30px 1fr;gap:10px;align-items:start}.bubble{width:28px;height:28px;border-radius:50%;background:rgba(255,95,70,.18);border:1px solid rgba(255,95,70,.45);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:950}.step div:last-child{color:var(--muted)}.step strong{color:#fff}.legend{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.mini{font-size:12px;color:var(--faint)}.pair{display:grid;grid-template-columns:180px 1fr;gap:10px;padding:10px;border-bottom:1px solid rgba(255,255,255,.08)}.pair:last-child{border-bottom:0}.pair b{color:#fff}.checklist{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.check{border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:14px;background:rgba(255,255,255,.045)}.check b{color:#fff}.printnote{display:none}
+@media (max-width:1150px){.layout{grid-template-columns:1fr}aside{position:relative;top:0}.context{grid-template-columns:1fr}.actions{justify-content:flex-start}.kpis,.grid4{grid-template-columns:repeat(2,minmax(0,1fr))}.grid3{grid-template-columns:1fr}.scenario-view{grid-template-columns:1fr}}
+@media (max-width:720px){.layout{padding:14px}.hero{padding:22px}.kpis,.grid2,.grid4,.checklist{grid-template-columns:1fr}.counter-grid{grid-template-columns:1fr}h1{font-size:34px}h2{font-size:24px}.ctxbox{white-space:normal;border-radius:16px}}
+@media print{body{background:white;color:black}.topbar,aside,.actions{display:none}.layout{display:block;padding:0}.card,.hero{box-shadow:none;border-color:#bbb;background:white;color:black;break-inside:avoid}p,td,li,.muted{color:#222}.printnote{display:block;color:#333}.diagram,.hex{background:#f4f4f4;color:#111;border-color:#ccc}.field .name,.block,h2,h3,h1{color:#111}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="progress" id="progress"></div>
+  <div class="context">
+    <div class="brand"><span class="spark"></span> MKA / 802.1X key hierarchy</div>
+    <div class="ctxbox">Current context: <strong id="ctx">Opening overview</strong></div>
+    <div class="actions"><button class="btn" onclick="window.print()">Print / Save PDF</button><button class="btn" onclick="location.hash='scenario-lab'">Open scenario lab</button></div>
+  </div>
+</div>
+<div class="layout">
+<aside>
+  <div class="navtitle">Contents</div>
+  <ol class="toc" id="toc">
+    <li><a href="#overview">1. Mental model</a></li>
+    <li><a href="#standards">2. Standards map</a></li>
+    <li><a href="#entities">3. Entities and ports</a></li>
+    <li><a href="#key-hierarchy">4. CAK/KEK/ICK/SAK</a></li>
+    <li><a href="#pdu">5. EAPOL-MKA PDU format</a></li>
+    <li><a href="#mkpdu-fields">6. MKPDU parameter sets</a></li>
+    <li><a href="#bringup">7. Bring-up walk-through</a></li>
+    <li><a href="#data-plane">8. MACsec data-plane relation</a></li>
+    <li><a href="#automotive">9. Automotive design patterns</a></li>
+    <li><a href="#observability">10. Observability and debug</a></li>
+    <li><a href="#scenario-lab">11. Scenario lab</a></li>
+    <li><a href="#pitfalls">12. Pitfalls and checks</a></li>
+  </ol>
+  <div class="sidebox">
+    <div class="navtitle">Core idea</div>
+    <p><span class="strong">CAK</span> proves membership of a Connectivity Association. <span class="strong">ICK</span> authenticates MKA control messages. <span class="strong">KEK</span> wraps the SAK. <span class="strong">SAK</span> protects MACsec data frames.</p>
+  </div>
+  <div class="sidebox">
+    <div class="navtitle">Capture filters</div>
+    <p><code>eth.type == 0x888e &amp;&amp; eapol.type == 5</code></p>
+    <p><code>mka</code></p>
+    <p><code>eth.type == 0x88e5</code></p>
+  </div>
+</aside>
+<main>
+<section class="hero" id="overview" data-title="Mental model: MKA is the control-plane agreement that makes MACsec data-plane keys safe">
+  <div class="eyebrow">Standards-based training note</div>
+  <h1>MKA / IEEE 802.1X key hierarchy for Automotive Ethernet</h1>
+  <p class="subtitle">A practical, protocol-level explanation of how <span class="strong">MACsec Key Agreement (MKA)</span> uses <span class="strong">CAK</span>, <span class="strong">ICK</span>, <span class="strong">KEK</span>, and <span class="strong">SAK</span> to bring up a secure Ethernet link, how the EAPOL-MKA packets look on the wire, and how to debug common automotive scenarios.</p>
+  <div class="kpis">
+    <div class="kpi"><div class="n">0x888E</div><div class="l">EAPOL EtherType carrying EAPOL-MKA control traffic.</div></div>
+    <div class="kpi"><div class="n">Type 5</div><div class="l">EAPOL packet type used for MKA. The packet body is the MKPDU.</div></div>
+    <div class="kpi"><div class="n">0x88E5</div><div class="l">MACsec data-frame EtherType after SecTAG insertion.</div></div>
+    <div class="kpi"><div class="n">AN 0..3</div><div class="l">Association Number selects which Secure Association Key protects the frame.</div></div>
+  </div>
+  <div class="callout blue"><b>One-sentence mental model:</b> MKA is the authenticated control-plane conversation that proves both ports belong to the same Connectivity Association and safely installs short-lived MACsec data-plane keys into the MAC Security Entity.</div>
+</section>
+
+<section class="card" id="standards" data-title="Standards map: IEEE 802.1X defines MKA; IEEE 802.1AE defines MACsec frame protection">
+  <h2>1. Standards map: where each rule comes from</h2>
+  <p>MKA is often discussed together with MACsec, but the two standards have different jobs. <span class="strong">IEEE 802.1X</span> defines Port-Based Network Access Control and the MKA protocol used to discover and establish MACsec security associations. <span class="strong">IEEE 802.1AE</span> defines the MACsec data-plane service, SecTAG, Secure Channel, Secure Association, packet number, and integrity/encryption behavior.</p>
+  <div class="diagram">
+    <div class="pipeline">
+      <div class="block orange">IEEE 802.1X<br><span class="foot">PAE, EAPOL, MKA, MKPDU</span></div><div class="arrow">→</div>
+      <div class="block purple">MKA control plane<br><span class="foot">peer liveness, key server, cipher, SAK distribution</span></div><div class="arrow">→</div>
+      <div class="block green">IEEE 802.1AE MACsec<br><span class="foot">SecY, SC, SA, SecTAG, ICV</span></div><div class="arrow">→</div>
+      <div class="block yellow">Automotive integration<br><span class="foot">AUTOSAR MKA, EthIf, CSM, HSM, switch/PHY offload</span></div>
+    </div>
+  </div>
+  <table>
+    <thead><tr><th>Reference</th><th>What it contributes</th><th>Training interpretation</th></tr></thead>
+    <tbody>
+      <tr><td>IEEE 802.1X</td><td>Port access architecture, EAPOL transport, MKA protocol, MKPDU parameter sets, peer liveness, key-server behavior.</td><td>Explains <span class="strong">how two ports agree on keys and MACsec parameters</span>.</td></tr>
+      <tr><td>IEEE 802.1AE</td><td>MACsec service, SecY, Secure Channel, Secure Association, SecTAG, packet number, Integrity Check Value, cipher suites.</td><td>Explains <span class="strong">how data frames are protected after keys are installed</span>.</td></tr>
+      <tr><td>RFC 3394</td><td>AES Key Wrap algorithm.</td><td>Explains <span class="strong">how a Key Encrypting Key can wrap another key such as the SAK</span>.</td></tr>
+      <tr><td>AUTOSAR CP MKA</td><td>Automotive basic-software module, EthIf/CSM integration, pre-shared CAK focus, fixed role configuration, status/error events.</td><td>Explains <span class="strong">how MKA is integrated into an ECU/switch software stack</span>.</td></tr>
+    </tbody>
+  </table>
+  <div class="callout yellow"><b>Automotive nuance:</b> many automotive deployments use pre-shared CAKs rather than enterprise EAP-TLS provisioning. That changes operational procedures, but not the basic MKA key hierarchy idea.</div>
+</section>
+
+<section class="card" id="entities" data-title="Entities: PAE controls the port, KaY runs MKA, SecY protects data frames">
+  <h2>2. Entities and ports: who does what?</h2>
+  <p>The naming can be confusing because 802.1X, MKA, and MACsec are layered. The cleanest way to remember it is: <span class="strong">PAE controls the port</span>, <span class="strong">KaY negotiates keys</span>, and <span class="strong">SecY protects frames</span>.</p>
+  <div class="diagram">
+    <div class="pipeline">
+      <div class="block orange">Physical link up<br><span class="foot">PHY / switch port active</span></div><div class="arrow">→</div>
+      <div class="block purple">PAE<br><span class="foot">Port Access Entity</span></div><div class="arrow">→</div>
+      <div class="block blue">KaY<br><span class="foot">MKA participant</span></div><div class="arrow">→</div>
+      <div class="block green">SecY<br><span class="foot">MACsec entity</span></div><div class="arrow">→</div>
+      <div class="block yellow">Controlled Port<br><span class="foot">upper-layer traffic allowed</span></div>
+    </div>
+  </div>
+  <div class="grid2">
+    <div class="callout blue"><b>Uncontrolled port:</b> carries control traffic such as EAPOL-MKA before the protected data path is ready. Without this exception, MKA could not bootstrap MACsec.</div>
+    <div class="callout green"><b>Controlled port:</b> carries normal traffic only after policy allows it. In a strict MACsec design, SOME/IP, DoIP, service discovery, and application traffic wait until the MACsec path is operational.</div>
+  </div>
+  <table>
+    <thead><tr><th>Entity</th><th>Role</th><th>Automotive implementation point</th></tr></thead>
+    <tbody>
+      <tr><td>PAE</td><td>Starts/stops access-control behavior for a physical or virtual port.</td><td>ECU Ethernet interface, switch host port, switch uplink port, or virtual MACsec port.</td></tr>
+      <tr><td>KaY</td><td>Runs MKA. Recognizes peers in the same CA, validates MKPDUs, manages key-server behavior, and installs SAKs.</td><td>Usually AUTOSAR BSW module, switch firmware, or a security manager interacting with HSM/CSM.</td></tr>
+      <tr><td>SecY</td><td>MACsec data-plane entity. Inserts/removes SecTAG, applies SAK, validates ICV, checks replay.</td><td>Can be software, Ethernet controller, switch, PHY, or dedicated MACsec hardware.</td></tr>
+      <tr><td>CSM/HSM</td><td>Provides KDF, AES-CMAC, random generation, AES Key Wrap/Unwrap, and protected key storage.</td><td>Critical for production ECU key protection. The CAK should not be exposed to general application software.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="card" id="key-hierarchy" data-title="Key hierarchy: CAK derives ICK and KEK; KEK wraps SAK; SAK protects frames">
+  <h2>3. Key hierarchy: CAK, ICK, KEK, SAK</h2>
+  <p>The MKA hierarchy separates <span class="strong">membership</span>, <span class="strong">control-plane authentication</span>, <span class="strong">key transport</span>, and <span class="strong">data protection</span>. This separation is the main reason MKA is easier to reason about than a single “one key protects everything” design.</p>
+  <div class="diagram">
+    <div class="pipeline">
+      <div class="block orange">CAK<br><span class="foot">Connectivity Association Key<br>long-lived root secret</span></div><div class="arrow">→</div>
+      <div class="block purple">KDF<br><span class="foot">uses CAK + context</span></div><div class="arrow">→</div>
+      <div class="block green">ICK<br><span class="foot">MKA ICV generation/validation</span></div><div class="arrow">+</div>
+      <div class="block blue">KEK<br><span class="foot">wrap/unwrap SAK</span></div><div class="arrow">→</div>
+      <div class="block yellow">SAK<br><span class="foot">installed in SecY for frame protection</span></div>
+    </div>
+  </div>
+  <table>
+    <thead><tr><th>Object</th><th>Secret?</th><th>Lives where?</th><th>What it does</th><th>Common misconception</th></tr></thead>
+    <tbody>
+      <tr><td><span class="strong">CKN</span><br><span class="mini">CAK Name</span></td><td>No</td><td>Configuration and MKPDU Basic Parameter Set.</td><td>Names/selects the CAK. Peers with matching CKN try to validate each other’s MKA messages.</td><td>CKN is not a password. It is visible on the wire.</td></tr>
+      <tr><td><span class="strong">CAK</span><br><span class="mini">Connectivity Association Key</span></td><td>Yes</td><td>Secure configuration, HSM, key store, or EAP-derived material.</td><td>Root secret that proves membership of the Connectivity Association.</td><td>CAK is not normally the data-frame key.</td></tr>
+      <tr><td><span class="strong">ICK</span><br><span class="mini">Integrity Check Key</span></td><td>Yes</td><td>Derived from CAK.</td><td>Generates and validates the MKA message Integrity Check Value.</td><td>ICK does not encrypt payload data.</td></tr>
+      <tr><td><span class="strong">KEK</span><br><span class="mini">Key Encrypting Key</span></td><td>Yes</td><td>Derived from CAK.</td><td>Wraps and unwraps SAKs in Distributed SAK parameter sets.</td><td>KEK protects key transport, not Ethernet payloads.</td></tr>
+      <tr><td><span class="strong">SAK</span><br><span class="mini">Secure Association Key</span></td><td>Yes</td><td>Generated by key server and installed in SecY.</td><td>Protects MACsec data frames. The SAK is bound to a Secure Association and a packet-number space.</td><td>SAKs must be refreshed; they must not be treated like permanent CAKs.</td></tr>
+    </tbody>
+  </table>
+  <div class="callout red"><b>Important security rule:</b> never precompute or reuse SAKs as static configuration. SAKs are session/data-plane keys and must be fresh enough to avoid packet-number reuse and cryptographic nonce reuse.</div>
+</section>
+
+<section class="card" id="pdu" data-title="PDU format: Ethernet + EAPOL header + MKPDU parameter sets">
+  <h2>4. PDU format: what the wire actually carries</h2>
+  <p>MKA packets are not IP packets. They are EAPOL frames carried directly over Ethernet. In a normal direct link, the destination is the EAPOL group address and the EtherType is <span class="strong">0x888E</span>. The EAPOL packet type identifies the body as <span class="strong">EAPOL-MKA</span>.</p>
+  <h3>4.1 Ethernet envelope for EAPOL-MKA</h3>
+  <div class="diagram">
+    <div class="frame">
+      <div class="field risk"><span class="bits">48b</span><span class="name">DA<br>01-80-C2-00-00-03</span></div>
+      <div class="field"><span class="bits">48b</span><span class="name">SA<br>local port MAC</span></div>
+      <div class="field vlan"><span class="bits">optional</span><span class="name">VLAN tag<br>if used</span></div>
+      <div class="field auth"><span class="bits">16b</span><span class="name">EtherType<br>0x888E</span></div>
+      <div class="field payload xwide"><span class="bits">variable</span><span class="name">EAPOL-MKA PDU</span></div>
+      <div class="field"><span class="bits">32b</span><span class="name">FCS</span></div>
+    </div>
+  </div>
+  <div class="callout yellow"><b>Bridge behavior insight:</b> the default EAPOL group address is link-local. A normal bridge is not expected to forward it as ordinary traffic. That is why MKA is naturally a direct-peer / hop-by-hop protocol, and why “MKA across a random switched cloud” often fails unless the network has an explicit tunneling or provider-mode design.</div>
+
+  <h3>4.2 EAPOL header carrying MKPDU</h3>
+  <div class="diagram">
+    <div class="frame">
+      <div class="field auth"><span class="bits">1B</span><span class="name">EAPOL Version</span></div>
+      <div class="field auth"><span class="bits">1B</span><span class="name">Packet Type<br>5 = MKA</span></div>
+      <div class="field auth"><span class="bits">2B</span><span class="name">Body Length</span></div>
+      <div class="field payload xwide"><span class="bits">Body Length bytes</span><span class="name">MKPDU parameter sets</span></div>
+    </div>
+  </div>
+  <p>The EAPOL body is the <span class="strong">MACsec Key Agreement Protocol Data Unit (MKPDU)</span>. It is a sequence of parameter sets, beginning with the Basic Parameter Set and normally ending with an MKA integrity value so the receiver can validate the control message.</p>
+
+  <h3>4.3 Minimal decode example</h3>
+  <pre class="hex">Ethernet
+  dst = <span class="hi">01:80:c2:00:00:03</span>       <span class="dim"># EAPOL group address</span>
+  src = 02:10:00:00:00:11       <span class="dim"># ECU or switch-port MAC</span>
+  ethertype = <span class="hi">0x888e</span>          <span class="dim"># EAPOL</span>
+
+EAPOL
+  version = 3
+  type    = <span class="hi">5</span>                 <span class="dim"># EAPOL-MKA</span>
+  length  = 0x00b4            <span class="dim"># MKPDU size</span>
+
+MKPDU
+  Basic Parameter Set
+    CKN = <span class="ok">Vehicle_Line_A_Port_3</span>
+    Key Server Priority = 0x00
+    MACsec Desired = 1
+    SCI = 02:10:00:00:00:11 / port 3
+    Actor MI = 96-bit random member identifier
+    Actor MN = increasing message number
+  Live Peer List
+  MACsec SAK Use
+  Distributed SAK
+  Announcement: supported cipher suites
+  ICV = AES-CMAC over MKPDU using ICK</pre>
+</section>
+
+<section class="card" id="mkpdu-fields" data-title="MKPDU parameter sets: Basic set identifies the actor and CKN; Distributed SAK transports the wrapped SAK">
+  <h2>5. MKPDU parameter sets and header fields</h2>
+  <p>Every useful MKA decode starts with the Basic Parameter Set. It tells you which Connectivity Association is being claimed, which port identity is speaking, whether MACsec is desired, and what MKA message number this actor is using.</p>
+  <h3>5.1 Basic Parameter Set</h3>
+  <div class="diagram">
+    <div class="frame">
+      <div class="field auth"><span class="bits">1B</span><span class="name">MKA Version</span></div>
+      <div class="field risk"><span class="bits">1B</span><span class="name">Key Server Priority</span></div>
+      <div class="field risk"><span class="bits">flags</span><span class="name">Key Server<br>MACsec Desired</span></div>
+      <div class="field"><span class="bits">bits</span><span class="name">MACsec Capability</span></div>
+      <div class="field"><span class="bits">12b length</span><span class="name">Body Length</span></div>
+      <div class="field time wide"><span class="bits">8B</span><span class="name">SCI</span></div>
+      <div class="field time wide"><span class="bits">12B</span><span class="name">Actor MI</span></div>
+      <div class="field time"><span class="bits">4B</span><span class="name">Actor MN</span></div>
+      <div class="field"><span class="bits">4B</span><span class="name">Algorithm Agility</span></div>
+      <div class="field payload xwide"><span class="bits">variable</span><span class="name">CAK Name / CKN + padding</span></div>
+    </div>
+  </div>
+  <table>
+    <thead><tr><th>Field</th><th>Meaning</th><th>What to inspect in captures</th></tr></thead>
+    <tbody>
+      <tr><td>MKA Version</td><td>Protocol version identifier.</td><td>Version mismatch or unsupported encoding can cause silent discard.</td></tr>
+      <tr><td>Key Server Priority</td><td>Election/preference input in general IEEE behavior. Lower values commonly mean higher priority.</td><td>In AUTOSAR-style fixed-role designs, role may be configured rather than dynamically elected.</td></tr>
+      <tr><td>Key Server flag</td><td>Indicates whether the actor is acting as key server.</td><td>No effective key server means no SAK distribution.</td></tr>
+      <tr><td>MACsec Desired</td><td>Actor wants MACsec protection on the controlled port.</td><td>If this is not set as expected, data may stay plain or negotiation may not proceed as intended.</td></tr>
+      <tr><td>MACsec Capability</td><td>Advertises ability to use MACsec.</td><td>A peer with insufficient capability cannot become an operational MACsec peer.</td></tr>
+      <tr><td>SCI</td><td>Secure Channel Identifier, normally based on MAC address plus port identifier.</td><td>Wrong SCI often points to wrong physical port mapping, virtual port issue, or switch offload mapping error.</td></tr>
+      <tr><td>Actor MI</td><td>Random Member Identifier for this MKA participant instance.</td><td>MI changes after restart. Peer lists use MI to track live/potential peers.</td></tr>
+      <tr><td>Actor MN</td><td>Message Number incremented by the actor.</td><td>Stalled or jumping MN values help identify restarts, stale captures, or replayed control messages.</td></tr>
+      <tr><td>Algorithm Agility</td><td>Cryptographic agility field for MKA.</td><td>Mismatch can explain why peers do not validate or agree.</td></tr>
+      <tr><td>CKN</td><td>Name used to select the CAK.</td><td>Matching CKN but ICV failure strongly suggests wrong CAK or wrong derived ICK.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>5.2 Common parameter sets</h3>
+  <table>
+    <thead><tr><th>Type</th><th>Parameter set</th><th>Purpose</th><th>Debug interpretation</th></tr></thead>
+    <tbody>
+      <tr><td>Basic</td><td>Basic Parameter Set</td><td>Mandatory identity/capability/CKN information.</td><td>First place to check CKN, SCI, MI, MN, MACsec Desired, and key-server role.</td></tr>
+      <tr><td>1</td><td>Live Peer List</td><td>Peers that have been validated as live members.</td><td>If your peer stays potential and never live, authentication/liveness is failing.</td></tr>
+      <tr><td>2</td><td>Potential Peer List</td><td>Peers noticed but not yet fully live.</td><td>Repeated potential-only state often means ICV failure, CKN/CAK issue, or missing response.</td></tr>
+      <tr><td>3</td><td>MACsec SAK Use</td><td>Advertises whether latest/old SAKs are used for transmit and receive, and carries key number/AN status.</td><td>Best field to understand rollover and whether both sides have switched.</td></tr>
+      <tr><td>4</td><td>Distributed SAK</td><td>Key server sends wrapped SAK, key number, AN, confidentiality offset, and possibly cipher suite reference.</td><td>If present but SecY never works, suspect unwrap failure, SecY install failure, AN/SCI mismatch, or cipher mismatch.</td></tr>
+      <tr><td>7</td><td>Announcement</td><td>Can carry MACsec cipher suite announcement.</td><td>Use it to diagnose cipher-suite mismatch, especially 128 vs 256 and XPN vs non-XPN.</td></tr>
+      <tr><td>8</td><td>XPN</td><td>Extended Packet Number information.</td><td>Relevant when using XPN cipher suites and 64-bit packet numbering.</td></tr>
+      <tr><td>255</td><td>ICV Indicator</td><td>Identifies the integrity check position/semantics.</td><td>If ICV validation fails, do not trust the rest of the MKPDU content for state decisions.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>5.3 Distributed SAK is not plain key transport</h3>
+  <div class="diagram">
+    <div class="frame">
+      <div class="field auth"><span class="bits">1B</span><span class="name">Type = 4</span></div>
+      <div class="field risk"><span class="bits">flags</span><span class="name">Distributed AN<br>Confidentiality Offset</span></div>
+      <div class="field"><span class="bits">length</span><span class="name">Body Length</span></div>
+      <div class="field time"><span class="bits">4B</span><span class="name">Key Number</span></div>
+      <div class="field auth wide"><span class="bits">optional 8B</span><span class="name">Cipher Suite</span></div>
+      <div class="field payload xwide"><span class="bits">wrapped</span><span class="name">AES Key Wrap of SAK using KEK</span></div>
+    </div>
+  </div>
+  <div class="callout green"><b>Why the KEK exists:</b> the peer should be able to receive the SAK over the link without the SAK appearing in cleartext inside the control frame. The KEK is the key-encryption key used for this wrapping operation.</div>
+</section>
+
+<section class="card" id="bringup" data-title="Bring-up walk-through: discover peer, validate CKN/ICK, distribute SAK, install SecY">
+  <h2>6. End-to-end bring-up walk-through</h2>
+  <p>This is the sequence you should mentally simulate whenever a MACsec-enabled ECU or switch port comes online.</p>
+  <div class="diagram">
+    <div class="ladder">
+      <div class="lane"><div class="label">ECU PAE/KaY</div><div class="event ok">Link-up seen</div><div class="event">CAK available</div><div class="event">Derive ICK/KEK</div><div class="event">Send MKPDU</div><div class="event ok">Install Rx/Tx SAs</div></div>
+      <div class="lane"><div class="label">Ethernet link</div><div class="event">EAPOL-MKA 0x888E</div><div class="event">Basic set + CKN</div><div class="event">Peer lists</div><div class="event">Distributed SAK</div><div class="event ok">MACsec data 0x88E5</div></div>
+      <div class="lane"><div class="label">Switch PAE/KaY</div><div class="event ok">Link-up seen</div><div class="event">Same CKN selected</div><div class="event">Validate ICV</div><div class="event hot">Key server generates SAK</div><div class="event ok">Signal operational</div></div>
+      <div class="lane"><div class="label">SecY</div><div class="event">No data SAK yet</div><div class="event">Create SC</div><div class="event">Add Rx SA</div><div class="event">Add Tx SA</div><div class="event ok">Protect/validate frames</div></div>
+      <div class="lane"><div class="label">Upper layers</div><div class="event warn">Held during negotiation</div><div class="event">No SOME/IP yet</div><div class="event">No DoIP yet</div><div class="event ok">Link-up propagated</div><div class="event ok">Application traffic starts</div></div>
+    </div>
+  </div>
+  <div class="stepper">
+    <div class="step"><div class="bubble">1</div><div><strong>Physical link becomes active.</strong> The PHY or switch port reports link-up, but the upper-layer communication stack should not assume that secure communication is ready.</div></div>
+    <div class="step"><div class="bubble">2</div><div><strong>PAE starts the KaY.</strong> The MKA participant checks whether the CAK is available for the configured CKN. Without CAK, there is no valid ICK or KEK.</div></div>
+    <div class="step"><div class="bubble">3</div><div><strong>MKPDUs are exchanged.</strong> Each side advertises CKN, SCI, MI, MN, MACsec capability, MACsec desired status, and key-server information.</div></div>
+    <div class="step"><div class="bubble">4</div><div><strong>Peer membership is validated.</strong> The receiver uses the derived ICK to validate the MKA ICV. Matching CKN alone is not enough.</div></div>
+    <div class="step"><div class="bubble">5</div><div><strong>Key server chooses cipher and distributes SAK.</strong> The key server generates a fresh SAK, wraps it with KEK, and advertises SAK use information.</div></div>
+    <div class="step"><div class="bubble">6</div><div><strong>SecY is programmed.</strong> Receive and transmit Secure Associations are installed, including SAK, AN, SCI/SSCI, packet-number handling, replay settings, and confidentiality offset.</div></div>
+    <div class="step"><div class="bubble">7</div><div><strong>Controlled port becomes operational.</strong> Now normal Ethernet payloads flow as MACsec frames, and the ECU may begin upper-layer protocols.</div></div>
+  </div>
+</section>
+
+<section class="card" id="data-plane" data-title="Data-plane relation: MKA installs SAKs; MACsec frames use SecTAG, AN, PN, and ICV">
+  <h2>7. Relationship to MACsec data-plane headers</h2>
+  <p>MKA does not encrypt every data frame itself. MKA installs the SAK into the SecY. The SecY then transforms ordinary Ethernet frames into MACsec frames with SecTAG and ICV.</p>
+  <div class="diagram">
+    <div class="frame">
+      <div class="field"><span class="bits">48b</span><span class="name">DA</span></div>
+      <div class="field"><span class="bits">48b</span><span class="name">SA</span></div>
+      <div class="field auth"><span class="bits">16b</span><span class="name">MACsec<br>0x88E5</span></div>
+      <div class="field auth"><span class="bits">TCI/AN</span><span class="name">SecTAG<br>control + AN</span></div>
+      <div class="field auth"><span class="bits">8b</span><span class="name">Short Length</span></div>
+      <div class="field time"><span class="bits">32b or XPN</span><span class="name">Packet Number</span></div>
+      <div class="field auth wide"><span class="bits">optional 64b</span><span class="name">SCI</span></div>
+      <div class="field payload xwide"><span class="bits">protected</span><span class="name">Secure Data</span></div>
+      <div class="field auth"><span class="bits">ICV</span><span class="name">Integrity Check Value</span></div>
+    </div>
+  </div>
+  <table>
+    <thead><tr><th>MACsec field</th><th>How MKA influences it</th><th>Debug use</th></tr></thead>
+    <tbody>
+      <tr><td>AN</td><td>MKA SAK Use and Distributed SAK tell peers which Association Number maps to which SAK.</td><td>If AN changes unexpectedly, inspect SAK rollover and old/latest key state.</td></tr>
+      <tr><td>PN / XPN</td><td>SAK has its own packet-number space. MKA rekeys before packet-number exhaustion.</td><td>Invalid, late, delayed, or replay counters point to replay-window or PN synchronization issues.</td></tr>
+      <tr><td>SCI / SSCI</td><td>Basic Parameter Set advertises SCI; XPN-related material may use SSCI.</td><td>SCI mismatch often indicates wrong port identity, offload configuration issue, or peer-role confusion.</td></tr>
+      <tr><td>ICV</td><td>Data-frame ICV is computed by MACsec using SAK/cipher suite, not the MKA ICK.</td><td>MKA ICV success but data ICV failure means control plane authenticated but data-plane programming failed.</td></tr>
+      <tr><td>Confidentiality offset</td><td>Distributed SAK can carry confidentiality offset selection.</td><td>Wrong offset may expose or protect a different part of the frame than expected.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="card" id="automotive" data-title="Automotive patterns: direct links, switch ports, fixed roles, pre-shared CAKs, HSM integration">
+  <h2>8. Automotive design patterns</h2>
+  <p>Automotive Ethernet usually wants fast deterministic startup, controlled key storage, and simple operational ownership. That drives several practical patterns.</p>
+  <div class="grid3">
+    <div class="callout"><b>ECU ↔ Switch port</b><br>Common direct-peer pattern. The switch port and ECU have a shared CKN/CAK profile. MKA must finish before upper-layer services are considered reachable.</div>
+    <div class="callout blue"><b>Switch ↔ Switch uplink</b><br>Used between central/zonal switches. MACsec can protect the trunk, but VLAN/stream/application authorization is still required after decryption.</div>
+    <div class="callout green"><b>HSM-mediated keys</b><br>CAK storage, ICK/KEK derivation, SAK unwrap, and SAK installation may be mediated by HSM/CSM to avoid exposing raw secrets to application software.</div>
+  </div>
+  <h3>8.1 AUTOSAR-style constraints worth remembering</h3>
+  <table>
+    <thead><tr><th>Constraint / configuration idea</th><th>Why it exists</th><th>Failure mode if wrong</th></tr></thead>
+    <tbody>
+      <tr><td>Pre-shared CAK focus</td><td>Automotive systems often provision credentials during manufacturing/service rather than using enterprise EAP at every startup.</td><td>Replacement ECU with wrong CAK gives CKN match but MKPDU ICV mismatch.</td></tr>
+      <tr><td>Fixed key-server/peer role</td><td>Faster, simpler startup and predictable integration. Dynamic election may be intentionally not used.</td><td>Both sides configured as peer can prevent SAK distribution. Incorrect role assignment can create startup deadlock.</td></tr>
+      <tr><td>One successful participant per port</td><td>A port may try multiple CKNs, but only one CA should own the protected channel in point-to-point automotive use.</td><td>Ambiguous CKN profiles can create nondeterministic startup behavior.</td></tr>
+      <tr><td>Bypassed VLAN/EtherType lists</td><td>Some control traffic may need to bypass MACsec, especially in software/hardware integration.</td><td>Overbroad bypass can accidentally permit unprotected diagnostics, discovery, or control traffic.</td></tr>
+      <tr><td>Rekey on time or PN threshold</td><td>Prevents long SAK use and packet-number exhaustion.</td><td>Failure to rekey can cause dropped frames, replay protection issues, or cryptographic risk.</td></tr>
+      <tr><td>Upper-layer link-up after MACsec operational</td><td>Prevents SOME/IP, DoIP, AVB/TSN control traffic from starting over an unprotected or unauthenticated path.</td><td>Applications see link-up but cannot communicate, or worse, communicate unprotected during startup.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="card" id="observability" data-title="Observability: distinguish CKN mismatch, CAK mismatch, cipher mismatch, no key server, and SecY install failure">
+  <h2>9. Observability and debug guide</h2>
+  <p>The fastest way to debug MKA is to separate the problem into <span class="strong">transport</span>, <span class="strong">membership</span>, <span class="strong">agreement</span>, <span class="strong">SAK distribution</span>, and <span class="strong">data-plane protection</span>.</p>
+  <div class="checklist">
+    <div class="check"><b>1. Do I see EAPOL-MKA?</b><br><span class="muted">Filter for EtherType 0x888E and EAPOL type 5. If absent, check link state, MKA enablement, EAPOL DA handling, VLAN/bypass, and port-control state.</span></div>
+    <div class="check"><b>2. Do both sides advertise the same CKN?</b><br><span class="muted">Different CKN means they are not trying the same CAK profile. Same CKN does not prove same CAK.</span></div>
+    <div class="check"><b>3. Does ICV validation succeed?</b><br><span class="muted">Matching CKN with ICV failure usually indicates wrong CAK or wrong derived ICK. Do not move to SAK debugging yet.</span></div>
+    <div class="check"><b>4. Is a key server active?</b><br><span class="muted">No key server means no Distributed SAK. In fixed-role automotive designs, inspect configuration first.</span></div>
+    <div class="check"><b>5. Is Distributed SAK present?</b><br><span class="muted">If absent, look for cipher mismatch, live-peer failure, or key-server role issue. If present but no data traffic works, look at unwrap/SecY install.</span></div>
+    <div class="check"><b>6. Are MACsec data frames valid?</b><br><span class="muted">Filter EtherType 0x88E5. Check AN, PN/XPN, SCI, replay window, and SecY counters.</span></div>
+  </div>
+  <h3>9.1 Symptom-to-cause matrix</h3>
+  <table>
+    <thead><tr><th>Observed symptom</th><th>Likely layer</th><th>Most likely causes</th><th>Next evidence to collect</th></tr></thead>
+    <tbody>
+      <tr><td>No EAPOL-MKA frames</td><td>Transport / startup</td><td>MKA disabled, link not active, EAPOL blocked, wrong EtherType handling, PAE not started.</td><td>Port link state, MKA enable flag, EthIf callbacks, switch control-plane capture.</td></tr>
+      <tr><td>EAPOL-MKA one direction only</td><td>Transport / role</td><td>Peer not started, wrong port/VLAN path, link-local destination swallowed, peer suppressing MKA after local error.</td><td>Both-side capture, port ACL/control-plane policing, service-state logs.</td></tr>
+      <tr><td>Different CKN values</td><td>Provisioning</td><td>Wrong profile, wrong vehicle variant, wrong line-side/key index, service replacement not provisioned.</td><td>Configured CKN list per port and manufacturing/service key manifest.</td></tr>
+      <tr><td>Same CKN but MKPDU ICV failure</td><td>Membership / CAK</td><td>CAK mismatch, corrupted key, wrong key derivation context, wrong ICK in HSM/CSM.</td><td>Key-not-present/key-mismatch events, HSM key slots, ICK derivation status.</td></tr>
+      <tr><td>Peer remains potential, never live</td><td>Liveness / validation</td><td>ICV failure, stale MI/MN handling, missing response, liveness timeout.</td><td>Actor MI/MN progression, live/potential peer lists, receive timestamps.</td></tr>
+      <tr><td>No Distributed SAK</td><td>Agreement</td><td>No key server, incompatible cipher suites, MACsec desired/capability mismatch, fixed-role misconfiguration.</td><td>Basic set flags, key-server priority/role, Announcement cipher suite list.</td></tr>
+      <tr><td>Distributed SAK received but no protected data</td><td>Key unwrap / SecY</td><td>KEK unwrap failure, SAK install failure, HSM permission issue, wrong SecY port, SCI/AN mismatch.</td><td>CSM return codes, SecY add Rx/Tx SA callbacks, MACsec operational notifications.</td></tr>
+      <tr><td>MACsec frames arrive but invalid/not valid counters rise</td><td>Data plane</td><td>Wrong SAK, wrong AN, PN/replay problem, SCI mismatch, cipher suite mismatch.</td><td>SecTAG decode, AN, PN, SCI, data ICV failure counters.</td></tr>
+      <tr><td>Works initially, fails after traffic load</td><td>Rekey / PN</td><td>SAK rekey failure, packet-number threshold reached, old/latest key transition not synchronized.</td><td>SAK Use old/latest flags, key number, AN rollover, PN counters.</td></tr>
+      <tr><td>Plain traffic observed despite MACsec configured</td><td>Policy / bypass</td><td>Fail-open/permissive mode, bypass VLAN/EtherType, application started before MACsec operational.</td><td>Bypass lists, permissive mode timers, upper-layer link-up sequencing.</td></tr>
+    </tbody>
+  </table>
+  <h3>9.2 Useful counters and events</h3>
+  <div class="counter-grid">
+    <div class="counter"><div class="cname">MKA_E_KEY_NOT_PRESENT</div><div class="cval">CAK/ICK/KEK missing</div><div class="why">Local provisioning/HSM/key-slot problem before meaningful peer negotiation.</div></div>
+    <div class="counter"><div class="cname">MKA_E_KEY_MISMATCH</div><div class="cval">ICV / unwrap fail</div><div class="why">A received MKPDU with matching CKN could not be validated, or a wrapped key could not be unwrapped.</div></div>
+    <div class="counter"><div class="cname">MKA_E_ALGO_MISMATCH</div><div class="cval">No common cipher</div><div class="why">Peers authenticate but cannot agree on a MACsec cipher suite.</div></div>
+    <div class="counter"><div class="cname">MKA_E_TIMEOUT</div><div class="cval">No operational SC</div><div class="why">Negotiation did not reach installed Rx/Tx SAK state within configured timeout.</div></div>
+    <div class="counter"><div class="cname">SecY Rx invalid/not-valid</div><div class="cval">Data ICV fail</div><div class="why">Control plane may be fine; data-plane key/AN/SCI/PN may be wrong.</div></div>
+    <div class="counter"><div class="cname">SecY replay/late</div><div class="cval">PN window issue</div><div class="why">Frames are protected but packet-number ordering/window constraints fail.</div></div>
+  </div>
+</section>
+
+<section class="card" id="scenario-lab" data-title="Scenario lab: click through realistic MKA/CAK/KEK/SAK failures and transitions">
+  <h2>10. Interactive scenario lab</h2>
+  <p>Select a scenario to see the packet signs, key-hierarchy interpretation, and remediation path.</p>
+  <div class="scenario-tabs" id="tabs"></div>
+  <div class="scenario-view">
+    <div class="card" id="scenario-main"></div>
+    <div class="card" id="scenario-side"></div>
+  </div>
+</section>
+
+<section class="card" id="pitfalls" data-title="Pitfalls: CKN is visible, KEK is not data encryption, MACsec is hop-by-hop, bypass lists are dangerous">
+  <h2>11. Common pitfalls and design checks</h2>
+  <table>
+    <thead><tr><th>Pitfall</th><th>Correct interpretation</th><th>Design check</th></tr></thead>
+    <tbody>
+      <tr><td>“CKN is a secret.”</td><td>CKN is a name. The CAK is the secret.</td><td>Do not derive security from hiding the CKN. Protect CAK provisioning and storage.</td></tr>
+      <tr><td>“CAK encrypts Ethernet data.”</td><td>CAK authenticates CA membership and derives ICK/KEK. SAK protects data frames.</td><td>Audit whether SAK rotation and PN exhaustion handling work.</td></tr>
+      <tr><td>“KEK is the MACsec data key.”</td><td>KEK wraps SAKs. The SecY uses SAKs for frame protection.</td><td>Separate key-wrap failure from SecY data-plane ICV failure.</td></tr>
+      <tr><td>“EAPOL-MKA is already inside MACsec.”</td><td>MKA bootstraps MACsec and uses ICK for its own integrity. It must be allowed before the controlled port is operational.</td><td>Ensure control-plane admission allows EAPOL-MKA but does not accidentally bypass unrelated traffic.</td></tr>
+      <tr><td>“MACsec solves application authorization.”</td><td>MACsec proves link/port membership and protects link traffic. It does not decide whether a diagnostic tester is authorized to run a UDS routine.</td><td>Keep DoIP/UDS authentication, SecOC, firewalling, VLAN policy, and service authorization.</td></tr>
+      <tr><td>“A switch port can transparently forward MKA everywhere.”</td><td>Default EAPOL-MKA is link-local and direct-peer oriented.</td><td>For non-direct designs, explicitly validate provider/tunneling behavior and threat model.</td></tr>
+      <tr><td>“Fail-open is harmless because it is temporary.”</td><td>Temporary plain traffic can still leak or permit unsafe control flows.</td><td>Limit permissive mode, log it, and ensure safety/security-relevant PDUs do not bypass protection.</td></tr>
+      <tr><td>“PN wrap is a theoretical problem.”</td><td>At high line rates, 32-bit packet-number space can be consumed quickly. Rekey must be tested under load.</td><td>Use rekey thresholds and consider XPN cipher suites where appropriate.</td></tr>
+    </tbody>
+  </table>
+  <h3>11.1 Pre-production validation checklist</h3>
+  <div class="checklist">
+    <div class="check"><b>Provisioning</b><br><span class="muted">Each protected port has correct CKN/CAK binding, HSM slot, role, cipher suite, and bypass policy.</span></div>
+    <div class="check"><b>Startup</b><br><span class="muted">Upper layers see link-up only after the MACsec protected port is operational, unless a conscious fail-open policy exists.</span></div>
+    <div class="check"><b>PDU decode</b><br><span class="muted">Captured EAPOL-MKA shows expected CKN, SCI, MI/MN progression, MACsec Desired, key-server role, Announcement, Distributed SAK, and SAK Use.</span></div>
+    <div class="check"><b>Negative tests</b><br><span class="muted">Wrong CAK, wrong CKN, wrong role, cipher mismatch, missing HSM key, blocked EAPOL, and SAK rekey failure are all observable and logged.</span></div>
+    <div class="check"><b>Data-plane tests</b><br><span class="muted">MACsec frames have expected SecTAG, AN, PN/XPN behavior, SCI inclusion, confidentiality offset, and valid ICV under load.</span></div>
+    <div class="check"><b>Rekey tests</b><br><span class="muted">Rekey is tested by time threshold and packet-number threshold without packet loss beyond acceptable limits.</span></div>
+  </div>
+</section>
+
+<section class="card" id="references" data-title="Reference anchors used for this training note">
+  <h2>12. Reference anchors</h2>
+  <p>This training note is based on the protocol architecture and terminology of IEEE 802.1X for Port-Based Network Access Control and MKA, IEEE 802.1AE for MAC Security, RFC 3394 for AES Key Wrap, and AUTOSAR Classic Platform MKA integration guidance.</p>
+  <ul>
+    <li>IEEE 802.1X: Port-Based Network Access Control and MKA.</li>
+    <li>IEEE 802.1AE: MAC Security, SecY, SecTAG, Secure Channels, Secure Associations, packet numbers, and MACsec cipher suites.</li>
+    <li>RFC 3394: AES Key Wrap used conceptually for key wrapping.</li>
+    <li>AUTOSAR CP Specification of MACsec Key Agreement: automotive MKA module, EthIf, CSM/HSM integration, error reporting, and configuration constraints.</li>
+  </ul>
+  <p class="foot">This is a training artifact. It paraphrases and teaches protocol behavior and should not be used as a substitute for conformance testing against the official standards.</p>
+</section>
+</main>
+</div>
+<script>
+const sections = [...document.querySelectorAll('main section')];
+const links = [...document.querySelectorAll('.toc a')];
+const ctx = document.getElementById('ctx');
+const progress = document.getElementById('progress');
+function onScroll(){
+  const y = window.scrollY + 120;
+  let active = sections[0];
+  for(const s of sections){ if(s.offsetTop <= y) active = s; }
+  ctx.textContent = active.dataset.title || active.querySelector('h2,h1')?.textContent || 'Reading';
+  links.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#'+active.id));
+  const h = document.documentElement;
+  const pct = (h.scrollTop)/(h.scrollHeight-h.clientHeight)*100;
+  progress.style.width = pct + '%';
+}
+window.addEventListener('scroll', onScroll, {passive:true}); onScroll();
+
+const scenarios = [
+  {
+    name:'Clean ECU ↔ switch bring-up',
+    headline:'Same CKN, same CAK, key server distributes fresh SAK, SecY becomes operational.',
+    signs:['EAPOL-MKA both directions','Matching CKN','Valid MKPDU ICV','Live Peer List populated','Distributed SAK present','SAK Use shows latest key tx/rx','MACsec frames appear as 0x88E5'],
+    explanation:'The CKN selects the same CAK on both sides. Each side derives the same ICK and KEK. The key server wraps a fresh SAK using KEK. Both SecY instances install Rx and Tx Secure Associations. The controlled port can now carry upper-layer traffic.',
+    fix:'No fix needed. Confirm that upper-layer link-up occurs after MACsec operational notification and that bypass lists are minimal.'
+  },
+  {
+    name:'Replacement ECU has wrong CAK',
+    headline:'CKN matches, but MKPDU ICV validation fails.',
+    signs:['CKN visible and correct','Actor MI/MN changes normally','MKA_E_KEY_MISMATCH-style event','Peer remains potential or disappears','No valid Distributed SAK accepted','No protected data-plane link'],
+    explanation:'The ECU knows the right CAK name but not the right CAK. Because ICK is derived from CAK, the receiver cannot validate the MKA ICV. Matching CKN only says “try this key profile”; it does not prove membership.',
+    fix:'Re-provision the replacement ECU or switch key slot. Verify key index, vehicle variant, port identity, CKN string/bytes, and HSM permissions.'
+  },
+  {
+    name:'Both ports configured as peer',
+    headline:'MKA messages appear, but no one takes responsibility for SAK distribution.',
+    signs:['EAPOL-MKA both directions','Basic sets show no effective key server','No Distributed SAK parameter set','Timeout waiting for Rx/Tx SAK installation','Upper layers never see protected link-up'],
+    explanation:'In a fixed-role automotive design, dynamic key-server election may not be used. If both sides are configured as peer, neither generates and distributes the SAK. Authentication may look partially alive, but the data-plane key never appears.',
+    fix:'Configure exactly one side as key server and the other as peer for the direct link. Retest startup, SAK distribution, and rekey.'
+  },
+  {
+    name:'Cipher-suite mismatch',
+    headline:'Peers authenticate but cannot agree on GCM-AES / XPN mode.',
+    signs:['MKA ICV validates','Peer becomes live or partially live','Announcement shows non-overlapping cipher list','MKA_E_ALGO_MISMATCH-style event','No usable Distributed SAK or SecY install'],
+    explanation:'CAK/ICK/KEK are correct, so control-plane authentication works. The failure is later: the key server cannot select a cipher suite supported by both sides, or the peer cannot install the selected suite.',
+    fix:'Align GCM-AES-128/256 and XPN/non-XPN support. Verify switch silicon, PHY/MACsec offload, and AUTOSAR MkaMacSecCipherSuite priority.'
+  },
+  {
+    name:'SAK rollover under load',
+    headline:'Old and latest SAKs coexist briefly so traffic does not drop during rekey.',
+    signs:['SAK Use includes old and latest key state','AN changes between 0..3','Key Number increments','PN threshold or time threshold reached','Protected frames continue after transition'],
+    explanation:'The key server distributes a fresh SAK before the old SAK becomes unsafe. During transition, receivers may accept old and latest SAKs while transmit switches to the latest key when peers are ready.',
+    fix:'Validate rollover at high traffic rate. Check PN exhaustion thresholds, replay window, old/latest tx/rx flags, and whether both peers agree on AN and key number.'
+  },
+  {
+    name:'EAPOL blocked by intermediate device',
+    headline:'No MKA convergence because EAPOL-MKA is link-local and not forwarded as ordinary traffic.',
+    signs:['EAPOL-MKA seen on one side only','No peer response','Timeout event','Direct cable test works','Fails through tap/media converter/provider bridge'],
+    explanation:'Default MKA uses the EAPOL group destination address. Standard bridge behavior treats this as link-local control traffic, not a normal forwarded multicast frame.',
+    fix:'Use direct-peer topology for automotive MACsec links. If a non-direct/provider design is intentional, configure and verify explicit EAPOL tunneling or supported alternate destination behavior.'
+  },
+  {
+    name:'Bypass list accidentally permits diagnostics',
+    headline:'MACsec is up, but selected VLAN/EtherType traffic remains unprotected.',
+    signs:['MACsec data frames present','Some frames still plain Ethernet','Plain traffic matches bypass VLAN/EtherType','DoIP/SOME-IP traffic appears before protected link-up','Security monitor sees mixed protected/plain flows'],
+    explanation:'Bypass rules are sometimes needed for integration, but overbroad bypassing undermines the security objective. MACsec cannot protect traffic that the policy deliberately sends around SecY.',
+    fix:'Minimize bypass lists. Prove that safety/security relevant VLANs, DoIP, SOME/IP, time-sync, and control traffic have the intended protection state.'
+  }
+];
+const tabs = document.getElementById('tabs');
+const main = document.getElementById('scenario-main');
+const side = document.getElementById('scenario-side');
+function renderScenario(i){
+  const s = scenarios[i];
+  [...tabs.children].forEach((b,idx)=>b.classList.toggle('active',idx===i));
+  main.innerHTML = `<h3>${s.name}</h3><p class="strong">${s.headline}</p><div class="callout blue">${s.explanation}</div><h4>Packet / state signs</h4><ul>${s.signs.map(x=>`<li>${x}</li>`).join('')}</ul>`;
+  side.innerHTML = `<h3>How to resolve</h3><p>${s.fix}</p><h4>Key-hierarchy lens</h4><div class="pair"><b>CKN</b><span>Does the peer select the same key profile?</span></div><div class="pair"><b>CAK → ICK</b><span>Can the receiver validate the MKPDU ICV?</span></div><div class="pair"><b>CAK → KEK</b><span>Can the peer unwrap a Distributed SAK?</span></div><div class="pair"><b>SAK</b><span>Can SecY validate protected data frames?</span></div>`;
+}
+scenarios.forEach((s,i)=>{const b=document.createElement('button');b.className='scenario-tab';b.textContent=s.name;b.onclick=()=>renderScenario(i);tabs.appendChild(b)});
+renderScenario(0);
+</script>
+</body>
+</html>
